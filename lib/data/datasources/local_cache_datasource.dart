@@ -32,8 +32,7 @@ class LocalCacheDataSource {
   static const int _maxRecentAccounts = 5;
 
   LocalCacheDataSource({FlutterSecureStorage? secureStorage})
-      : _secureStorage =
-            secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   // ═══════════════════════════════════════════════════════════
   // SQLite — Cache user profile

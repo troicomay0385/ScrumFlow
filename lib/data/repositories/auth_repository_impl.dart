@@ -37,11 +37,14 @@ class AuthRepositoryImpl implements AuthRepository {
   final ConnectivityService _connectivityService;
 
   AuthRepositoryImpl({
-    required this._authDataSource,
-    required this._firestoreDataSource,
-    required this._localCacheDataSource,
-    required this._connectivityService,
-  });
+    required FirebaseAuthDataSource authDataSource,
+    required FirestoreDataSource firestoreDataSource,
+    required LocalCacheDataSource localCacheDataSource,
+    required ConnectivityService connectivityService,
+  })  : _authDataSource = authDataSource,
+        _firestoreDataSource = firestoreDataSource,
+        _localCacheDataSource = localCacheDataSource,
+        _connectivityService = connectivityService;
 
   // ═══════════════════════════════════════════════════════════
   // Đăng ký (US-001)
