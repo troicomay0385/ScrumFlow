@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../presentation/auth/screens/login_screen.dart';
+import '../../presentation/auth/screens/register_screen.dart';
+import '../../presentation/home/screens/home_screen.dart';
+
+
 /// Định nghĩa tên các route và hàm tạo route với animated transitions.
 ///
 /// Phase 1 chỉ khai báo route names và hàm [generateRoute].
@@ -49,18 +54,31 @@ class AppRoutes {
     );
   }
 
-  /// Placeholder [onGenerateRoute] — sẽ được hoàn thiện ở Phase 2
-  /// khi có các Screen cụ thể.
-  ///
-  /// Hiện tại trả về route mặc định với Scaffold trống
-  /// để tránh lỗi khi chạy app.
+  /// Hàm tạo route cho ứng dụng.
   static Route<dynamic> generateRoute(RouteSettings settings) {
-    // Phase 2 sẽ thêm switch-case cho từng route name.
-    return buildRoute(
-      settings: settings,
-      page: const Scaffold(
-        body: Center(child: Text('Route not found')),
-      ),
-    );
+    switch (settings.name) {
+      case login:
+        return buildRoute(
+          settings: settings,
+          page: const LoginScreen(),
+        );
+      case register:
+        return buildRoute(
+          settings: settings,
+          page: const RegisterScreen(),
+        );
+      case home:
+        return buildRoute(
+          settings: settings,
+          page: const HomeScreen(),
+        );
+      default:
+        return buildRoute(
+          settings: settings,
+          page: const Scaffold(
+            body: Center(child: Text('Route not found')),
+          ),
+        );
+    }
   }
 }

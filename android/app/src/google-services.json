@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "896459730176",
+    "project_id": "scrumflow-c835d",
+    "storage_bucket": "scrumflow-c835d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896459730176:android:11c743e2aba0d8cdaa57e5",
+        "android_client_info": {
+          "package_name": "com.scrumflow.scrumflow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "896459730176-jaqoh5kjjkf18lojnobqkbq3hdv8g44v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.scrumflow.scrumflow",
+            "certificate_hash": "022e6c591da6272ba9d26cd0868c8a2d160f88e7"
+          }
+        },
+        {
+          "client_id": "896459730176-5k3gp433k9drka7bah36g76idukrc3k0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeohzX1kRsXK3LZVXYdeU58mfY1PVX0aE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "896459730176-5k3gp433k9drka7bah36g76idukrc3k0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "896459730176-p5d07ecg0g41d9t9aq8dsjjjgglcvs7t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.scrumflow.scrumflow"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
