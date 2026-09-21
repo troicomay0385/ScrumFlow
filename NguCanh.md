@@ -28,6 +28,25 @@
   - Tầng `lib/app/`: Bảng màu (`AppColors`), chuỗi tĩnh (`AppStrings`), điều hướng (`AppRoutes`), dịch vụ mạng (`ConnectivityService`), giao diện (`AppTheme`).
   - Tầng `lib/data/`: Data Sources (Firebase Auth, Firestore, Local Cache), Model (`UserModel`), Repositories (`AuthRepository`, `AuthRepositoryImpl`).
 
+-----------------------------------------------------------------------------------------
+
+### Ngày 21/09/2026: Hoàn thành User Story "Phân quyền vai trò PO/SM/Member"
+- **Bối cảnh:** Trước đó project chưa có khái niệm "Project" nào trong app (chỉ có Auth + màn hình hồ sơ trống). Đã xây dựng tối thiểu tính năng Project làm nền tảng để gắn tính năng phân quyền thành viên vào.
+- **Database (Cloud Firestore):**
+  - Thêm collection `projects/{projectId}` (name, description, createdBy, createdAt, updatedAt).
+  - Thêm collection `projectMembers/{projectId_userId}` (projectId, userId, role, createdBy, createdAt, updatedAt) — role gắn theo từng project, không gắn cứng vào `users`.
+- **Backend/Service:** `ProjectDataSource`, `ProjectMemberDataSource` (CRUD Firestore), `ProjectRepository`/`ProjectMemberRepository` (business logic: tạo project tự động thành PO, thêm/đổi role/xoá thành viên). Mở rộng `FirestoreDataSource` có sẵn (tìm user theo email, đọc nhiều hồ sơ) thay vì viết mới, tái sử dụng tối đa code Auth hiện có.
+- **Authorization tập trung:** `ProjectRole` enum (PO/SM/MEMBER), `Permission` enum, bảng ánh xạ Role → Permission (`role_permissions.dart`) — toàn bộ UI/Bloc chỉ hỏi qua `hasPermission()`, không so sánh role rải rác.
+- **Cơ chế chống mất quyền quản trị:** PO không thể tự đổi role của chính mình (chặn ở cả Bloc lẫn Firestore Security Rules) — đảm bảo project luôn còn tối thiểu 1 PO.
+- **Firestore Security Rules:** viết mới `firestore.rules` (trước đây repo chưa có) cho `users`, `projects`, `projectMembers` — kiểm soát: chỉ thành viên mới đọc được dữ liệu project, chỉ PO mới đổi role/thêm/xoá thành viên, không ai tự nâng quyền chính mình. Đã deploy lên Firebase project `scrumflow-c835d`.
+- **UI/Navigation:** màn Tạo project, Chi tiết Project, Quản lý thành viên (danh sách + đổi role có xác nhận + thêm thành viên theo email); `HomeScreen` đổi từ hiển thị hồ sơ đơn thuần sang danh sách "Project của tôi" (vẫn giữ nguyên chức năng đăng xuất).
+- **Test:** thêm unit test cho permission logic, parse role không hợp lệ, và `ProjectMembersBloc` (14/14 test pass); `flutter analyze` sạch.
+- **Kiểm thử thực tế trên emulator + Firebase project thật**, phát hiện và sửa 3 bug trong lúc test:
+  1. Hàm và biến path trùng tên trong `firestore.rules` (`membershipId`) khiến rule tạo membership luôn bị từ chối.
+  2. Rule `read` của `projectMembers` không xử lý document chưa tồn tại (`resource == null`), khiến bước kiểm tra trùng thành viên bị từ chối oan.
+  3. Bug điều hướng: Flutter tự thêm route ẩn `"/"` vào đáy navigation stack khi dùng `initialRoute` dạng named-route, khiến bấm back ở Home lộ ra màn "Route not found" — sửa bằng cách đổi `pushReplacementNamed` → `pushNamedAndRemoveUntil` ở `login_screen.dart`/`register_screen.dart` và thêm case `'/'` phòng vệ trong `app_routes.dart`.
+- Đã xác minh trực tiếp trên thiết bị: tạo project → tự động thành PO → thêm thành viên → đổi role real-time → tự đổi role chính mình bị chặn đúng như thiết kế.
+
 ---
 
 ## 3. 📌 Hướng Dẫn Cập Nhật Tài Liệu Này

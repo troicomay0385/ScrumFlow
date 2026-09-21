@@ -47,4 +47,33 @@ class FirestoreDataSource {
     final doc = await _usersCollection.doc(uid).get();
     return doc.exists;
   }
+
+  /// Tìm hồ sơ người dùng theo email — dùng khi Product Owner thêm
+  /// thành viên vào project bằng email.
+  ///
+  /// Trả về `null` nếu không có user nào đăng ký với email này.
+  Future<UserModel?> findUserByEmail(String email) async {
+    final snapshot =
+        await _usersCollection.where('email', isEqualTo: email).limit(1).get();
+
+    if (snapshot.docs.isEmpty) return null;
+    return UserModel.fromMap(snapshot.docs.first.data());
+  }
+
+  /// Đọc nhiều hồ sơ người dùng theo danh sách UID (dùng khi hiển thị
+  /// danh sách thành viên project — mỗi thành viên cần avatar/tên/email).
+  ///
+  /// UID không tồn tại (user đã bị xoá) sẽ bị bỏ qua thay vì throw.
+  Future<Map<String, UserModel>> getUserProfiles(List<String> uids) async {
+    if (uids.isEmpty) return {};
+
+    final results = await Future.wait(uids.map((uid) => getUserProfile(uid)));
+
+    final map = <String, UserModel>{};
+    for (var i = 0; i < uids.length; i++) {
+      final user = results[i];
+      if (user != null) map[uids[i]] = user;
+    }
+    return map;
+  }
 }

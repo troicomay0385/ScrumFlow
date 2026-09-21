@@ -3,9 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../data/repositories/project_repository.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../../projects/bloc/project_list_bloc.dart';
+import '../../projects/bloc/project_list_event.dart';
+import '../../projects/bloc/project_list_state.dart';
+import '../../projects/widgets/project_list_tile.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -40,7 +45,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
+    return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthUnauthenticated) {
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -56,12 +61,17 @@ class HomeScreen extends StatelessWidget {
           );
         }
       },
-      builder: (context, state) {
-        if (state is AuthAuthenticated) {
-          final user = state.user;
+      child: BlocProvider(
+        create: (context) => ProjectListBloc(context.read<ProjectRepository>())
+          ..add(ProjectListRequested()),
+        child: Builder(builder: (context) {
+          final authState = context.watch<AuthBloc>().state;
+          final userName =
+              authState is AuthAuthenticated ? authState.user.fullName : '';
+
           return Scaffold(
             appBar: AppBar(
-              title: const Text('ScrumFlow'),
+              title: Text(userName.isEmpty ? 'ScrumFlow' : 'Xin chào, $userName'),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.logout),
@@ -69,62 +79,72 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
             ),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.primary,
-                    backgroundImage: user.photoUrl != null
-                        ? NetworkImage(user.photoUrl!)
-                        : null,
-                    child: user.photoUrl == null
-                        ? Text(
-                            user.fullName.isNotEmpty
-                                ? user.fullName[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                                fontSize: 32, color: Colors.white),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Xin chào, ${user.fullName}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    user.email,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
-                    ),
-                    onPressed: () => _showLogoutDialog(context),
-                    child: const Text('Đăng xuất'),
-                  ),
-                ],
+            body: RefreshIndicator(
+              onRefresh: () async {
+                context.read<ProjectListBloc>().add(ProjectListRequested());
+              },
+              child: BlocBuilder<ProjectListBloc, ProjectListState>(
+                builder: (context, state) {
+                  if (state is ProjectListLoading || state is ProjectListInitial) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (state is ProjectListError) {
+                    return ListView(
+                      children: [
+                        const SizedBox(height: 120),
+                        Center(
+                          child: Text(
+                            state.message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  final projects = (state as ProjectListLoaded).projects;
+                  if (projects.isEmpty) {
+                    return ListView(
+                      children: const [
+                        SizedBox(height: 120),
+                        Center(child: Text('Bạn chưa tham gia project nào')),
+                      ],
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      final summary = projects[index];
+                      return ProjectListTile(
+                        summary: summary,
+                        onTap: () => Navigator.of(context).pushNamed(
+                          AppRoutes.projectDetail,
+                          arguments: summary.project.id,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
+            floatingActionButton: FloatingActionButton.extended(
+              icon: const Icon(Icons.add),
+              label: const Text('Tạo project'),
+              onPressed: () async {
+                final created = await Navigator.of(context)
+                    .pushNamed(AppRoutes.createProject);
+                if (created == true && context.mounted) {
+                  context.read<ProjectListBloc>().add(ProjectListRequested());
+                }
+              },
+            ),
           );
-        }
-
-        // Fallback for AuthLoading or others
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
-      },
+        }),
+      ),
     );
   }
 }
