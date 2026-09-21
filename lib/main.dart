@@ -10,7 +10,13 @@ import 'app/theme/app_theme.dart';
 import 'data/datasources/firebase_auth_datasource.dart';
 import 'data/datasources/firestore_datasource.dart';
 import 'data/datasources/local_cache_datasource.dart';
+import 'data/datasources/project_datasource.dart';
+import 'data/datasources/project_member_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/project_member_repository.dart';
+import 'data/repositories/project_member_repository_impl.dart';
+import 'data/repositories/project_repository.dart';
+import 'data/repositories/project_repository_impl.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'app/services/connectivity_service.dart';
@@ -35,6 +41,8 @@ void main() async {
   final firestoreDataSource = FirestoreDataSource(firestore: firestore);
   final localCacheDataSource = LocalCacheDataSource();
   final connectivityService = ConnectivityService();
+  final projectDataSource = ProjectDataSource(firestore: firestore);
+  final projectMemberDataSource = ProjectMemberDataSource(firestore: firestore);
 
   // Khởi tạo Repository
   final authRepository = AuthRepositoryImpl(
@@ -43,15 +51,34 @@ void main() async {
     localCacheDataSource: localCacheDataSource,
     connectivityService: connectivityService,
   );
+  final ProjectRepository projectRepository = ProjectRepositoryImpl(
+    projectDataSource: projectDataSource,
+    memberDataSource: projectMemberDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
+  final ProjectMemberRepository projectMemberRepository = ProjectMemberRepositoryImpl(
+    memberDataSource: projectMemberDataSource,
+    userDataSource: firestoreDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
 
   runApp(
-    MultiBlocProvider(
+    MultiRepositoryProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc(authRepository)..add(AuthCheckRequested()),
+        RepositoryProvider<ProjectRepository>.value(value: projectRepository),
+        RepositoryProvider<ProjectMemberRepository>.value(
+          value: projectMemberRepository,
         ),
       ],
-      child: const ScrumFlowApp(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (context) =>
+                AuthBloc(authRepository)..add(AuthCheckRequested()),
+          ),
+        ],
+        child: const ScrumFlowApp(),
+      ),
     ),
   );
 }

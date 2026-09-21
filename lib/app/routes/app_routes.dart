@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../presentation/auth/screens/login_screen.dart';
 import '../../presentation/auth/screens/register_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
+import '../../presentation/projects/screens/create_project_screen.dart';
+import '../../presentation/projects/screens/project_detail_screen.dart';
+import '../../presentation/project_members/screens/project_members_screen.dart';
 
 
 /// Định nghĩa tên các route và hàm tạo route với animated transitions.
@@ -17,6 +20,9 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String createProject = '/projects/create';
+  static const String projectDetail = '/projects/detail';
+  static const String projectMembers = '/projects/members';
 
   /// Tạo route với fade + slide transition.
   ///
@@ -57,6 +63,11 @@ class AppRoutes {
   /// Hàm tạo route cho ứng dụng.
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // '/' được Flutter tự động resolve thêm vào ĐÁY navigation stack khi
+      // initialRoute là named-route (vd. '/login'), kể cả khi app không bao
+      // giờ chủ động điều hướng tới '/'. Nếu không xử lý, route này sẽ rơi
+      // vào `default` (Route not found) và có thể lộ ra khi pop hết stack.
+      case '/':
       case login:
         return buildRoute(
           settings: settings,
@@ -71,6 +82,21 @@ class AppRoutes {
         return buildRoute(
           settings: settings,
           page: const HomeScreen(),
+        );
+      case createProject:
+        return buildRoute(
+          settings: settings,
+          page: const CreateProjectScreen(),
+        );
+      case projectDetail:
+        return buildRoute(
+          settings: settings,
+          page: ProjectDetailScreen(projectId: settings.arguments as String),
+        );
+      case projectMembers:
+        return buildRoute(
+          settings: settings,
+          page: ProjectMembersScreen(projectId: settings.arguments as String),
         );
       default:
         return buildRoute(

@@ -100,7 +100,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+            // Dùng pushNamedAndRemoveUntil để dọn sạch stack (Login, Register,
+            // và route "/" ẩn mà Flutter tự thêm vào đáy stack) — xem giải
+            // thích chi tiết ở login_screen.dart.
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.home,
+              (route) => false,
+            );
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

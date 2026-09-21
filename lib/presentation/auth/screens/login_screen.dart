@@ -64,7 +64,16 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+            // pushNamedAndRemoveUntil (thay vì pushReplacementNamed) để dọn
+            // sạch TOÀN BỘ stack — kể cả route "/" mà Flutter tự động thêm
+            // vào đáy stack khi resolve initialRoute dạng named-route (vd.
+            // "/login"). Nếu chỉ replace route trên cùng, route "/" ẩn đó
+            // vẫn còn ở đáy và lộ ra khi người dùng bấm back ở Home, hiển
+            // thị nhầm màn "Route not found".
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.home,
+              (route) => false,
+            );
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
