@@ -72,7 +72,11 @@ class _CreateProjectViewState extends State<_CreateProjectView> {
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Tên project'),
+                  decoration: const InputDecoration(
+                    labelText: 'Tên project *',
+                    hintText: 'Nhập tên dự án',
+                    prefixIcon: Icon(Icons.folder_outlined),
+                  ),
                   validator: (value) => (value == null || value.trim().isEmpty)
                       ? 'Vui lòng nhập tên project'
                       : null,
@@ -80,8 +84,12 @@ class _CreateProjectViewState extends State<_CreateProjectView> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Mô tả (tuỳ chọn)'),
-                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Mục tiêu hoặc mô tả dự án',
+                    hintText: 'Mục tiêu của dự án, định hướng backlog & sprint...',
+                    prefixIcon: Icon(Icons.description_outlined),
+                  ),
+                  maxLines: 4,
                 ),
                 const SizedBox(height: 24),
                 BlocBuilder<CreateProjectCubit, CreateProjectState>(

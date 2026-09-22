@@ -10,6 +10,7 @@ import 'project_role.dart';
 const Map<ProjectRole, Set<Permission>> _rolePermissions = {
   ProjectRole.po: {
     Permission.viewProject,
+    Permission.manageProject,
     Permission.viewBacklog,
     Permission.manageBacklog,
     Permission.viewSprint,

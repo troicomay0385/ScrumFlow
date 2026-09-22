@@ -37,6 +37,19 @@ class ProjectDataSource {
     return project;
   }
 
+  /// Cập nhật tên và mục tiêu/mô tả của project.
+  Future<void> updateProject({
+    required String projectId,
+    required String name,
+    required String description,
+  }) async {
+    await _projectsCollection.doc(projectId).update({
+      'name': name,
+      'description': description,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
   /// Xoá project — chỉ dùng để rollback khi bootstrap PO membership
   /// thất bại ngay sau khi tạo project (xem `ProjectRepositoryImpl`).
   Future<void> deleteProject(String projectId) async {

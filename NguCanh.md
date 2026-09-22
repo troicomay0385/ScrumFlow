@@ -47,7 +47,18 @@
   3. Bug điều hướng: Flutter tự thêm route ẩn `"/"` vào đáy navigation stack khi dùng `initialRoute` dạng named-route, khiến bấm back ở Home lộ ra màn "Route not found" — sửa bằng cách đổi `pushReplacementNamed` → `pushNamedAndRemoveUntil` ở `login_screen.dart`/`register_screen.dart` và thêm case `'/'` phòng vệ trong `app_routes.dart`.
 - Đã xác minh trực tiếp trên thiết bị: tạo project → tự động thành PO → thêm thành viên → đổi role real-time → tự đổi role chính mình bị chặn đúng như thiết kế.
 
+-----------------------------------------------------------------------------------------
+
+### Ngày 22/09/2026: Hoàn thiện tính năng Quản lý Project & Chỉnh sửa thông tin/Mục tiêu
+- **Chức năng đã hoàn thành:**
+  - **Tạo Project mới:** Quản trị viên/PO tạo project với tên và mục tiêu/mô tả cụ thể (định hướng cho Backlog và Sprint). Khi tạo xong, người tạo tự động trở thành PO với toàn quyền quản trị.
+  - **Chỉnh sửa thông tin Project:** Cho phép PO/Quản trị viên chỉnh sửa tên, cập nhật mục tiêu hoặc mô tả dự án trực tiếp qua hộp thoại `showEditProjectDialog`. Dữ liệu cập nhật real-time lên Firestore và giao diện qua Stream.
+  - **Phân quyền tập trung (RBAC):** Bổ sung `Permission.manageProject` cho `ProjectRole.po` trong `role_permissions.dart`. Các vai trò Scrum Master (SM) và Member bị hạn chế không thể chỉnh sửa thông tin dự án (kiểm soát 2 lớp: Repository và Firestore Security Rules).
+  - **Không gian làm việc Scrum & Thêm thành viên:** Nâng cấp màn hình `ProjectDetailScreen` hiển thị tổng quan dự án, khu vực không gian Scrum (Product Backlog & Sprint Board) và khu vực quản lý/thêm thành viên tham gia làm việc.
+  - **Kiểm thử tự động:** Bổ sung unit tests cho phân quyền `manageProject` và `ProjectRepositoryImpl` (tạo project, rollback khi lỗi, cập nhật thành công, chặn quyền khi không phải PO) — 19/19 test pass sạch.
+
 ---
 
 ## 3. 📌 Hướng Dẫn Cập Nhật Tài Liệu Này
 * Mỗi khi kết thúc một cuộc trao đổi quan trọng, hoàn thành một chức năng hoặc tạo commit mới, cập nhật thêm nội dung công việc vào phần **2. Công Việc Đã Thực Hiện**.
+

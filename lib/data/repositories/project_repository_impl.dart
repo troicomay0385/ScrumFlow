@@ -1,4 +1,6 @@
+import '../../app/authorization/permission.dart';
 import '../../app/authorization/project_role.dart';
+import '../../app/authorization/role_permissions.dart';
 import '../datasources/firebase_auth_datasource.dart';
 import '../datasources/project_datasource.dart';
 import '../datasources/project_member_datasource.dart';
@@ -91,6 +93,29 @@ class ProjectRepositoryImpl implements ProjectRepository {
   @override
   Future<ProjectModel?> getProject(String projectId) {
     return _projectDataSource.getProject(projectId);
+  }
+
+  @override
+  Future<void> updateProject({
+    required String projectId,
+    required String name,
+    required String description,
+  }) async {
+    final uid = _currentUserId;
+    final membership = await _memberDataSource.getMembership(
+      projectId: projectId,
+      userId: uid,
+    );
+    if (membership == null ||
+        !hasPermission(membership.role, Permission.manageProject)) {
+      throw Exception('Bạn không có quyền chỉnh sửa thông tin project này.');
+    }
+
+    await _projectDataSource.updateProject(
+      projectId: projectId,
+      name: name,
+      description: description,
+    );
   }
 
   @override
