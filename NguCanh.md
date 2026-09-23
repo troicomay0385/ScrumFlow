@@ -58,6 +58,12 @@
   - **Kiểm thử tự động:** Bổ sung unit tests cho phân quyền `manageProject` và `ProjectRepositoryImpl` (tạo project, rollback khi lỗi, cập nhật thành công, chặn quyền khi không phải PO) — 19/19 test pass sạch.
 
 ---
+### Ngày 23/09/2026: Đẩy code lên GitHub (nhánh `hieu`)
+- **Push code**: Tất cả các thay đổi mới đã được commit và push lên repository GitHub `https://github.com/troicomay0385/ScrumFlow.git` trên nhánh `hieu`.
+- **Các file đã tạo và chỉnh sửa**:
+  - **Mới tạo**: `lib/presentation/projects/widgets/edit_project_dialog.dart`, `test/data/repositories/project_repository_impl_test.dart`
+  - **Sửa đổi**: `.idea/libraries/Dart_SDK.xml`, `.idea/libraries/Flutter_Plugins.xml`, `.idea/workspace.xml`, `NguCanh.md`, `analysis_options.yaml`, `android/scrumflow_android.iml`, `lib/app/authorization/role_permissions.dart`, `lib/data/datasources/project_datasource.dart`, `lib/data/repositories/project_repository.dart`, `lib/data/repositories/project_repository_impl.dart`, `lib/presentation/projects/screens/create_project_screen.dart`, `lib/presentation/projects/screens/project_detail_screen.dart`, `linux/flutter/generated_plugin_registrant.cc`, `linux/flutter/generated_plugin_registrant.h`, `linux/flutter/generated_plugins.cmake`, `macos/Flutter/GeneratedPluginRegistrant.swift`, `pubspec.yaml`, `scrumflow.iml`, `test/app/authorization/role_permissions_test.dart`, `test/widget_test.dart`, `windows/flutter/generated_plugin_registrant.cc`, `windows/flutter/generated_plugin_registrant.h`, `windows/flutter/generated_plugins.cmake`
+  - **Xóa**: `.idea/libraries/Dart_Packages.xml`
 
 ## 3. 📌 Hướng Dẫn Cập Nhật Tài Liệu Này
 * Mỗi khi kết thúc một cuộc trao đổi quan trọng, hoàn thành một chức năng hoặc tạo commit mới, cập nhật thêm nội dung công việc vào phần **2. Công Việc Đã Thực Hiện**.

@@ -1,34 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AndroidLayouts">
+    <shared>
+      <config />
+    </shared>
+  </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="77afa35b-9427-4a9d-9a34-1841528a33f8" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Flutter_Plugins.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Flutter_Plugins.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/runConfigurations/main_dart.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NguCanh.md" beforeDir="false" afterPath="$PROJECT_DIR$/NguCanh.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/analysis_options.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/analysis_options.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/scrumflow_android.iml" beforeDir="false" afterPath="$PROJECT_DIR$/android/scrumflow_android.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/app/authorization/role_permissions.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/app/authorization/role_permissions.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/datasources/project_datasource.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/datasources/project_datasource.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/project_repository.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/project_repository.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/project_repository_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/project_repository_impl.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/projects/screens/create_project_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/projects/screens/create_project_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/projects/screens/project_detail_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/projects/screens/project_detail_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.h" beforeDir="false" afterPath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/linux/flutter/generated_plugins.cmake" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/macos/Flutter/GeneratedPluginRegistrant.swift" beforeDir="false" afterPath="$PROJECT_DIR$/macos/Flutter/GeneratedPluginRegistrant.swift" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scrumflow.iml" beforeDir="false" afterPath="$PROJECT_DIR$/scrumflow.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/app/authorization/role_permissions_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/test/app/authorization/role_permissions_test.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/widget_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/test/widget_test.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.h" beforeDir="false" afterPath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/windows/flutter/generated_plugins.cmake" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,6 +22,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[PhysicalDevice::serial=1da3c261]" />
   <component name="FileEditorManager">
     <leaf>
       <file leaf-file-name="main.dart" pinned="false" current-in-tab="true">
@@ -53,6 +38,8 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="SWAP_SIDES_IN_COMPARE_BRANCHES" value="true" />
+    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -96,15 +83,36 @@
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;com.android.tools.idea.streaming.zoom.toolbar.visible&quot;: &quot;false&quot;,
     &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;hieu&quot;,
     &quot;io.flutter.project.isFirstOpen&quot;: &quot;true&quot;,
     &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;D:/DO_AN_LTTTBDD/ScrumFlow&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;templates.modelproviders.configurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;Template Data Languages&quot;,
     &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
 }</component>
+  <component name="RunManager" selected="Flutter.main.dart">
+    <configuration name="main.dart" type="FlutterRunConfigurationType" factoryName="Flutter" temporary="true" nameIsGenerated="true">
+      <option name="filePath" value="$PROJECT_DIR$/lib/main.dart" />
+      <method v="2" />
+    </configuration>
+    <configuration name="tests in Android Studio" type="FlutterTestConfigType" factoryName="Flutter Test" nameIsGenerated="true">
+      <option name="testFile" value="" />
+      <option name="useRegexp" value="false" />
+      <option name="additionalArgs" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Flutter.main.dart" />
+      <item itemvalue="Flutter Test.tests in Android Studio" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Flutter.main.dart" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="77afa35b-9427-4a9d-9a34-1841528a33f8" name="Changes" comment="" />
