@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../app/constants/app_colors.dart';
 import '../../../app/services/biometric_service.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -66,7 +68,6 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
       final currentEmail =
           authState is AuthAuthenticated ? authState.user.email : '';
 
-      // Mở modal yêu cầu nhập mật khẩu để kích hoạt
       _showPasswordConfirmationDialog(currentEmail);
     } else {
       await _biometricService.disableBiometricLogin();
@@ -88,13 +89,25 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: const Row(
+                  borderRadius: BorderRadius.circular(18)),
+              title: Row(
                 children: [
-                  Icon(Icons.fingerprint, color: AppColors.primary, size: 28),
-                  SizedBox(width: 8),
-                  Text('Kích hoạt Vân tay / Face ID',
-                      style: TextStyle(fontSize: 16)),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.fingerprint, color: AppColors.primaryContainer, size: 24),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Kích hoạt Sinh trắc học',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               content: Column(
@@ -103,25 +116,30 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                 children: [
                   Text(
                     'Tài khoản liên kết: $currentEmail',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Vui lòng nhập mật khẩu tài khoản hiện tại để xác thực và liên kết sinh trắc học:',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Vui lòng nhập mật khẩu tài khoản hiện tại để xác thực và liên kết sinh trắc học vào máy:',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Mật khẩu',
-                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility),
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined),
                         onPressed: () {
                           setDialogState(() {
                             _obscurePassword = !_obscurePassword;
@@ -135,12 +153,18 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(confirmContext).pop(),
-                  child: const Text('Hủy'),
+                  child: Text(
+                    'Hủy',
+                    style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: AppColors.primaryContainer,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () async {
                     final password = _passwordController.text;
@@ -155,7 +179,6 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                     final messenger = ScaffoldMessenger.of(context);
                     Navigator.of(confirmContext).pop();
 
-                    // Yêu cầu quét vân tay để kích hoạt
                     final authenticated = await _biometricService.authenticate(
                       localizedReason:
                           'Chạm vân tay hoặc quét Face ID để kích hoạt liên kết tài khoản',
@@ -184,7 +207,10 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                       );
                     }
                   },
-                  child: const Text('Xác nhận & Quét vân tay'),
+                  child: Text(
+                    'Xác nhận & Quét',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );
@@ -198,40 +224,58 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
           children: [
-            Icon(Icons.logout_rounded, color: AppColors.error, size: 24),
-            SizedBox(width: 8),
-            Text('Đăng xuất',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Đăng xuất',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+              ),
+            ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này không? Bạn có thể dùng Mật khẩu hoặc Vân tay đã lưu để đăng nhập lại sau.',
-          style: TextStyle(fontSize: 14),
+          style: GoogleFonts.plusJakartaSans(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Hủy',
+              style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Đăng xuất'),
+            child: Text(
+              'Đăng xuất',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
 
     if (confirm == true && context.mounted) {
-      Navigator.of(context).pop(); // Đóng SecuritySettingsDialog
+      Navigator.of(context).pop();
       context.read<AuthBloc>().add(AuthSignOutRequested());
     }
   }
@@ -245,14 +289,29 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
         authState is AuthAuthenticated ? authState.user.fullName : '';
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: const Row(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      title: Row(
         children: [
-          Icon(Icons.settings_outlined, color: AppColors.primary, size: 26),
-          SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.settings_suggest_rounded,
+                color: AppColors.primaryContainer, size: 24),
+          ),
+          const SizedBox(width: 10),
           Text(
             'Cài đặt tài khoản',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: AppColors.onSurface,
+            ),
           ),
         ],
       ),
@@ -270,35 +329,44 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFFEEF2FF),
-                          child: const Icon(Icons.person,
-                              color: AppColors.primary, size: 22),
+                          backgroundColor: AppColors.primaryContainer,
+                          child: Text(
+                            currentName.isNotEmpty
+                                ? currentName.substring(0, 1).toUpperCase()
+                                : 'U',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 currentName.isNotEmpty ? currentName : 'Người dùng',
-                                style: const TextStyle(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
+                                  color: AppColors.onSurface,
                                 ),
                               ),
                               Text(
                                 currentEmail,
-                                style: TextStyle(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  color: AppColors.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -307,57 +375,79 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // Hardware status
-                  Row(
-                    children: [
-                      Icon(
-                        _isAvailable ? Icons.check_circle : Icons.warning_rounded,
-                        color: _isAvailable ? Colors.green : Colors.orange,
-                        size: 18,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _isAvailable
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _isAvailable
+                            ? Colors.green.shade200
+                            : Colors.orange.shade200,
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _isAvailable
-                              ? 'Cảm biến sinh trắc học: Sẵn sàng'
-                              : 'Không tìm thấy cảm biến sinh trắc học',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _isAvailable
-                                ? Colors.green.shade800
-                                : Colors.orange.shade800,
-                            fontWeight: FontWeight.w600,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isAvailable ? Icons.check_circle_rounded : Icons.warning_rounded,
+                          color: _isAvailable ? Colors.green.shade700 : Colors.orange.shade700,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _isAvailable
+                                ? 'Cảm biến sinh trắc học: Sẵn sàng'
+                                : 'Không tìm thấy cảm biến sinh trắc học',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: _isAvailable
+                                  ? Colors.green.shade800
+                                  : Colors.orange.shade800,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 14),
 
                   // Toggle Biometric Switch
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Đăng nhập bằng Vân tay / Face ID',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    subtitle: Text(
-                      _isEnabled
-                          ? 'Đang liên kết: $_savedEmail'
-                          : 'Bật để mở khóa nhanh khi quay lại màn hình đăng nhập',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                    child: SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      title: Text(
+                        'Đăng nhập bằng Vân tay / Face ID',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.onSurface,
+                        ),
                       ),
+                      subtitle: Text(
+                        _isEnabled
+                            ? 'Đang liên kết: $_savedEmail'
+                            : 'Mở khóa nhanh khi quay lại màn hình đăng nhập',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _isEnabled,
+                      activeThumbColor: AppColors.primaryContainer,
+                      onChanged: _isAvailable ? _handleToggleBiometric : null,
                     ),
-                    value: _isEnabled,
-                    activeThumbColor: AppColors.primary,
-                    onChanged: _isAvailable ? _handleToggleBiometric : null,
                   ),
 
                   if (_isEnabled) ...[
@@ -368,6 +458,8 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        backgroundColor: AppColors.surfaceContainerLow,
                       ),
                       onPressed: () async {
                         final ok = await _biometricService.authenticate(
@@ -377,7 +469,7 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(ok
-                                  ? '🎉 Xác thực vân tay thành công 100%!'
+                                  ? '🎉 Xác thực sinh trắc học thành công 100%!'
                                   : 'Xác thực không thành công.'),
                               backgroundColor:
                                   ok ? Colors.green.shade700 : AppColors.error,
@@ -385,40 +477,69 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                           );
                         }
                       },
-                      icon: const Icon(Icons.fingerprint_rounded, size: 20),
-                      label: const Text('Thử nghiệm quét vân tay ngay'),
+                      icon: const Icon(Icons.fingerprint_rounded, size: 18),
+                      label: Text(
+                        'Thử nghiệm cảm biến ngay',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
 
-                  const Divider(height: 24),
+                  const SizedBox(height: 16),
 
                   // Logout action inside dialog content
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.logout_rounded,
-                          color: AppColors.error, size: 20),
-                    ),
-                    title: const Text(
-                      'Đăng xuất tài khoản',
-                      style: TextStyle(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Thoát phiên làm việc hiện tại trên thiết bị này',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: AppColors.error, size: 20),
+                  InkWell(
                     onTap: () => _confirmSignOut(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.logout_rounded,
+                                color: AppColors.error, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Đăng xuất tài khoản',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'Thoát phiên làm việc trên thiết bị này',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              color: AppColors.error, size: 18),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -429,9 +550,15 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
             backgroundColor: const Color(0xFFF1F5F9),
             foregroundColor: const Color(0xFF334155),
             elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Đóng'),
+          child: Text(
+            'Đóng',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );

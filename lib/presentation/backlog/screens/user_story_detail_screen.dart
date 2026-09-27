@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../app/constants/app_colors.dart';
 import '../../../data/models/user_story_model.dart';
 
 class UserStoryDetailScreen extends StatelessWidget {
@@ -9,54 +12,139 @@ class UserStoryDetailScreen extends StatelessWidget {
     required this.story,
   });
 
-  Color _getPriorityColor(String priority) {
+  Widget _buildPriorityBadge(String priority) {
+    Color textColor;
+    Color bgColor;
+    Color borderColor;
+
     switch (priority.toUpperCase()) {
       case 'CAO':
-        return Colors.red.shade700;
+      case 'HIGH':
+      case 'URGENT':
+        textColor = const Color(0xFFB91C1C);
+        bgColor = const Color(0xFFFEE2E2);
+        borderColor = const Color(0xFFFECACA);
+        break;
       case 'TB':
       case 'TRUNG BÌNH':
-        return Colors.amber.shade800;
+      case 'MEDIUM':
+        textColor = const Color(0xFFB45309);
+        bgColor = const Color(0xFFFEF3C7);
+        borderColor = const Color(0xFFFDE68A);
+        break;
       default:
-        return Colors.blueGrey;
+        textColor = const Color(0xFF475569);
+        bgColor = const Color(0xFFF1F5F9);
+        borderColor = const Color(0xFFE2E8F0);
     }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: textColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            priority,
+            style: GoogleFonts.plusJakartaSans(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Color _getStatusColor(String status) {
+  Widget _buildStatusBadge(String status) {
+    Color textColor;
+    Color bgColor;
+    Color borderColor;
+
     switch (status.toLowerCase()) {
       case 'done':
-        return Colors.green.shade700;
+        textColor = const Color(0xFF047857);
+        bgColor = const Color(0xFFD1FAE5);
+        borderColor = const Color(0xFFA7F3D0);
+        break;
       case 'in progress':
-        return Colors.orange.shade800;
-      default:
-        return Colors.blue.shade700;
+        textColor = const Color(0xFFB45309);
+        bgColor = const Color(0xFFFEF3C7);
+        borderColor = const Color(0xFFFDE68A);
+        break;
+      default: // To Do
+        textColor = const Color(0xFF475569);
+        bgColor = const Color(0xFFF1F5F9);
+        borderColor = const Color(0xFFE2E8F0);
     }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: GoogleFonts.plusJakartaSans(
+          color: textColor,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final priorityColor = _getPriorityColor(story.priority);
-    final statusColor = _getStatusColor(story.status);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text('${story.storyKey} - Chi tiết'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0F172A),
-        elevation: 0.5,
+        title: Text(
+          story.storyKey,
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header card
+            // ── Hero Header Card ────────────────────────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.outline.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,57 +156,26 @@ class UserStoryDetailScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                          color: AppColors.canvas,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.outline.withValues(alpha: 0.15),
+                          ),
                         ),
                         child: Text(
                           story.storyKey,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.bold,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontWeight: FontWeight.w800,
                             fontSize: 13,
-                            color: Color(0xFF334155),
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: priorityColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: priorityColor.withValues(alpha: 0.3),),
-                            ),
-                            child: Text(
-                              'Ưu tiên: ${story.priority}',
-                              style: TextStyle(
-                                color: priorityColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
+                          _buildPriorityBadge(story.priority),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: statusColor.withValues(alpha: 0.3),),
-                            ),
-                            child: Text(
-                              story.status,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
+                          _buildStatusBadge(story.status),
                         ],
                       ),
                     ],
@@ -126,11 +183,12 @@ class UserStoryDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     story.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
                       height: 1.3,
+                      letterSpacing: -0.3,
                     ),
                   ),
                 ],
@@ -138,48 +196,69 @@ class UserStoryDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Description card
+            // ── Description Bento Card ──────────────────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.outline.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.description_outlined,
-                          size: 20, color: Color(0xFF4F46E5)),
-                      SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.description_outlined,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Text(
                         'Nội dung User Story & Mô tả',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 14),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade200),
+                      color: AppColors.canvas,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.outline.withValues(alpha: 0.08),
+                      ),
                     ),
                     child: Text(
                       story.description.isNotEmpty
                           ? story.description
-                          : 'Chưa có mô tả chi tiết.',
-                      style: const TextStyle(
+                          : 'Chưa có mô tả chi tiết cho User Story này.',
+                      style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: Color(0xFF334155),
+                        color: AppColors.onSurface,
                         height: 1.5,
                       ),
                     ),
@@ -189,50 +268,73 @@ class UserStoryDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Agile Metrics card
+            // ── Agile Metrics Bento Card ────────────────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.outline.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.speed_rounded,
-                          size: 20, color: Color(0xFF4F46E5)),
-                      SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.speed_rounded,
+                          size: 18,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Text(
                         'Thông số Agile / Scrum',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: _MetricTile(
+                        child: _buildMetricTile(
                           label: 'Story Points',
                           value: '${story.storyPoints} SP',
                           icon: Icons.bolt_rounded,
-                          iconColor: Colors.amber.shade700,
+                          iconColor: const Color(0xFFB45309),
+                          iconBgColor: const Color(0xFFFEF3C7),
+                          isMono: true,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _MetricTile(
+                        child: _buildMetricTile(
                           label: 'Trạng thái',
                           value: story.status,
                           icon: Icons.flag_rounded,
-                          iconColor: statusColor,
+                          iconColor: AppColors.primary,
+                          iconBgColor: AppColors.primary.withValues(alpha: 0.1),
+                          isMono: false,
                         ),
                       ),
                     ],
@@ -242,68 +344,88 @@ class UserStoryDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Assignee card
+            // ── Assignee Bento Card ─────────────────────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.shade200),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.outline.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.person_outline_rounded,
-                          size: 20, color: Color(0xFF4F46E5)),
-                      SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.person_outline_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Text(
                         'Người phụ trách (Assignee)',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  const SizedBox(height: 16),
                   if (story.assigneeName != null &&
                       story.assigneeName!.isNotEmpty) ...[
                     Row(
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: const Color(0xFFEEF2FF),
+                          backgroundColor:
+                              AppColors.primaryContainer.withValues(alpha: 0.15),
                           child: Text(
                             story.assigneeName!.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF4F46E5),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 story.assigneeName!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 15,
-                                  color: Color(0xFF0F172A),
+                                  color: AppColors.onSurface,
                                 ),
                               ),
                               if (story.assigneeEmail != null)
                                 Text(
                                   story.assigneeEmail!,
-                                  style: TextStyle(
+                                  style: GoogleFonts.inter(
                                     fontSize: 13,
-                                    color: Colors.grey.shade600,
+                                    color: AppColors.onSurfaceVariant,
                                   ),
                                 ),
                             ],
@@ -312,9 +434,27 @@ class UserStoryDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ] else ...[
-                    const Text(
-                      'Chưa gán người phụ trách.',
-                      style: TextStyle(color: Colors.grey),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.person_off_outlined,
+                              size: 18, color: AppColors.onSurfaceVariant),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Chưa gán người phụ trách cho User Story này.',
+                            style: GoogleFonts.inter(
+                              color: AppColors.onSurfaceVariant,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -325,35 +465,29 @@ class UserStoryDetailScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class _MetricTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-
-  const _MetricTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMetricTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required bool isMono,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.outline.withValues(alpha: 0.08),
+        ),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: iconColor.withValues(alpha: 0.12),
+            backgroundColor: iconBgColor,
             child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 10),
@@ -363,18 +497,25 @@ class _MetricTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
-                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onSurfaceVariant,
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Color(0xFF0F172A),
-                  ),
+                  style: isMono
+                      ? GoogleFonts.jetBrainsMono(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: AppColors.onSurface,
+                        )
+                      : GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.onSurface,
+                        ),
                 ),
               ],
             ),
@@ -384,3 +525,4 @@ class _MetricTile extends StatelessWidget {
     );
   }
 }
+

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/authorization/permission.dart';
 import '../../../app/authorization/role_permissions.dart';
@@ -24,7 +25,16 @@ class ProjectMembersScreen extends StatelessWidget {
         context.read<ProjectMemberRepository>(),
       )..add(ProjectMembersStarted(projectId)),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Quản lý thành viên')),
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          title: Text(
+            'Quản lý thành viên',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
+        ),
         body: BlocConsumer<ProjectMembersBloc, ProjectMembersState>(
           listenWhen: (previous, current) =>
               current is ProjectMembersLoaded &&
@@ -37,25 +47,35 @@ class ProjectMembersScreen extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(message),
-                  backgroundColor: state.actionStatus == MemberActionStatus.success
-                      ? AppColors.success
-                      : AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor:
+                      state.actionStatus == MemberActionStatus.success
+                          ? AppColors.success
+                          : AppColors.error,
                 ),
               );
             }
-            context.read<ProjectMembersBloc>().add(ProjectMemberActionAcknowledged());
+            context
+                .read<ProjectMembersBloc>()
+                .add(ProjectMemberActionAcknowledged());
           },
           builder: (context, state) {
             if (state is ProjectMembersLoading) {
-              return const Center(
+              return Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Đang tải thành viên...'),
+                      const CircularProgressIndicator(color: AppColors.primary),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Đang tải danh sách thành viên...',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 14,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -66,23 +86,45 @@ class ProjectMembersScreen extends StatelessWidget {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.error),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline_rounded,
+                          size: 48, color: AppColors.error),
+                      const SizedBox(height: 12),
+                      Text(
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
             }
 
             if (state is ProjectMembersAccessDenied) {
-              return const Center(
+              return Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'Bạn không có quyền xem danh sách thành viên của project này.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.lock_outline_rounded,
+                          size: 48, color: AppColors.onSurfaceVariant),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Bạn không có quyền xem danh sách thành viên của project này.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -94,40 +136,119 @@ class ProjectMembersScreen extends StatelessWidget {
             final bloc = context.read<ProjectMembersBloc>();
 
             if (loaded.members.isEmpty) {
-              return const Center(child: Text('Chưa có thành viên'));
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.group_off_outlined,
+                        size: 56, color: AppColors.onSurfaceVariant),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Chưa có thành viên nào trong dự án',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              );
             }
 
             return Stack(
               children: [
-                ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-                  itemCount: loaded.members.length,
-                  itemBuilder: (context, index) {
-                    final member = loaded.members[index];
-                    return MemberListTile(
-                      member: member,
-                      onTapRole: canChangeRole
-                          ? () => showChangeRoleDialog(
-                                context: context,
-                                member: member,
-                                bloc: bloc,
-                              )
-                          : null,
-                    );
-                  },
+                Column(
+                  children: [
+                    // Member count header banner
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      color: AppColors.surface,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.people_alt_rounded,
+                                  size: 16, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Tổng cộng: ${loaded.members.length} thành viên',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'RBAC Active',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, thickness: 1, color: AppColors.surfaceVariant),
+
+                    // Member list
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                        itemCount: loaded.members.length,
+                        itemBuilder: (context, index) {
+                          final member = loaded.members[index];
+                          return MemberListTile(
+                            member: member,
+                            onTapRole: canChangeRole
+                                ? () => showChangeRoleDialog(
+                                      context: context,
+                                      member: member,
+                                      bloc: bloc,
+                                    )
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 if (loaded.actionStatus == MemberActionStatus.inProgress)
                   Container(
                     color: AppColors.overlay,
-                    child: const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 12),
-                            Text('Đang cập nhật...'),
+                            const CircularProgressIndicator(color: AppColors.primary),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Đang cập nhật quyền thành viên...',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -149,8 +270,20 @@ class ProjectMembersScreen extends StatelessWidget {
                 context: context,
                 bloc: context.read<ProjectMembersBloc>(),
               ),
-              icon: const Icon(Icons.person_add),
-              label: const Text('Thêm thành viên'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              icon: const Icon(Icons.person_add_rounded),
+              label: Text(
+                'Thêm thành viên',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
             );
           },
         ),
@@ -158,3 +291,4 @@ class ProjectMembersScreen extends StatelessWidget {
     );
   }
 }
+

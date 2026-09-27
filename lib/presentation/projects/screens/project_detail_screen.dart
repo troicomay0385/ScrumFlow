@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/authorization/permission.dart';
 import '../../../app/authorization/project_role.dart';
@@ -10,13 +11,13 @@ import '../../../data/models/project_model.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/project_repository.dart';
 import '../../backlog/screens/backlog_list_screen.dart';
+import '../../project_members/widgets/role_badge.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../widgets/edit_project_dialog.dart';
 
-/// Màn hình Chi tiết Project — không gian làm việc chính để:
-/// 1. Quản trị viên/PO chỉnh sửa thông tin, cập nhật mục tiêu hoặc mô tả dự án.
-/// 2. Điều hướng và quản lý Product Backlog & Sprint.
-/// 3. Quản lý và thêm thành viên vào project để cùng tham gia làm việc.
+/// Màn hình Chi tiết Project — không gian làm việc chính phong cách Kinetic Sprint Bento:
+/// 1. Bento Header dự án: Tên, mục tiêu, role pill, action chỉnh sửa (PO).
+/// 2. Bento Quick Action Modules: Product Backlog, Sprint & Kanban, Quản lý thành viên.
 class ProjectDetailScreen extends StatelessWidget {
   final String projectId;
 
@@ -41,23 +42,49 @@ class ProjectDetailScreen extends StatelessWidget {
           builder: (context, projectSnapshot) {
             if (projectSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+                backgroundColor: AppColors.canvas,
+                body: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
               );
             }
 
             final project = projectSnapshot.data;
             if (project == null) {
               return Scaffold(
+                backgroundColor: AppColors.canvas,
                 appBar: AppBar(title: const Text('Chi tiết Project')),
-                body: const Center(
-                  child: Text('Project không tồn tại hoặc đã bị xoá'),
+                body: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.folder_off_outlined,
+                          size: 64, color: AppColors.onSurfaceVariant),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Project không tồn tại hoặc đã bị xoá',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
 
             return Scaffold(
+              backgroundColor: AppColors.canvas,
               appBar: AppBar(
-                title: Text(project.name),
+                title: Text(
+                  project.name,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
                 actions: [
                   if (canManageProject)
                     IconButton(
@@ -76,203 +103,278 @@ class ProjectDetailScreen extends StatelessWidget {
                 ],
               ),
               body: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 children: [
-                  // ── Card Thông tin & Mục tiêu dự án ───────────────────────────
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: Colors.grey.shade200),
+                  // ── Hero Bento Header: Thông tin dự án & Mục tiêu ──────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppColors.outline.withValues(alpha: 0.12),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.04),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  project.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Tag hàng đầu: Icon dự án + Role badge
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                              if (currentRole != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    currentRole.displayName,
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
+                              child: const Icon(
+                                Icons.rocket_launch_rounded,
+                                color: AppColors.primary,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    project.name,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.onSurface,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Mục tiêu & Mô tả:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            project.description.isEmpty
-                                ? 'Chưa có mục tiêu hoặc mô tả cụ thể.'
-                                : project.description,
-                            style: TextStyle(
-                              color: project.description.isEmpty
-                                  ? AppColors.textSecondary
-                                  : AppColors.textPrimary,
-                              height: 1.4,
-                            ),
-                          ),
-                          if (canManageProject) ...[
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () => showEditProjectDialog(
-                                  context: context,
-                                  project: project,
-                                ),
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Cập nhật mục tiêu / mô tả'),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Agile Scrum Workspace',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            if (currentRole != null)
+                              RoleBadge(role: currentRole),
                           ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Khung Mục tiêu / Mô tả dự án
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.canvas,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.outline.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.flag_rounded,
+                                    size: 16,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'MỤC TIÊU & MÔ TẢ DỰ ÁN',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                      fontSize: 11,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                project.description.isEmpty
+                                    ? 'Chưa thiết lập mục tiêu hoặc mô tả cụ thể cho dự án này.'
+                                    : project.description,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  height: 1.5,
+                                  color: project.description.isEmpty
+                                      ? AppColors.onSurfaceVariant
+                                      : AppColors.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        if (canManageProject) ...[
+                          const SizedBox(height: 14),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: () => showEditProjectDialog(
+                                context: context,
+                                project: project,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.primary.withValues(alpha: 0.3),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                              ),
+                              icon: const Icon(Icons.edit_note_rounded, size: 18),
+                              label: Text(
+                                'Cập nhật mục tiêu',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-                  // ── Quản lý Backlog & Sprint ────────────────────────────────
-                  const Text(
-                    'Không gian làm việc Scrum',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                  // ── Section Title: Không gian làm việc Scrum ───────────────
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Không gian làm việc Scrum',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Color(0xFFE8F5E9),
-                        child: Icon(Icons.view_list_rounded, color: Colors.green),
-                      ),
-                      title: const Text(
-                        'Product Backlog',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text(
-                        'Quản lý danh sách User Stories & độ ưu tiên',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BacklogListScreen(
-                              projectId: project.id,
-                              projectName: project.name,
-                            ),
+                  const SizedBox(height: 14),
+
+                  // ── Bento Module 1: Product Backlog ────────────────────────
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.inventory_2_rounded,
+                    iconBgColor: const Color(0xFFEEF2FF),
+                    iconColor: AppColors.primary,
+                    title: 'Product Backlog',
+                    subtitle: 'Quản lý danh sách User Stories & độ ưu tiên',
+                    tag: 'Sprint 1',
+                    tagBgColor: AppColors.primary.withValues(alpha: 0.1),
+                    tagTextColor: AppColors.primary,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BacklogListScreen(
+                            projectId: project.id,
+                            projectName: project.name,
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Color(0xFFFFF3E0),
-                        child: Icon(Icons.speed_rounded, color: Colors.orange),
-                      ),
-                      title: const Text(
-                        'Sprint & Kanban Board',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text(
-                        'Lập kế hoạch Sprint & theo dõi tiến độ công việc',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Quản lý Sprint sẵn sàng cho dự án này.',
-                            ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Bento Module 2: Sprint & Kanban Board ──────────────────
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.speed_rounded,
+                    iconBgColor: const Color(0xFFFFF7ED),
+                    iconColor: const Color(0xFFEA580C),
+                    title: 'Sprint & Kanban Board',
+                    subtitle: 'Lập kế hoạch Sprint & theo dõi tiến độ công việc',
+                    tag: 'Kanban',
+                    tagBgColor: const Color(0xFFFFEDD5),
+                    tagTextColor: const Color(0xFFC2410C),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Sprint Kanban Board đang được kết nối trong dự án này.',
                           ),
-                        );
-                      },
-                    ),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
                   ),
 
-                  const SizedBox(height: 24),
-
-                  // ── Thành viên & Tham gia làm việc ──────────────────────────
                   if (canViewMembers) ...[
-                    const Text(
-                      'Thành viên & Phân quyền',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                    const SizedBox(height: 28),
+
+                    // ── Section Title: Đội ngũ & Phân quyền ────────────────────
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Đội ngũ & Phân quyền',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFEDE7F6),
-                          child: Icon(Icons.group_rounded, color: AppColors.primary),
-                        ),
-                        title: const Text(
-                          'Quản lý thành viên',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: const Text(
-                          'Thêm thành viên, phân quyền PO / SM / Member',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.of(context).pushNamed(
-                          AppRoutes.projectMembers,
-                          arguments: projectId,
-                        ),
+                    const SizedBox(height: 14),
+
+                    // ── Bento Module 3: Quản lý thành viên ────────────────────
+                    _buildBentoActionCard(
+                      context: context,
+                      icon: Icons.group_rounded,
+                      iconBgColor: const Color(0xFFF5F3FF),
+                      iconColor: const Color(0xFF7C3AED),
+                      title: 'Thành viên dự án',
+                      subtitle: 'Thêm thành viên, phân quyền PO / SM / Member',
+                      tag: 'Roles',
+                      tagBgColor: const Color(0xFFEDE9FE),
+                      tagTextColor: const Color(0xFF6D28D9),
+                      onTap: () => Navigator.of(context).pushNamed(
+                        AppRoutes.projectMembers,
+                        arguments: projectId,
                       ),
                     ),
                   ],
@@ -284,4 +386,111 @@ class ProjectDetailScreen extends StatelessWidget {
       },
     );
   }
+
+  Widget _buildBentoActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconBgColor,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String tag,
+    required Color tagBgColor,
+    required Color tagTextColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.outline.withValues(alpha: 0.12),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: tagBgColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            tag,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: tagTextColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+

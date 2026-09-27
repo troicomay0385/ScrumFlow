@@ -90,7 +90,7 @@ class ScrumFlowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ScrumFlow',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.login,
       onGenerateRoute: AppRoutes.generateRoute,
       debugShowCheckedModeBanner: false,

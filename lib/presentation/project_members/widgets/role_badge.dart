@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/authorization/project_role.dart';
 import '../../../app/constants/app_colors.dart';
 
-/// Chip hiển thị role — tách riêng để đổi màu sắc/kiểu dáng sau này
-/// không phải sửa lại màn hình danh sách thành viên.
+/// Chip hiển thị vai trò thành viên theo phong cách Stitch Kinetic Sprint.
 class RoleBadge extends StatelessWidget {
   final ProjectRole role;
 
@@ -13,30 +13,55 @@ class RoleBadge extends StatelessWidget {
   Color get _color {
     switch (role) {
       case ProjectRole.po:
-        return AppColors.primary;
+        return AppColors.rolePO;
       case ProjectRole.sm:
-        return AppColors.secondary;
+        return AppColors.roleSM;
       case ProjectRole.member:
-        return AppColors.textSecondary;
+        return AppColors.roleDev;
+    }
+  }
+
+  Color get _bgColor {
+    switch (role) {
+      case ProjectRole.po:
+        return AppColors.rolePOBg;
+      case ProjectRole.sm:
+        return AppColors.roleSMBg;
+      case ProjectRole.member:
+        return AppColors.roleDevBg;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.15),
+        color: _bgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _color.withValues(alpha: 0.4)),
+        border: Border.all(color: _color.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        role.displayName,
-        style: TextStyle(
-          color: _color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: _color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            role.displayName,
+            style: GoogleFonts.plusJakartaSans(
+              color: _color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

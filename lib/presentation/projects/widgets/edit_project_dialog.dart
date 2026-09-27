@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/repositories/project_repository.dart';
 
 /// Hộp thoại chỉnh sửa thông tin project (tên, mục tiêu hoặc mô tả).
-/// Chỉ dành cho Quản trị viên / PO (kiểm soát bởi permission [manageProject]).
+/// Dành cho Quản trị viên / PO với phong cách Kinetic Sprint.
 Future<void> showEditProjectDialog({
   required BuildContext context,
   required ProjectModel project,
@@ -23,11 +24,32 @@ Future<void> showEditProjectDialog({
       return StatefulBuilder(
         builder: (dialogContext, setState) {
           return AlertDialog(
-            title: const Row(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            title: Row(
               children: [
-                Icon(Icons.edit_note, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text('Chỉnh sửa dự án'),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Chỉnh sửa dự án',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.onSurface,
+                  ),
+                ),
               ],
             ),
             content: Form(
@@ -40,10 +62,15 @@ Future<void> showEditProjectDialog({
                     TextFormField(
                       controller: nameController,
                       enabled: !isSubmitting,
-                      decoration: const InputDecoration(
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                      decoration: InputDecoration(
                         labelText: 'Tên project *',
+                        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13),
                         hintText: 'Nhập tên dự án',
-                        prefixIcon: Icon(Icons.folder_outlined),
+                        prefixIcon: const Icon(Icons.folder_outlined, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
@@ -54,10 +81,15 @@ Future<void> showEditProjectDialog({
                     TextFormField(
                       controller: descriptionController,
                       enabled: !isSubmitting,
-                      decoration: const InputDecoration(
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                      decoration: InputDecoration(
                         labelText: 'Mục tiêu hoặc mô tả',
+                        labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13),
                         hintText: 'Cập nhật mục tiêu, định hướng backlog & sprint...',
-                        prefixIcon: Icon(Icons.description_outlined),
+                        prefixIcon: const Icon(Icons.description_outlined, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       maxLines: 4,
                     ),
@@ -70,9 +102,23 @@ Future<void> showEditProjectDialog({
                 onPressed: isSubmitting
                     ? null
                     : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Hủy'),
+                child: Text(
+                  'Hủy',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
                 onPressed: isSubmitting
                     ? null
                     : () async {
@@ -94,6 +140,7 @@ Future<void> showEditProjectDialog({
                               const SnackBar(
                                 content: Text('Cập nhật thông tin dự án thành công!'),
                                 backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           }
@@ -106,6 +153,7 @@ Future<void> showEditProjectDialog({
                                   e.toString().replaceAll('Exception: ', ''),
                                 ),
                                 backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           }
@@ -120,7 +168,12 @@ Future<void> showEditProjectDialog({
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Lưu thay đổi'),
+                    : Text(
+                        'Lưu thay đổi',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ],
           );
@@ -129,3 +182,4 @@ Future<void> showEditProjectDialog({
     },
   );
 }
+
