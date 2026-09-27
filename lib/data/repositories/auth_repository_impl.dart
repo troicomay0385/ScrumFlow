@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:firebase_core/firebase_core.dart' as core;
 import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 
 import '../../app/constants/app_strings.dart';
@@ -99,11 +98,9 @@ class AuthRepositoryImpl implements AuthRepository {
       } catch (_) {}
 
       return user;
-    } on fs.FirebaseException catch (e) {
-      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
-    } on FirebaseAuthException catch (e) {
+    } on fs.FirebaseException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
       if (e is Exception) rethrow;
@@ -166,11 +163,9 @@ class AuthRepositoryImpl implements AuthRepository {
       } catch (_) {}
 
       return user;
-    } on fs.FirebaseException catch (e) {
-      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
-    } on FirebaseAuthException catch (e) {
+    } on fs.FirebaseException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
       if (e is Exception) rethrow;
@@ -229,11 +224,9 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       return user;
-    } on fs.FirebaseException catch (e) {
-      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
-    } on FirebaseAuthException catch (e) {
+    } on fs.FirebaseException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
       if (e is Exception) rethrow;

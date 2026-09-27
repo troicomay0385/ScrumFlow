@@ -16,6 +16,14 @@
   * [README_MoTaDoAnMonHoc.md](file:///e:/BTVN/L%E1%BA%ADp%20tr%C3%ACnh%20di%20%C4%91%E1%BB%99ng%20b%C3%A0i%20t%E1%BA%ADp/D%E1%BB%B1%20%C3%A1n%20Scrumflow/README_MoTaDoAnMonHoc.md)
   * [README_MoTaChucNang.md](file:///e:/BTVN/L%E1%BA%ADp%20tr%C3%ACnh%20di%20%C4%91%E1%BB%99ng%20b%C3%A0i%20t%E1%BA%ADp/D%E1%BB%B1%20%C3%A1n%20Scrumflow/README_MoTaChucNang.md)
   * [NguCanh.md](file:///e:/BTVN/L%E1%BA%ADp%20tr%C3%ACnh%20di%20%C4%91%E1%BB%99ng%20b%C3%A0i%20t%E1%BA%ADp/D%E1%BB%B1%20%C3%A1n%20Scrumflow/NguCanh.md)
+  * [design.md](file:///d:/ThuMucOE/BTVN/LTDD%20BTVN/Scrumflow/design.md) (Design System trích xuất từ Stitch)
+  * [HuongDanKetNoiStitch.md](file:///d:/ThuMucOE/BTVN/LTDD%20BTVN/Scrumflow/HuongDanKetNoiStitch.md) (Hướng dẫn kết nối MCP Stitch)
+
+* **Danh sách tài khoản kiểm thử / Người dùng ảo (Mock Users):**
+  1. **Lê Phúc (PO / Admin):** `phuc.po@scrumflow.com` | Password: `Password123!` | Vai trò: Product Owner (PO)
+  2. **Nguyễn Hiếu (Dev / SM):** `hieu.dev@scrumflow.com` | Password: `Password123!` | Vai trò: Scrum Master (SM)
+  3. **Trần Thúy (Tester / Member):** `thuy.qa@scrumflow.com` | Password: `Password123!` | Vai trò: QA & Tester
+  4. **Phạm Duy (Dev / Member):** `duy.dev@scrumflow.com` | Password: `Password123!` | Vai trò: Developer
 
 ---
 
@@ -65,6 +73,137 @@
   - **Sửa đổi**: `.idea/libraries/Dart_SDK.xml`, `.idea/libraries/Flutter_Plugins.xml`, `.idea/workspace.xml`, `NguCanh.md`, `analysis_options.yaml`, `android/scrumflow_android.iml`, `lib/app/authorization/role_permissions.dart`, `lib/data/datasources/project_datasource.dart`, `lib/data/repositories/project_repository.dart`, `lib/data/repositories/project_repository_impl.dart`, `lib/presentation/projects/screens/create_project_screen.dart`, `lib/presentation/projects/screens/project_detail_screen.dart`, `linux/flutter/generated_plugin_registrant.cc`, `linux/flutter/generated_plugin_registrant.h`, `linux/flutter/generated_plugins.cmake`, `macos/Flutter/GeneratedPluginRegistrant.swift`, `pubspec.yaml`, `scrumflow.iml`, `test/app/authorization/role_permissions_test.dart`, `test/widget_test.dart`, `windows/flutter/generated_plugin_registrant.cc`, `windows/flutter/generated_plugin_registrant.h`, `windows/flutter/generated_plugins.cmake`
   - **Xóa**: `.idea/libraries/Dart_Packages.xml`
 
-## 3. 📌 Hướng Dẫn Cập Nhật Tài Liệu Này
-* Mỗi khi kết thúc một cuộc trao đổi quan trọng, hoàn thành một chức năng hoặc tạo commit mới, cập nhật thêm nội dung công việc vào phần **2. Công Việc Đã Thực Hiện**.
+-----------------------------------------------------------------------------------------
+
+### Ngày 27/09/2026: Tối ưu Auth, Đóng gói APK thiết bị thật & Tích hợp CodeGraph
+- **Tối ưu hóa Authentication & Xử lý lỗi (Commit `166c206`):**
+  - Mở rộng `FirebaseErrorMapper` hỗ trợ toàn diện các mã lỗi Firebase Auth/Firestore cả dạng chuẩn lẫn chữ hoa (`INVALID_LOGIN_CREDENTIALS`, `channel-error`, `permission-denied`, v.v.). Thêm unit test `firebase_error_mapper_test.dart`.
+  - Cải tiến `UserModel.fromMap()` linh hoạt parse an toàn trường `createdAt` cho cả `String` và đối tượng `Timestamp` Firestore mà không bị lỗi ép kiểu (`TypeError`). Thêm unit test `user_model_test.dart`.
+  - Chuẩn hóa luồng `AuthRepositoryImpl`: tự động `.trim()` email/họ tên, bọc `try-catch` an toàn cho SQLite cache và Firestore profile phụ trợ.
+- **Build APK & Cài đặt kiểm thử trên thiết bị thật:**
+  - Build thành công gói APK (`build/app/outputs/flutter-apk/app-debug.apk`, 159 MB).
+  - Tải file vào bộ nhớ máy (`/sdcard/Download/ScrumFlow-debug.apk`) và cài đặt trực tiếp qua `adb` lên thiết bị thật Xiaomi Android 14 (`21081111RG`), ứng dụng khởi chạy thành công.
+- **Triển khai US-056 (Đăng nhập Sinh trắc học & Cài đặt bảo mật) & US-005, US-006 (Product Backlog):**
+  - **US-056 & Cài đặt:** Thêm `local_auth` và `flutter_secure_storage`, cấu hình `FlutterFragmentActivity`, `USE_BIOMETRIC`. Tạo dialog `SecuritySettingsDialog` xuất hiện ở thanh AppBar (nút bánh răng) tại mọi màn hình chính. Cho phép bật/tắt vân tay, lưu mật khẩu mã hóa an toàn, kiểm tra cảm biến phần cứng và **tích hợp nút Đăng xuất tài khoản trực tiếp trong Cài đặt**.
+  - **US-005 & US-006:** Xây dựng `UserStoryModel`, `BacklogDataSource` (hỗ trợ tạo 8 stories mẫu gắn với 4 Mock Users), `BacklogRepositoryImpl`, `BacklogBloc`, màn hình `BacklogListScreen` và `UserStoryDetailScreen`.
+  - **Trích xuất Design System từ Stitch:** Xuất toàn bộ hướng dẫn phong cách `Kinetic Sprint` vào `design.md` và tài liệu cấu hình `HuongDanKetNoiStitch.md` cho các thành viên.
+  - **Build APK & Cài đặt lên điện thoại Xiaomi 11T:** Đóng gói và cập nhật thành công bản APK mới nhất lên thiết bị thật qua `adb install -r -d` và tự động khởi chạy app.
+
+---
+
+## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
+
+> *Dữ liệu đối chiếu từ file kế hoạch `Sprint Backlog LTTTBDD.xlsx` với tiến độ mã nguồn thực tế của dự án.*
+
+### 🚀 SPRINT 1: Nền Tảng Tài Khoản, Dự Án & Phân Quyền Vai Trò
+*Tiến độ thực tế: **11 / 11 User Stories hoàn thành (Đạt 100% Sprint 1)***
+
+- [x] **US-001** [Ưu tiên: CAO] *(Thúy)*: Là người dùng mới, tôi muốn đăng ký tài khoản bằng email và mật khẩu để truy cập hệ thống an toàn.  
+  *(Đã hoàn thành: UI Register, BLoC, AuthRepositoryImpl, Firebase Auth).*
+- [x] **US-002** [Ưu tiên: CAO] *(Thúy)*: Là người dùng đã có tài khoản, tôi muốn đăng nhập bằng email và mật khẩu để truy cập dashboard.  
+  *(Đã hoàn thành: UI Login, BLoC, AuthRepositoryImpl, bản đồ lỗi tiếng Việt).*
+- [x] **US-003** [Ưu tiên: TB] *(Thúy)*: Là người dùng, tôi muốn đăng xuất để kết thúc phiên làm việc an toàn.  
+  *(Đã hoàn thành: Tích hợp nút đăng xuất trên AppBar HomeScreen).*
+- [x] **US-056** [Ưu tiên: CAO] *(Phúc)*: Là người dùng, tôi muốn mở khóa nhanh ứng dụng bằng vân tay/Face ID sau lần đăng nhập đầu, để tăng bảo mật và tiện lợi.  
+  *(Đã hoàn thành: Tích hợp `local_auth`, `BiometricService`, `FlutterFragmentActivity`, lưu trữ mã hóa `FlutterSecureStorage` và nút quét sinh trắc học tại `LoginScreen`).*
+- [x] **US-004** [Ưu tiên: CAO] *(Phúc)*: Là quản trị viên, tôi muốn phân quyền vai trò (PO/SM/Member) để kiểm soát quyền truy cập.  
+  *(Đã hoàn thành: RBAC tập trung trong `role_permissions.dart`, `firestore.rules`, test 100% pass).*
+- [x] **US-036** [Ưu tiên: CAO] *(Hiếu)*: Là quản trị viên/PO, tôi muốn tạo Project mới để quản lý backlog và sprint.  
+  *(Đã hoàn thành: UI Tạo project, tự động gán role PO, lưu Firestore).*
+- [x] **US-037** [Ưu tiên: CAO] *(Hiếu)*: Là quản trị viên/PO, tôi muốn chỉnh sửa thông tin Project để cập nhật mục tiêu hoặc mô tả.  
+  *(Đã hoàn thành: `edit_project_dialog.dart`, phân quyền PO `Permission.manageProject`, cập nhật real-time).*
+- [x] **US-039** [Ưu tiên: CAO] *(Hiếu)*: Là quản trị viên/PO, tôi muốn thêm thành viên vào Project để họ tham gia làm việc.  
+  *(Đã hoàn thành: UI & Bloc thêm thành viên theo email).*
+- [x] **US-040** [Ưu tiên: CAO] *(Duy)*: Là quản trị viên/PO, tôi muốn gán vai trò cho thành viên trong Project để phân quyền phù hợp.  
+  *(Đã hoàn thành: Dialog đổi role PO/SM/Member, chặn PO tự đổi role của chính mình).*
+- [x] **US-005** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn xem danh sách tất cả User Stories trong Product Backlog để nắm tổng quan.  
+  *(Đã hoàn thành: Màn hình `BacklogListScreen`, bộ lọc trạng thái, tổng điểm Story Points, nút nạp dữ liệu mẫu kèm User ảo).*
+- [x] **US-006** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn xem chi tiết một User Story để nắm đầy đủ thông tin nhiệm vụ.  
+  *(Đã hoàn thành: Màn hình `UserStoryDetailScreen`, hiển thị chi tiết Story Key, Ưu tiên, Điểm SP, Mô tả nghiệp vụ, Người phụ trách).*
+
+---
+
+### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
+*Tiến độ thực tế: **0 / 12 User Stories hoàn thành***
+
+- [ ] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh. *(Chưa hoàn thành)*
+- [ ] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn. *(Chưa hoàn thành)*
+- [ ] **US-009** [Ưu tiên: CAO]: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline). *(Chưa hoàn thành)*
+- [ ] **US-010** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên. *(Chưa hoàn thành)*
+- [ ] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung. *(Chưa hoàn thành)*
+- [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*
+- [ ] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story. *(Chưa hoàn thành)*
+- [ ] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story. *(Chưa hoàn thành)*
+- [ ] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo. *(Chưa hoàn thành)*
+- [ ] **US-016** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn tạo Sprint mới với tên, mục tiêu, ngày bắt đầu và kết thúc. *(Chưa hoàn thành)*
+- [ ] **US-017** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem chi tiết Sprint để biết mục tiêu và các User Story được chọn. *(Chưa hoàn thành)*
+- [ ] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint. *(Chưa hoàn thành)*
+
+---
+
+### 📋 SPRINT 3: Task Board, Cộng Tác & Trợ Lý Gợi Ý Phân Công AI
+*Tiến độ thực tế: **0 / 17 User Stories hoàn thành***
+
+- [ ] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt. *(Chưa hoàn thành)*
+- [ ] **US-052** [Ưu tiên: CAO]: Là PO/SM, tôi muốn giao diện Product Backlog có phân trang và mỗi row gọn để hiển thị ít nhất 10 row trên màn hình mà không cần scroll. *(Chưa hoàn thành)*
+- [ ] **US-051** [Ưu tiên: CAO]: Là PO/SM, tôi muốn API load User Story theo phân trang để không load toàn bộ backlog lên client (tối ưu performance). *(Chưa hoàn thành)*
+- [ ] **US-019** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn xem Task Board theo từng Sprint. *(Chưa hoàn thành)*
+- [ ] **US-020** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tạo task cho một User Story. *(Chưa hoàn thành)*
+- [ ] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Chưa hoàn thành)*
+- [ ] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Chưa hoàn thành)*
+- [ ] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Chưa hoàn thành)*
+- [ ] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái. *(Chưa hoàn thành)*
+- [ ] **US-043** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn thay đổi người phụ trách task khi cần phân công lại. *(Chưa hoàn thành)*
+- [ ] **US-044** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn đặt deadline cho task để quản lý tiến độ. *(Chưa hoàn thành)*
+- [ ] **US-045** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận (comment) trong User Story. *(Chưa hoàn thành)*
+- [ ] **US-046** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận trong Task để trao đổi quá trình thực hiện. *(Chưa hoàn thành)*
+- [ ] **US-047** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tải lên file/attachment cho User Story hoặc Task. *(Chưa hoàn thành)*
+- [ ] **US-057** [Ưu tiên: CAO]: Là PO/SM, tôi muốn hệ thống gợi ý (AI) thành viên phù hợp nhất để giao task mới dựa trên tỷ lệ đúng hạn và khối lượng task hiện tại. *(Chưa hoàn thành)*
+- [ ] **US-058** [Ưu tiên: CAO]: Là hệ thống, tôi muốn tự động tính điểm hiệu suất (performance score) của từng thành viên làm đầu vào cho thuật toán gợi ý ở US-057:  
+  `performance_score = w1*(task đúng hạn / tổng task) + w2*(1 - task đang làm/giới hạn workload) + w3*(điểm đánh giá trung bình)`. *(Chưa hoàn thành)*
+- [ ] **US-059** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Local Notification nhắc trước khi Task sắp đến hạn (VD: 1 ngày). *(Chưa hoàn thành)*
+
+---
+
+### 📈 SPRINT 4: Đóng/Mở Sprint, Báo Cáo & Biểu Đồ Burndown/Velocity
+*Tiến độ thực tế: **0 / 9 User Stories hoàn thành***
+
+- [ ] **US-060** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xem bảng thống kê hiệu suất từng thành viên (tỷ lệ đúng hạn, số task đang xử lý). *(Chưa hoàn thành)*
+- [ ] **US-023** [Ưu tiên: TB]: Là Product Owner, tôi muốn ghi nhận kết quả Sprint Review (demo + feedback). *(Chưa hoàn thành)*
+- [ ] **US-024** [Ưu tiên: TB]: Là nhóm phát triển, tôi muốn tạo Sprint Retrospective. *(Chưa hoàn thành)*
+- [ ] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart. *(Chưa hoàn thành)*
+- [ ] **US-026** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Velocity Chart. *(Chưa hoàn thành)*
+- [ ] **US-027** [Ưu tiên: THẤP]: Là Scrum Master/PO, tôi muốn export báo cáo Sprint ra PDF/Excel. *(Chưa hoàn thành)*
+- [ ] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected). *(Chưa hoàn thành)*
+- [ ] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai. *(Chưa hoàn thành)*
+- [ ] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả. *(Chưa hoàn thành)*
+
+---
+
+### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
+*Tiến độ thực tế: **5 / 10 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
+
+- [ ] **US-028** [Ưu tiên: THẤP]: Phát triển tính năng Realtime update Task Board bằng Socket.io (bonus). *(Chưa hoàn thành)*
+- [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
+- [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
+  *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*
+- [ ] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  
+  *(Chưa hoàn thành: Đã có hàm xóa ở Data Source phục vụ rollback, chưa gắn vào UI/Repository).*
+- [x] **US-041** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa thành viên khỏi Project khi họ không còn tham gia.  
+  *(Đã hoàn thành: Đã hiện thực trong `ProjectMemberRepositoryImpl`, `ProjectMemberDataSource`, `ProjectMembersBloc` và `firestore.rules`).*
+- [ ] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
+  *(Chưa hoàn thành: Hiện mới chỉ cache tài khoản người dùng `UserModel`).*
+- [x] **US-063** [Ưu tiên: CAO]: Là người dùng, tôi muốn được thông báo rõ khi mất mạng hoặc API timeout để biết trạng thái và thử lại.  
+  *(Đã hoàn thành nền tảng: `ConnectivityService`, tiền kiểm tra mạng và ánh xạ lỗi Firebase).*
+- [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  
+  *(Đã hoàn thành nền tảng: Đã áp dụng loading states, shimmer/indicator cho các màn hình Auth, Project).*
+- [x] **US-054** [Ưu tiên: CAO]: Là nhóm phát triển, tôi muốn viết và chạy bộ Test Case cho toàn bộ 5 Sprint để đảm bảo hệ thống vận hành ổn định.  
+  *(Đã hoàn thành cho các module hiện có: 25/25 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper).*
+- [x] **US-055** [Ưu tiên: CAO]: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
+  *(Đã hoàn thành nền tảng: Tích hợp `flutter_screenutil`, căn chỉnh tỷ lệ giao diện).*
+
+---
+
+## 4. 📌 Hướng Dẫn Cập Nhật Tài Liệu Này
+* Mỗi khi kết thúc một cuộc trao đổi quan trọng, hoàn thành một chức năng hoặc tạo commit mới, cập nhật thêm nội dung công việc vào phần **2. Công Việc Đã Thực Hiện** và cập nhật checkbox tiến độ ở **3. Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog**.
 

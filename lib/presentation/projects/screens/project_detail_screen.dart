@@ -9,6 +9,8 @@ import '../../../app/routes/app_routes.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/project_repository.dart';
+import '../../backlog/screens/backlog_list_screen.dart';
+import '../../settings/widgets/security_settings_dialog.dart';
 import '../widgets/edit_project_dialog.dart';
 
 /// Màn hình Chi tiết Project — không gian làm việc chính để:
@@ -66,6 +68,11 @@ class ProjectDetailScreen extends StatelessWidget {
                         project: project,
                       ),
                     ),
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined),
+                    tooltip: 'Cài đặt bảo mật & Vân tay',
+                    onPressed: () => SecuritySettingsDialog.show(context),
+                  ),
                 ],
               ),
               body: ListView(
@@ -187,10 +194,11 @@ class ProjectDetailScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Product Backlog sẵn sàng cho dự án này.',
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BacklogListScreen(
+                              projectId: project.id,
+                              projectName: project.name,
                             ),
                           ),
                         );

@@ -5,43 +5,15 @@ import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../data/repositories/project_repository.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../projects/bloc/project_list_bloc.dart';
 import '../../projects/bloc/project_list_event.dart';
 import '../../projects/bloc/project_list_state.dart';
 import '../../projects/widgets/project_list_tile.dart';
+import '../../settings/widgets/security_settings_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Xác nhận đăng xuất'),
-          content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.read<AuthBloc>().add(AuthSignOutRequested());
-              },
-              child: const Text('Đăng xuất'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,8 +46,9 @@ class HomeScreen extends StatelessWidget {
               title: Text(userName.isEmpty ? 'ScrumFlow' : 'Xin chào, $userName'),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: () => _showLogoutDialog(context),
+                  tooltip: 'Cài đặt tài khoản & Bảo mật',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => SecuritySettingsDialog.show(context),
                 ),
               ],
             ),

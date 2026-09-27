@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../app/services/biometric_service.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -22,13 +23,104 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _biometricService = BiometricService();
   bool _obscurePassword = true;
+  bool _canUseBiometric = false;
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _checkBiometricStatus();
+  }
+
+  Future<void> _checkBiometricStatus() async {
+    final available = await _biometricService.isBiometricAvailable();
+    final creds = await _biometricService.getSavedCredentials();
+    if (mounted) {
+      setState(() {
+        _canUseBiometric = available && creds != null;
+      });
+      // Tự động gợi ý điền email nếu có creds
+      if (creds != null && _emailController.text.isEmpty) {
+        _emailController.text = creds['email'] ?? '';
+      }
+    }
+  }
+
+  Future<void> _onBiometricLoginPressed() async {
+    final creds = await _biometricService.getSavedCredentials();
+    if (creds == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Chưa có dữ liệu sinh trắc học đã lưu. Vui lòng đăng nhập bằng mật khẩu trước để kích hoạt.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final authenticated = await _biometricService.authenticate();
+    if (authenticated && mounted) {
+      final email = creds['email']!;
+      final password = creds['password']!;
+      _emailController.text = email;
+      _passwordController.text = password;
+
+      context.read<AuthBloc>().add(
+            AuthSignInRequested(
+              email: email,
+              password: password,
+            ),
+          );
+    }
+  }
+
+  Future<void> _onFaceIdLoginPressed() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final creds = await _biometricService.getSavedCredentials();
+
+    final authenticated = await _biometricService.authenticateFaceId(
+      localizedReason: 'Nhìn vào màn hình để quét Face ID đăng nhập ScrumFlow',
+    );
+
+    if (authenticated && mounted) {
+      if (creds != null) {
+        final email = creds['email']!;
+        final password = creds['password']!;
+        _emailController.text = email;
+        _passwordController.text = password;
+
+        context.read<AuthBloc>().add(
+              AuthSignInRequested(
+                email: email,
+                password: password,
+              ),
+            );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              '🎉 Quét Face ID thành công! Để tự động đăng nhập, vui lòng đăng nhập một lần bằng mật khẩu để liên kết tài khoản.',
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } else if (mounted) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Chưa nhận diện được khuôn mặt. Vui lòng kiểm tra camera trước và đảm bảo đã bật Mở khóa khuôn mặt trong Cài đặt điện thoại.',
+          ),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _onLoginPressed() {
@@ -67,12 +159,16 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            // pushNamedAndRemoveUntil (thay vì pushReplacementNamed) để dọn
-            // sạch TOÀN BỘ stack — kể cả route "/" mà Flutter tự động thêm
-            // vào đáy stack khi resolve initialRoute dạng named-route (vd.
-            // "/login"). Nếu chỉ replace route trên cùng, route "/" ẩn đó
-            // vẫn còn ở đáy và lộ ra khi người dùng bấm back ở Home, hiển
-            // thị nhầm màn "Route not found".
+            // Lưu credentials an toàn cho các lần đăng nhập sinh trắc học sau (US-056)
+            final email = _emailController.text.trim();
+            final password = _passwordController.text;
+            if (email.isNotEmpty && password.isNotEmpty) {
+              _biometricService.enableBiometricLogin(
+                email: email,
+                password: password,
+              );
+            }
+
             Navigator.of(context).pushNamedAndRemoveUntil(
               AppRoutes.home,
               (route) => false,
@@ -189,6 +285,78 @@ class _LoginScreenState extends State<LoginScreen> {
                       text: 'Đăng nhập',
                       onPressed: _onLoginPressed,
                     ),
+                    if (_canUseBiometric) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(color: AppColors.primary, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: _onBiometricLoginPressed,
+                              icon: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 22),
+                              label: const Text(
+                                'Vân tay',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: _onFaceIdLoginPressed,
+                              icon: const Icon(Icons.face_retouching_natural, color: Color(0xFF4F46E5), size: 22),
+                              label: const Text(
+                                'Face ID',
+                                style: TextStyle(
+                                  color: Color(0xFF4F46E5),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          side: BorderSide(color: Colors.indigo.shade200, width: 1.2),
+                          backgroundColor: Colors.indigo.shade50.withValues(alpha: 0.3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _onFaceIdLoginPressed,
+                        icon: const Icon(Icons.face_retouching_natural, color: Color(0xFF4F46E5), size: 22),
+                        label: const Text(
+                          'Kiểm tra cảm biến Face ID / Khuôn mặt',
+                          style: TextStyle(
+                            color: Color(0xFF4F46E5),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     GoogleSignInButton(
                       onPressed: () {
