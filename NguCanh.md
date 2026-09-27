@@ -89,6 +89,58 @@
   - **Trích xuất Design System từ Stitch:** Xuất toàn bộ hướng dẫn phong cách `Kinetic Sprint` vào `design.md` và tài liệu cấu hình `HuongDanKetNoiStitch.md` cho các thành viên.
   - **Build APK & Cài đặt lên điện thoại Xiaomi 11T:** Đóng gói và cập nhật thành công bản APK mới nhất lên thiết bị thật qua `adb install -r -d` và tự động khởi chạy app.
 
+### Ngày 27/09/2026 (Phiên 2 — Chiều/Tối): Redesign UI Sprint 1 theo Stitch, Sửa Google Sign-In & Tối ưu UX
+
+- **Tạo nhánh backup trước khi redesign (Commit `de388f8`):**
+  - Tạo nhánh `backup-before-stitch-ui` từ trạng thái hiện tại và push lên GitHub để làm bản phục hồi phòng trường hợp giao diện mới không phù hợp.
+
+- **Redesign toàn bộ giao diện Sprint 1 theo Stitch Design System "Kinetic Sprint" (Commit `422586e`):**
+  - Kết nối MCP Stitch (Project `ScrumFlow Agile Management UI`, ID `projects/5101031354143431379`) để kéo giao diện thiết kế mẫu cho 9 màn hình chính.
+  - Redesign các file giao diện theo design system Stitch:
+    - `lib/presentation/auth/screens/login_screen.dart`: Giao diện đăng nhập mới với logo ScrumFlow, badge phiên bản, nút Vân tay / Face ID, nút đăng nhập Google, chứng nhận bảo mật SOC2/TLS.
+    - `lib/presentation/auth/screens/register_screen.dart`: Giao diện đăng ký tài khoản mới.
+    - `lib/presentation/home/screens/home_screen.dart`: Trang chủ với tổng quan không gian làm việc (số dự án, Sprint, sẵn sàng %), danh sách card dự án với tiến độ Sprint.
+    - `lib/presentation/projects/screens/project_detail_screen.dart`: Chi tiết dự án với card mục tiêu, khu vực Scrum (Product Backlog, Sprint & Kanban Board), Đội ngũ & Phân quyền.
+    - `lib/presentation/projects/screens/create_project_screen.dart`: Form tạo project mới.
+    - `lib/presentation/projects/screens/backlog_list_screen.dart`: Danh sách Product Backlog với bộ lọc, bảng Story Points.
+    - `lib/presentation/projects/screens/user_story_detail_screen.dart`: Chi tiết User Story.
+    - `lib/presentation/project_members/screens/project_members_screen.dart`: Quản lý thành viên dự án.
+    - `lib/presentation/settings/widgets/security_settings_dialog.dart`: Hộp thoại cài đặt tài khoản (sinh trắc học, đăng xuất).
+  - Cập nhật `lib/app/constants/app_colors.dart`: Bổ sung bảng màu mới theo Stitch Design System (gradient, shadow, surface, badge colors).
+  - **Kết quả:** Toàn bộ giao diện được nâng cấp thống nhất theo phong cách Kinetic Sprint, sử dụng Google Fonts `Plus Jakarta Sans`, cards bo tròn, gradient mềm mại, và micro-animation.
+
+- **Xóa icon bánh răng (⚙️) trên giao diện chính, chuyển chức năng Cài đặt sang Avatar (Commit `a65308b`):**
+  - Xóa bỏ `IconButton(Icons.settings_outlined)` khỏi thanh AppBar trong `home_screen.dart`.
+  - Bọc `CircleAvatar` góc trên cùng bên phải (hiển thị chữ cái đầu tên người dùng, VD: "D") bằng `InkWell` kèm `Tooltip('Hồ sơ tài khoản & Cài đặt')`.
+  - Khi bấm vào Avatar → mở popup `SecuritySettingsDialog` chứa thông tin tài khoản, toggle sinh trắc học, nút thử nghiệm cảm biến, và nút Đăng xuất tài khoản.
+  - **Kiểm thử thực tế trên Xiaomi 11T:** Xác nhận icon bánh răng đã biến mất, bấm vào Avatar chữ "D" mở thành công hộp thoại Cài đặt tài khoản.
+
+- **Xử lý lỗi đỏ khi đăng nhập Google (`ApiException: 10`) (Commit `a65308b`):**
+  - **Nguyên nhân gốc:** Lỗi `CommonStatusCodes.DEVELOPER_ERROR` do chưa đăng ký mã chứng chỉ SHA-1 của máy phát triển trên Firebase Console (trường `"oauth_client": []` trong `google-services.json` đang rỗng). **Logic code đăng nhập Google vốn KHÔNG sai** — chỉ thiếu cấu hình SHA-1.
+  - **Giải pháp code:** Thêm phương thức `mapPlatformError(String code, [String? message])` trong `lib/app/constants/firebase_error_mapper.dart` để bắt và nhận diện các mã lỗi `ApiException: 10`, `ApiException: 12500`, `DEVELOPER_ERROR`, `sign_in_canceled`, `network` và chuyển đổi sang thông báo tiếng Việt rõ ràng, dễ hiểu.
+  - Thêm nhánh `on PlatformException catch (e)` trong `signInWithGoogle()` tại `lib/data/repositories/auth_repository_impl.dart` để gọi `mapPlatformError` thay vì để app văng lỗi kỹ thuật thô.
+  - Bổ sung unit test cho `mapPlatformError` trong `test/app/constants/firebase_error_mapper_test.dart` → **28/28 tests PASS**.
+  - **Trích xuất SHA-1 từ máy hiện tại:**
+    - Đường dẫn keystore: `C:\Users\ASUS\.android\debug.keystore`
+    - SHA-1: `DD:FB:88:6B:78:A1:A1:8F:15:0A:77:5B:AB:61:E1:64:42:86:EE:69`
+    - SHA-256: `10:BF:27:17:73:E2:62:12:92:DB:62:A6:9A:DF:10:3C:90:9B:3F:6E:66:30:55:E1:D7:B9:72:3E:E7:F3:1C:45`
+  - **Hướng dẫn kích hoạt Google Sign-In:** Mở Firebase Console → Project `scrumflow-c835d` → Project Settings → Your apps → Android `com.scrumflow.scrumflow` → Add fingerprint → Dán SHA-1 → Tải lại `google-services.json` mới → Build lại APK.
+
+- **Viết lại tệp `HuongDanKetNoiStitch.md` thành Agent Playbook (Commit `a65308b`):**
+  - Chuyển đổi từ tài liệu hướng dẫn thủ công sang `[AGENT PLAYBOOK]` tự động thực thi cho AI Coding Assistant.
+  - Agent tự xác định hệ điều hành (Windows `%USERPROFILE%` / macOS-Linux `$HOME`), tìm và merge `mcp_config.json` mà không ghi đè các server MCP khác đã có sẵn.
+  - Ghi sẵn bảng tra cứu 9 Screen IDs (Home, Backlog, Story Detail, Member Management, Create Project, Login, Register, Edit Profile, Forgot Password) kèm câu lệnh MCP mẫu.
+
+- **Đảm bảo chất lượng:**
+  - `flutter analyze lib/ test/`: **0 errors** (chỉ có 10 info-level `prefer_initializing_formals` — không ảnh hưởng chức năng).
+  - `flutter test`: **28/28 tests PASS** (tăng từ 27 lên 28 nhờ bổ sung test `mapPlatformError`).
+  - Build APK thành công, cài đặt và khởi chạy trên thiết bị thật Xiaomi 11T.
+
+- **Commit & Push lên GitHub (nhánh `hieu`):**
+  - Commit `a65308b`: `feat(ui,auth): remove settings gear icon, move settings to user avatar, handle google sign in platform errors, and update stitch guide for agents`
+  - 5 files changed: `HuongDanKetNoiStitch.md`, `lib/app/constants/firebase_error_mapper.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/presentation/home/screens/home_screen.dart`, `test/app/constants/firebase_error_mapper_test.dart`.
+  - Đã push thành công lên `origin/hieu`.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -198,7 +250,7 @@
 - [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  
   *(Đã hoàn thành nền tảng: Đã áp dụng loading states, shimmer/indicator cho các màn hình Auth, Project).*
 - [x] **US-054** [Ưu tiên: CAO]: Là nhóm phát triển, tôi muốn viết và chạy bộ Test Case cho toàn bộ 5 Sprint để đảm bảo hệ thống vận hành ổn định.  
-  *(Đã hoàn thành cho các module hiện có: 25/25 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper).*
+  *(Đã hoàn thành cho các module hiện có: 28/28 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper, Platform Error Mapper).*
 - [x] **US-055** [Ưu tiên: CAO]: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
   *(Đã hoàn thành nền tảng: Tích hợp `flutter_screenutil`, căn chỉnh tỷ lệ giao diện).*
 
