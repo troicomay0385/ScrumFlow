@@ -72,24 +72,36 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               actions: [
-                IconButton(
-                  tooltip: 'Cài đặt tài khoản & Bảo mật',
-                  icon: const Icon(Icons.settings_outlined, size: 22),
-                  onPressed: () => SecuritySettingsDialog.show(context),
-                ),
                 Padding(
-                  padding: const EdgeInsets.only(right: 16.0, left: 4.0),
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primaryContainer,
-                    child: Text(
-                      userName.isNotEmpty
-                          ? userName.substring(0, 1).toUpperCase()
-                          : 'U',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Tooltip(
+                    message: 'Hồ sơ tài khoản & Cài đặt',
+                    child: InkWell(
+                      onTap: () => SecuritySettingsDialog.show(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 17,
+                          backgroundColor: AppColors.primaryContainer,
+                          child: Text(
+                            userName.isNotEmpty
+                                ? userName.substring(0, 1).toUpperCase()
+                                : 'U',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

@@ -79,4 +79,38 @@ class FirebaseErrorMapper {
             'Vui lòng thử lại sau.';
     }
   }
+
+  /// Map mã lỗi và thông báo từ [PlatformException] (đặc biệt là Google Sign-In trên Android).
+  static String mapPlatformError(String code, [String? message]) {
+    final lowerMessage = (message ?? '').toLowerCase();
+    final lowerCode = code.toLowerCase();
+
+    if (lowerMessage.contains('apiexception: 10') ||
+        lowerMessage.contains('apiexception: 12500') ||
+        lowerMessage.contains('developer_error')) {
+      return 'Lỗi cấu hình Google Sign-In (ApiException 10): '
+          'Chưa đăng ký mã chứng chỉ SHA-1 của thiết bị này trên Firebase Console. '
+          'Vui lòng thêm SHA-1 vào cài đặt dự án Firebase.';
+    }
+
+    if (lowerMessage.contains('apiexception: 7') ||
+        lowerCode.contains('network') ||
+        lowerMessage.contains('network')) {
+      return 'Không thể kết nối đến dịch vụ Google. Vui lòng kiểm tra lại kết nối mạng.';
+    }
+
+    if (lowerCode == 'sign_in_canceled' ||
+        lowerCode == 'sign-in-canceled' ||
+        lowerCode == 'sign_in_cancelled') {
+      return 'Đăng nhập Google đã bị huỷ.';
+    }
+
+    if (lowerCode == 'sign_in_failed') {
+      return 'Đăng nhập Google không thành công. '
+          'Vui lòng kiểm tra Google Play Services hoặc thử lại.';
+    }
+
+    return mapErrorCode(code);
+  }
 }
+

@@ -47,5 +47,20 @@ void main() {
         contains('lỗi hệ thống'),
       );
     });
+
+    test('mapping platform errors for Google Sign-In', () {
+      expect(
+        FirebaseErrorMapper.mapPlatformError(
+          'sign_in_failed',
+          'com.google.android.gms.common.api.ApiException: 10: ',
+        ),
+        contains('SHA-1'),
+      );
+      expect(
+        FirebaseErrorMapper.mapPlatformError('sign_in_canceled'),
+        contains('đã bị huỷ'),
+      );
+    });
   });
 }
+

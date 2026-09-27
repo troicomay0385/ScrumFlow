@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart' as fs;
+import 'package:flutter/services.dart' show PlatformException;
 
 import '../../app/constants/app_strings.dart';
 import '../../app/constants/firebase_error_mapper.dart';
@@ -228,6 +229,8 @@ class AuthRepositoryImpl implements AuthRepository {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fs.FirebaseException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
+    } on PlatformException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapPlatformError(e.code, e.message));
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception(e.toString().replaceFirst('Exception: ', '').replaceFirst('Error: ', ''));
