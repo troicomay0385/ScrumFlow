@@ -6,10 +6,13 @@
 class FirebaseErrorMapper {
   FirebaseErrorMapper._();
 
-  /// Nhận mã lỗi Firebase (ví dụ: 'email-already-in-use')
+  /// Nhận mã lỗi Firebase (ví dụ: 'email-already-in-use', 'INVALID_LOGIN_CREDENTIALS')
   /// và trả về thông báo tiếng Việt tương ứng.
   static String mapErrorCode(String code) {
-    switch (code) {
+    // Chuẩn hoá mã lỗi: chuyển thành chữ thường và đổi '_' thành '-'
+    final normalizedCode = code.trim().toLowerCase().replaceAll('_', '-');
+
+    switch (normalizedCode) {
       // ── Đăng ký ──────────────────────────────────────────
       case 'email-already-in-use':
         return 'Email này đã được sử dụng. '
@@ -30,23 +33,37 @@ class FirebaseErrorMapper {
       case 'wrong-password':
         return 'Mật khẩu không chính xác. Vui lòng thử lại.';
       case 'invalid-credential':
+      case 'invalid-login-credentials':
         return 'Thông tin đăng nhập không hợp lệ. '
-            'Vui lòng kiểm tra email và mật khẩu.';
+            'Vui lòng kiểm tra lại email và mật khẩu.';
       case 'user-disabled':
         return 'Tài khoản này đã bị vô hiệu hoá. '
             'Vui lòng liên hệ quản trị viên.';
       case 'too-many-requests':
         return 'Quá nhiều lần thử đăng nhập thất bại. '
             'Vui lòng đợi một lúc rồi thử lại.';
+      case 'channel-error':
+        return 'Thông tin nhập vào không hợp lệ hoặc bị trống. '
+            'Vui lòng kiểm tra lại.';
 
-      // ── Mạng ─────────────────────────────────────────────
+      // ── Mạng & Hệ thống ─────────────────────────────────────
       case 'network-request-failed':
         return 'Lỗi kết nối mạng. '
             'Vui lòng kiểm tra kết nối internet và thử lại.';
+      case 'internal-error':
+      case 'internal':
+        return 'Đã xảy ra lỗi hệ thống từ Firebase. '
+            'Vui lòng thử lại sau.';
+      case 'permission-denied':
+        return 'Không có quyền truy cập dữ liệu. '
+            'Vui lòng kiểm tra lại phân quyền tài khoản.';
+      case 'unavailable':
+        return 'Dịch vụ cơ sở dữ liệu tạm thời không khả dụng. '
+            'Vui lòng thử lại sau.';
 
       // ── Google Sign-In ───────────────────────────────────
-      case 'sign_in_canceled':
-      case 'sign_in_cancelled':
+      case 'sign-in-canceled':
+      case 'sign-in-cancelled':
         return 'Đăng nhập Google đã bị huỷ.';
       case 'account-exists-with-different-credential':
         return 'Email này đã được liên kết với phương thức đăng nhập khác. '
@@ -58,7 +75,7 @@ class FirebaseErrorMapper {
 
       // ── Mặc định ─────────────────────────────────────────
       default:
-        return 'Đã xảy ra lỗi không xác định ($code). '
+        return 'Đã xảy ra lỗi hệ thống ($code). '
             'Vui lòng thử lại sau.';
     }
   }

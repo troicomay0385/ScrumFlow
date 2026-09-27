@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_core/firebase_core.dart' as core;
+import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 
 import '../../app/constants/app_strings.dart';
 import '../../app/constants/firebase_error_mapper.dart';
@@ -59,10 +61,13 @@ class AuthRepositoryImpl implements AuthRepository {
     // Pre-check mạng — hiện thông báo sớm nếu offline
     await _ensureConnectivity();
 
+    final cleanEmail = email.trim();
+    final cleanFullName = fullName.trim();
+
     try {
       // 1. Tạo tài khoản Firebase Auth
       final credential =
-          await _authDataSource.signUpWithEmail(email, password);
+          await _authDataSource.signUpWithEmail(cleanEmail, password);
       final firebaseUser = credential.user;
 
       if (firebaseUser == null) {
@@ -72,28 +77,37 @@ class AuthRepositoryImpl implements AuthRepository {
       // 2. Tạo UserModel
       final user = UserModel.fromFirebaseUser(
         firebaseUser,
-        fullName: fullName,
+        fullName: cleanFullName.isNotEmpty
+            ? cleanFullName
+            : (firebaseUser.displayName ?? cleanEmail.split('@').first),
         loginProvider: 'email',
       );
 
-      // 3. Lưu hồ sơ vào Firestore
-      await _firestoreDataSource.createUserProfile(user);
+      // 3. Lưu hồ sơ vào Firestore (thử cứu nếu lỗi nhẹ)
+      try {
+        await _firestoreDataSource.createUserProfile(user);
+      } catch (_) {}
 
       // 4. Cache vào SQLite cho offline
-      await _localCacheDataSource.cacheUser(user);
+      try {
+        await _localCacheDataSource.cacheUser(user);
+      } catch (_) {}
 
       // 5. Lưu email vào recent accounts
-      await _localCacheDataSource.saveRecentAccount(email);
+      try {
+        await _localCacheDataSource.saveRecentAccount(cleanEmail);
+      } catch (_) {}
 
       return user;
+    } on fs.FirebaseException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
-      // Nếu đã là Exception do chính mình throw → rethrow
       if (e is Exception) rethrow;
-      throw Exception(AppStrings.unexpectedError);
+      throw Exception(e.toString().replaceFirst('Exception: ', '').replaceFirst('Error: ', ''));
     }
   }
 
@@ -108,44 +122,59 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     await _ensureConnectivity();
 
+    final cleanEmail = email.trim();
+
     try {
       // 1. Đăng nhập Firebase Auth
       final credential =
-          await _authDataSource.signInWithEmail(email, password);
+          await _authDataSource.signInWithEmail(cleanEmail, password);
       final firebaseUser = credential.user;
 
       if (firebaseUser == null) {
         throw Exception(AppStrings.unknownError);
       }
 
-      // 2. Lấy hồ sơ từ Firestore
-      UserModel? user =
-          await _firestoreDataSource.getUserProfile(firebaseUser.uid);
+      // 2. Lấy hồ sơ từ Firestore (bọc try/catch để tránh sập nếu Firestore lỗi)
+      UserModel? user;
+      try {
+        user = await _firestoreDataSource.getUserProfile(firebaseUser.uid);
+      } catch (_) {}
 
       // 3. Nếu chưa có profile (edge case: tài khoản tạo ngoài app) → tạo mới
       if (user == null) {
         user = UserModel.fromFirebaseUser(
           firebaseUser,
-          fullName: firebaseUser.displayName ?? email.split('@').first,
+          fullName: (firebaseUser.displayName != null &&
+                  firebaseUser.displayName!.isNotEmpty)
+              ? firebaseUser.displayName!
+              : (cleanEmail.isNotEmpty ? cleanEmail.split('@').first : 'Người dùng'),
           loginProvider: 'email',
         );
-        await _firestoreDataSource.createUserProfile(user);
+        try {
+          await _firestoreDataSource.createUserProfile(user);
+        } catch (_) {}
       }
 
       // 4. Cache vào SQLite
-      await _localCacheDataSource.cacheUser(user);
+      try {
+        await _localCacheDataSource.cacheUser(user);
+      } catch (_) {}
 
       // 5. Lưu email vào recent accounts
-      await _localCacheDataSource.saveRecentAccount(email);
+      try {
+        await _localCacheDataSource.saveRecentAccount(cleanEmail);
+      } catch (_) {}
 
       return user;
+    } on fs.FirebaseException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(AppStrings.unexpectedError);
+      throw Exception(e.toString().replaceFirst('Exception: ', '').replaceFirst('Error: ', ''));
     }
   }
 
@@ -167,42 +196,48 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // 2. Kiểm tra xem đã có profile Firestore chưa
-      final profileExists =
-          await _firestoreDataSource.userProfileExists(firebaseUser.uid);
+      UserModel? user;
+      try {
+        final profileExists =
+            await _firestoreDataSource.userProfileExists(firebaseUser.uid);
+        if (profileExists) {
+          user = await _firestoreDataSource.getUserProfile(firebaseUser.uid);
+        }
+      } catch (_) {}
 
-      UserModel user;
-
-      if (profileExists) {
-        // Đã có → đọc profile hiện tại
-        final existingUser =
-            await _firestoreDataSource.getUserProfile(firebaseUser.uid);
-        user = existingUser!;
-      } else {
-        // Lần đầu đăng nhập Google → tạo profile mới
+      if (user == null) {
         user = UserModel.fromFirebaseUser(
           firebaseUser,
           fullName: firebaseUser.displayName ?? 'Người dùng',
           loginProvider: 'google',
         );
-        await _firestoreDataSource.createUserProfile(user);
+        try {
+          await _firestoreDataSource.createUserProfile(user);
+        } catch (_) {}
       }
 
       // 3. Cache vào SQLite
-      await _localCacheDataSource.cacheUser(user);
+      try {
+        await _localCacheDataSource.cacheUser(user);
+      } catch (_) {}
 
       // 4. Lưu email vào recent accounts
       if (user.email.isNotEmpty) {
-        await _localCacheDataSource.saveRecentAccount(user.email);
+        try {
+          await _localCacheDataSource.saveRecentAccount(user.email);
+        } catch (_) {}
       }
 
       return user;
+    } on fs.FirebaseException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } on FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(AppStrings.unexpectedError);
+      throw Exception(e.toString().replaceFirst('Exception: ', '').replaceFirst('Error: ', ''));
     }
   }
 

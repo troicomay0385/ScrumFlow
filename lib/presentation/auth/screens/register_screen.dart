@@ -55,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String? _getEmailError() {
-    final email = _emailController.text;
+    final email = _emailController.text.trim();
     if (email.isEmpty) return null; // Let the user type
     final emailRegExp = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegExp.hasMatch(email)) {
@@ -65,14 +65,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _onRegisterPressed() {
-    if (_fullNameController.text.isEmpty) {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+
+    if (fullName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập họ tên')),
       );
       return;
     }
 
-    if (_getEmailError() != null || _emailController.text.isEmpty) {
+    if (_getEmailError() != null || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email không hợp lệ')),
       );
@@ -81,8 +84,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     context.read<AuthBloc>().add(
           AuthSignUpRequested(
-            fullName: _fullNameController.text,
-            email: _emailController.text,
+            fullName: fullName,
+            email: email,
             password: _password,
           ),
         );

@@ -32,7 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _onLoginPressed() {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập email và mật khẩu')),
       );
@@ -41,21 +43,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     context.read<AuthBloc>().add(
           AuthSignInRequested(
-            email: _emailController.text,
-            password: _passwordController.text,
+            email: email,
+            password: password,
           ),
         );
   }
 
   void _onForgotPasswordPressed() {
-    if (_emailController.text.isEmpty) {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập email để đặt lại mật khẩu')),
       );
       return;
     }
 
-    context.read<AuthBloc>().add(AuthPasswordResetRequested(_emailController.text));
+    context.read<AuthBloc>().add(AuthPasswordResetRequested(email));
   }
 
   @override
