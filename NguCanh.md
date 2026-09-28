@@ -143,6 +143,35 @@
 
 ---
 
+### Ngày 28/09/2026: Hoàn thành 3 User Story đầu tiên của Sprint 2 (US-007, US-008, US-009) & Đẩy lên nhánh `Duy`
+- **US-007 (Tìm kiếm User Story theo từ khóa):**
+  - Tích hợp thanh tìm kiếm (Search Bar) chuẩn phong cách Kinetic Sprint tại màn hình `BacklogListScreen` với bo góc 14px, icon kính lúp tím thương hiệu và nút xóa nhanh (`X`) khi có văn bản.
+  - Tìm kiếm real-time (case-insensitive) đồng thời trên các trường: mã `storyKey` (VD: `US-001`, `056`), tiêu đề `title`, mô tả `description`, tên người phụ trách `assigneeName`, và danh sách `tags`.
+  - Thiết kế trạng thái tìm kiếm rỗng (Empty Search State) trực quan kèm nút "Đặt lại bộ lọc" khi không có kết quả phù hợp.
+- **US-008 (Lọc User Story theo trạng thái, ưu tiên hoặc nhãn):**
+  - Hàng lọc trạng thái nhanh dạng chip cuộn ngang (Tất cả, To Do, In Progress, Done, Rejected).
+  - Thiết kế Modal Bottom Sheet "Bộ lọc Backlog" theo chuẩn thiết kế Stitch (`projects/13855995422081675146/screens/6a3a7004d771430f925f796377fb26f1`): bo góc 28px, drag handle, hỗ trợ lọc đa tiêu chí kết hợp (Trạng thái, Mức ưu tiên CAO/TB/THẤP có dot màu nhận diện, và Nhãn/Tag `#Auth`, `#Security`, `#RBAC`, `#Project`, `#Biometric`, `#Backlog`, `#UI`, `#Feature`...).
+  - Nút mở bộ lọc hiển thị badge đếm số lượng bộ lọc đang kích hoạt (`activeFilterCount`), kèm nút "Đặt lại" để khôi phục nhanh.
+- **US-009 (Sắp xếp Backlog bằng dropdown chọn tiêu chí):**
+  - Tích hợp Dropdown Menu chọn tiêu chí sắp xếp (`BacklogSortBy`):
+    - *Ưu tiên: Cao -> Thấp* (`CAO` -> `TB` -> `THẤP`) — Mặc định theo quy trình Agile Backlog Grooming.
+    - *Ưu tiên: Thấp -> Cao* (`THẤP` -> `TB` -> `CAO`).
+    - *Hạn chót: Gần nhất* (sắp xếp tăng dần theo `dueDate`, story chưa có hạn xếp cuối).
+    - *Story Points: Cao -> Thấp* (8 -> 5 -> 3 -> 2 -> 1).
+    - *Mã US: Tăng dần* (`US-001` -> `US-056`).
+  - Sắp xếp mượt mà trên danh sách đã lọc mà không làm mất từ khóa hay filter đang chọn.
+- **Nâng cấp Data Model & Giao diện Chi tiết:**
+  - Bổ sung trường `tags` (List<String>) và `dueDate` (DateTime?) vào `UserStoryModel`, cập nhật serialization `toMap()`, `fromMap()`, `copyWith()`.
+  - Cập nhật 8 stories mẫu trong `BacklogDataSource` bổ sung `tags` và `dueDate` phong phú phục vụ kiểm thử thực tế.
+  - Thẻ User Story hiển thị thêm các chip Tag màu tím pastel và badge Hạn chót (tự động đổi màu cam/đỏ nếu cận ngày <= 2 ngày hoặc quá hạn).
+  - Cập nhật màn hình `UserStoryDetailScreen` hiển thị card Bento "Nhãn phân loại & Hạn chót".
+- **Kiểm thử tự động & Đóng gói thiết bị thật:**
+  - Thêm bộ unit test `test/presentation/backlog/backlog_bloc_test.dart` và mở rộng `test/data/models/user_story_model_test.dart` -> **32/32 tests PASS 100%**.
+  - `flutter analyze`: **0 errors**.
+  - Đóng gói thành công APK debug (`build/app/outputs/flutter-apk/app-debug.apk`), cài đặt trực tiếp qua `adb` lên điện thoại thật Xiaomi 11T (`ei8h7dfi49nrvcbq`), ứng dụng khởi chạy thành công.
+
+---
+
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
 
 > *Dữ liệu đối chiếu từ file kế hoạch `Sprint Backlog LTTTBDD.xlsx` với tiến độ mã nguồn thực tế của dự án.*
@@ -176,11 +205,14 @@
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **0 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **3 / 12 User Stories hoàn thành***
 
-- [ ] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh. *(Chưa hoàn thành)*
-- [ ] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn. *(Chưa hoàn thành)*
-- [ ] **US-009** [Ưu tiên: CAO]: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline). *(Chưa hoàn thành)*
+- [x] **US-007** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh.  
+  *(Đã hoàn thành: Thanh tìm kiếm Search Bar chuẩn Kinetic Sprint, tìm kiếm tức thời trên storyKey, title, description, assigneeName, tags, hỗ trợ nút xóa và Empty Search State).*
+- [x] **US-008** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn.  
+  *(Đã hoàn thành: Chip lọc trạng thái nhanh, Modal Bottom Sheet lọc đa tiêu chí Trạng thái, Ưu tiên, Tag theo chuẩn màn hình Stitch 6a3a7004d771430f925f796377fb26f1, badge đếm filter).*
+- [x] **US-009** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline).  
+  *(Đã hoàn thành: Dropdown sắp xếp theo Ưu tiên Cao->Thấp, Thấp->Cao, Hạn chót gần nhất, Story Points, Mã US).*
 - [ ] **US-010** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên. *(Chưa hoàn thành)*
 - [ ] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung. *(Chưa hoàn thành)*
 - [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*

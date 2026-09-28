@@ -46,7 +46,19 @@ class _BacklogListView extends StatefulWidget {
 }
 
 class _BacklogListViewState extends State<_BacklogListView> {
-  String _selectedFilter = 'Tất cả';
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Widget _buildPriorityBadge(String priority) {
     Color textColor;
@@ -123,6 +135,11 @@ class _BacklogListViewState extends State<_BacklogListView> {
         bgColor = const Color(0xFFFEF3C7);
         borderColor = const Color(0xFFFDE68A);
         break;
+      case 'rejected':
+        textColor = const Color(0xFF991B1B);
+        bgColor = const Color(0xFFFEE2E2);
+        borderColor = const Color(0xFFFECACA);
+        break;
       default: // To Do
         textColor = const Color(0xFF475569);
         bgColor = const Color(0xFFF1F5F9);
@@ -145,6 +162,350 @@ class _BacklogListViewState extends State<_BacklogListView> {
           letterSpacing: 0.4,
         ),
       ),
+    );
+  }
+
+  Widget _buildDueDateBadge(DateTime? dueDate) {
+    if (dueDate == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final difference = dueDate.difference(now).inDays;
+    final isOverdue = dueDate.isBefore(now);
+    final isUrgent = difference <= 2;
+
+    Color color;
+    Color bg;
+    if (isOverdue) {
+      color = const Color(0xFFB91C1C);
+      bg = const Color(0xFFFEE2E2);
+    } else if (isUrgent) {
+      color = const Color(0xFFB45309);
+      bg = const Color(0xFFFEF3C7);
+    } else {
+      color = const Color(0xFF475569);
+      bg = const Color(0xFFF1F5F9);
+    }
+
+    final dayStr = '${dueDate.day.toString().padLeft(2, '0')}/${dueDate.month.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_outlined, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            isOverdue ? 'Quá hạn: $dayStr' : 'Hạn: $dayStr',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context, BacklogLoaded state) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        String tempStatus = state.statusFilter;
+        String tempPriority = state.priorityFilter;
+        String tempTag = state.tagFilter;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1F0F172A),
+                    blurRadius: 24,
+                    offset: Offset(0, -8),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag Handle
+                  Container(
+                    width: 40,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.outline.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Bộ lọc Backlog',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                setModalState(() {
+                                  tempStatus = 'Tất cả';
+                                  tempPriority = 'Tất cả';
+                                  tempTag = 'Tất cả';
+                                });
+                              },
+                              child: Text(
+                                'Đặt lại',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              onPressed: () => Navigator.pop(bottomSheetContext),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 1, color: AppColors.surfaceVariant),
+
+                  // Filter Content
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Section 1: Trạng thái (Status)
+                          Text(
+                            'LỌC THEO TRẠNG THÁI',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Tất cả', 'To Do', 'In Progress', 'Done', 'Rejected']
+                                .map((status) {
+                              final isSelected = tempStatus == status;
+                              return ChoiceChip(
+                                label: Text(status),
+                                selected: isSelected,
+                                selectedColor: AppColors.primary,
+                                backgroundColor: AppColors.canvas,
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.outline.withValues(alpha: 0.15),
+                                ),
+                                labelStyle: GoogleFonts.plusJakartaSans(
+                                  color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setModalState(() => tempStatus = status);
+                                  }
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Section 2: Mức độ ưu tiên (Priority)
+                          Text(
+                            'LỌC THEO MỨC ƯU TIÊN',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Tất cả', 'CAO', 'TB', 'THẤP'].map((priority) {
+                              final isSelected = tempPriority == priority;
+                              Color dotColor = Colors.grey;
+                              if (priority == 'CAO') dotColor = const Color(0xFFB91C1C);
+                              if (priority == 'TB') dotColor = const Color(0xFFB45309);
+                              if (priority == 'THẤP') dotColor = const Color(0xFF475569);
+
+                              return ChoiceChip(
+                                avatar: priority == 'Tất cả'
+                                    ? null
+                                    : Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? Colors.white : dotColor,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                label: Text(priority),
+                                selected: isSelected,
+                                selectedColor: AppColors.primary,
+                                backgroundColor: AppColors.canvas,
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.outline.withValues(alpha: 0.15),
+                                ),
+                                labelStyle: GoogleFonts.plusJakartaSans(
+                                  color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setModalState(() => tempPriority = priority);
+                                  }
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Section 3: Tag / Nhãn
+                          Text(
+                            'LỌC THEO NHÃN / TAG',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Tất cả', ...state.availableTags].map((tag) {
+                              final isSelected = tempTag == tag;
+                              return ChoiceChip(
+                                label: Text(tag),
+                                selected: isSelected,
+                                selectedColor: AppColors.primary,
+                                backgroundColor: AppColors.canvas,
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.outline.withValues(alpha: 0.15),
+                                ),
+                                labelStyle: GoogleFonts.plusJakartaSans(
+                                  color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setModalState(() => tempTag = tag);
+                                  }
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Apply Button
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: () {
+                          final bloc = context.read<BacklogBloc>();
+                          bloc.add(BacklogStatusFilterChanged(tempStatus));
+                          bloc.add(BacklogPriorityFilterChanged(tempPriority));
+                          bloc.add(BacklogTagFilterChanged(tempTag));
+                          Navigator.pop(bottomSheetContext);
+                        },
+                        child: Text(
+                          'Áp dụng bộ lọc',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -326,22 +687,16 @@ class _BacklogListViewState extends State<_BacklogListView> {
               );
             }
 
-            // Filter logic
-            final filteredStories = allStories.where((story) {
-              if (_selectedFilter == 'Tất cả') return true;
-              return story.status.toLowerCase() ==
-                  _selectedFilter.toLowerCase();
-            }).toList();
-
+            final filteredStories = state.filteredStories;
             final totalPoints =
                 allStories.fold<int>(0, (sum, s) => sum + s.storyPoints);
 
             return Column(
               children: [
-                // Summary KPI Bar
+                // Top KPI Bar
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   color: AppColors.surface,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -389,17 +744,218 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   ),
                 ),
 
-                // Filter tabs
+                // US-007: Search Bar
                 Container(
                   color: AppColors.surface,
                   padding:
-                      const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (query) {
+                      context
+                          .read<BacklogBloc>()
+                          .add(BacklogSearchChanged(query));
+                      setState(() {});
+                    },
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: AppColors.onSurface,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Tìm theo mã US, tiêu đề, tag, assignee...',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              color: AppColors.onSurfaceVariant,
+                              onPressed: () {
+                                _searchController.clear();
+                                context
+                                    .read<BacklogBloc>()
+                                    .add(const BacklogSearchChanged(''));
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: AppColors.canvas,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: AppColors.outline.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: AppColors.outline.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // US-008 & US-009: Toolbar Filter & Sort
+                Container(
+                  color: AppColors.surface,
+                  padding:
+                      const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                  child: Row(
+                    children: [
+                      // Quick Filter Sheet Button
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(
+                            color: state.activeFilterCount > 0
+                                ? AppColors.primary
+                                : AppColors.outline.withValues(alpha: 0.2),
+                          ),
+                          backgroundColor: state.activeFilterCount > 0
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : Colors.transparent,
+                        ),
+                        onPressed: () => _showFilterBottomSheet(context, state),
+                        icon: Icon(
+                          Icons.tune_rounded,
+                          size: 16,
+                          color: state.activeFilterCount > 0
+                              ? AppColors.primary
+                              : AppColors.onSurfaceVariant,
+                        ),
+                        label: Row(
+                          children: [
+                            Text(
+                              'Bộ lọc',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: state.activeFilterCount > 0
+                                    ? AppColors.primary
+                                    : AppColors.onSurface,
+                              ),
+                            ),
+                            if (state.activeFilterCount > 0) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${state.activeFilterCount}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // US-009: Sort Dropdown Menu
+                      Expanded(
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.canvas,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.outline.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<BacklogSortBy>(
+                              value: state.sortBy,
+                              isExpanded: true,
+                              icon: const Icon(Icons.sort_rounded,
+                                  size: 18, color: AppColors.primary),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurface,
+                              ),
+                              items: BacklogSortBy.values.map((sortOption) {
+                                return DropdownMenuItem<BacklogSortBy>(
+                                  value: sortOption,
+                                  child: Text(
+                                    sortOption.label,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newSort) {
+                                if (newSort != null) {
+                                  context
+                                      .read<BacklogBloc>()
+                                      .add(BacklogSortChanged(newSort));
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Reset Filters button if any filter/search is active
+                      if (state.hasActiveFilters) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: 'Đặt lại toàn bộ bộ lọc',
+                          icon: const Icon(Icons.refresh_rounded,
+                              size: 20, color: AppColors.primary),
+                          onPressed: () {
+                            _searchController.clear();
+                            context
+                                .read<BacklogBloc>()
+                                .add(const BacklogFilterResetRequested());
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Quick Status filter chips row
+                Container(
+                  color: AppColors.surface,
+                  padding:
+                      const EdgeInsets.only(left: 16, right: 16, bottom: 10),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ['Tất cả', 'To Do', 'In Progress', 'Done']
+                      children: ['Tất cả', 'To Do', 'In Progress', 'Done', 'Rejected']
                           .map((filter) {
-                        final isSelected = _selectedFilter == filter;
+                        final isSelected = state.statusFilter == filter;
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
@@ -413,8 +969,9 @@ class _BacklogListViewState extends State<_BacklogListView> {
                                   : AppColors.outline.withValues(alpha: 0.15),
                             ),
                             labelStyle: GoogleFonts.plusJakartaSans(
-                              color:
-                                  isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.onSurfaceVariant,
                               fontWeight: isSelected
                                   ? FontWeight.w700
                                   : FontWeight.w600,
@@ -425,9 +982,9 @@ class _BacklogListViewState extends State<_BacklogListView> {
                             ),
                             onSelected: (selected) {
                               if (selected) {
-                                setState(() {
-                                  _selectedFilter = filter;
-                                });
+                                context
+                                    .read<BacklogBloc>()
+                                    .add(BacklogStatusFilterChanged(filter));
                               }
                             },
                           ),
@@ -436,175 +993,314 @@ class _BacklogListViewState extends State<_BacklogListView> {
                     ),
                   ),
                 ),
-                const Divider(height: 1, thickness: 1, color: AppColors.surfaceVariant),
+                const Divider(
+                    height: 1, thickness: 1, color: AppColors.surfaceVariant),
 
-                // Stories List
+                // Result count badge
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Hiển thị: ${filteredStories.length} / ${allStories.length} User Stories',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (state.hasActiveFilters)
+                        Text(
+                          'Đang áp dụng bộ lọc',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Stories List or Empty Search State
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredStories.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final story = filteredStories[index];
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    UserStoryDetailScreen(story: story),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.outline.withValues(alpha: 0.12),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
+                  child: filteredStories.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                // Top row: Key, Priority, Status
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.canvas,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: AppColors.outline
-                                              .withValues(alpha: 0.15),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        story.storyKey,
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 11,
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildPriorityBadge(story.priority),
-                                    const Spacer(),
-                                    _buildStatusBadge(story.status),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.outline
+                                        .withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.search_off_rounded,
+                                    size: 48,
+                                    color: AppColors.outline,
+                                  ),
                                 ),
-                                const SizedBox(height: 12),
-
-                                // Title
+                                const SizedBox(height: 16),
                                 Text(
-                                  story.title,
+                                  'Không tìm thấy User Story nào',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.onSurface,
-                                    height: 1.3,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 6),
-
-                                // Description preview
                                 Text(
-                                  story.description,
-                                  style: GoogleFonts.inter(
+                                  'Thử tìm từ khóa khác hoặc xóa bộ lọc để xem toàn bộ danh mục backlog.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13,
                                     color: AppColors.onSurfaceVariant,
-                                    height: 1.4,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 14),
-
-                                // Bottom row: Points + Assignee
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.bolt_rounded,
-                                              size: 14,
-                                              color: Color(0xFFB45309)),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${story.storyPoints} SP',
-                                            style: GoogleFonts.jetBrainsMono(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
-                                              color: const Color(0xFF334155),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                const SizedBox(height: 18),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: const BorderSide(
+                                        color: AppColors.primary),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    if (story.assigneeName != null &&
-                                        story.assigneeName!.isNotEmpty)
-                                      Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor: AppColors
-                                                .primaryContainer
-                                                .withValues(alpha: 0.15),
-                                            child: Text(
-                                              story.assigneeName!
-                                                  .substring(0, 1)
-                                                  .toUpperCase(),
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            story.assigneeName!,
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.onSurface,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    context
+                                        .read<BacklogBloc>()
+                                        .add(const BacklogFilterResetRequested());
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.refresh_rounded,
+                                      size: 16),
+                                  label: const Text('Đặt lại bộ lọc'),
                                 ),
                               ],
                             ),
                           ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          itemCount: filteredStories.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final story = filteredStories[index];
+
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          UserStoryDetailScreen(story: story),
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.outline
+                                          .withValues(alpha: 0.12),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.02),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Top row: Key, Priority, Status, DueDate
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.canvas,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: AppColors.outline
+                                                    .withValues(alpha: 0.15),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              story.storyKey,
+                                              style: GoogleFonts.jetBrainsMono(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 11,
+                                                color:
+                                                    AppColors.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _buildPriorityBadge(story.priority),
+                                          const SizedBox(width: 8),
+                                          _buildDueDateBadge(story.dueDate),
+                                          const Spacer(),
+                                          _buildStatusBadge(story.status),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+
+                                      // Title
+                                      Text(
+                                        story.title,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.onSurface,
+                                          height: 1.3,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 6),
+
+                                      // Description preview
+                                      Text(
+                                        story.description,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: AppColors.onSurfaceVariant,
+                                          height: 1.4,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+
+                                      // Tags Row (US-008, US-014)
+                                      if (story.tags.isNotEmpty) ...[
+                                        const SizedBox(height: 10),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: story.tags.map((tag) {
+                                            return Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                tag,
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 14),
+
+                                      // Bottom row: Points + Assignee
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.bolt_rounded,
+                                                    size: 14,
+                                                    color: Color(0xFFB45309)),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${story.storyPoints} SP',
+                                                  style:
+                                                      GoogleFonts.jetBrainsMono(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                    color:
+                                                        const Color(0xFF334155),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (story.assigneeName != null &&
+                                              story.assigneeName!.isNotEmpty)
+                                            Row(
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 12,
+                                                  backgroundColor: AppColors
+                                                      .primaryContainer
+                                                      .withValues(alpha: 0.15),
+                                                  child: Text(
+                                                    story.assigneeName!
+                                                        .substring(0, 1)
+                                                        .toUpperCase(),
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  story.assigneeName!,
+                                                  style: GoogleFonts
+                                                      .plusJakartaSans(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: AppColors.onSurface,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ],
             );
@@ -619,8 +1315,8 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7ED),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFF7ED),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -640,7 +1336,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Bạn vẫn có thể kiểm thử toàn diện US-005 (Backlog) & US-006 (Chi tiết Story) với 8 User Stories mẫu và 4 User ảo.',
+                      'Bạn vẫn có thể kiểm thử toàn diện US-005, US-006, US-007, US-008 và US-009 với 8 User Stories mẫu và 4 User ảo.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         color: AppColors.onSurfaceVariant,
@@ -684,4 +1380,3 @@ class _BacklogListViewState extends State<_BacklogListView> {
     );
   }
 }
-

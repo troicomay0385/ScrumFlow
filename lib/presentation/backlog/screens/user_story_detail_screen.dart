@@ -460,6 +460,110 @@ class UserStoryDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+            if (story.tags.isNotEmpty || story.dueDate != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.outline.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.label_outline_rounded,
+                            size: 18,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Nhãn phân loại & Hạn chót',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (story.dueDate != null) ...[
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          const Icon(Icons.event_note_rounded,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Hạn chót (Deadline): ',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            '${story.dueDate!.day.toString().padLeft(2, '0')}/${story.dueDate!.month.toString().padLeft(2, '0')}/${story.dueDate!.year}',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (story.tags.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: story.tags.map((tag) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Text(
+                              tag,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

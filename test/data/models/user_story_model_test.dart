@@ -32,6 +32,33 @@ void main() {
       expect(fromMapStory.status, equals('In Progress'));
       expect(fromMapStory.assigneeName, equals('Lê Phúc'));
       expect(fromMapStory.assigneeEmail, equals('phuc.po@scrumflow.com'));
+      expect(fromMapStory.tags, isEmpty);
+      expect(fromMapStory.dueDate, isNull);
+    });
+
+    test('toMap and fromMap preserve tags and dueDate', () {
+      final now = DateTime.now();
+      final deadline = now.add(const Duration(days: 3));
+      final story = UserStoryModel(
+        id: 'us_test_tags',
+        projectId: 'project_123',
+        storyKey: 'US-007',
+        title: 'Tìm kiếm User Story',
+        description: 'Mô tả tìm kiếm',
+        priority: 'CAO',
+        storyPoints: 5,
+        status: 'To Do',
+        tags: const ['#Search', '#Backlog'],
+        dueDate: deadline,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final map = story.toMap();
+      final fromMapStory = UserStoryModel.fromMap(map, 'us_test_tags');
+
+      expect(fromMapStory.tags, equals(['#Search', '#Backlog']));
+      expect(fromMapStory.dueDate?.day, equals(deadline.day));
     });
 
     test('fromMap handles missing/null optional fields gracefully', () {
@@ -48,6 +75,8 @@ void main() {
       expect(story.priority, equals('CAO'));
       expect(story.storyPoints, equals(3));
       expect(story.status, equals('To Do'));
+      expect(story.tags, isEmpty);
+      expect(story.dueDate, isNull);
       expect(story.assigneeName, isNull);
     });
   });

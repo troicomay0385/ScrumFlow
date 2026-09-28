@@ -10,6 +10,8 @@ class UserStoryModel extends Equatable {
   final String priority; // CAO, TB, THẤP
   final int storyPoints; // 1, 2, 3, 5, 8
   final String status; // To Do, In Progress, Done, Rejected
+  final List<String> tags; // VD: ['#Auth', '#Security']
+  final DateTime? dueDate; // Hạn chót/Deadline
   final String? assigneeId;
   final String? assigneeName;
   final String? assigneeEmail;
@@ -25,6 +27,8 @@ class UserStoryModel extends Equatable {
     this.priority = 'CAO',
     this.storyPoints = 3,
     this.status = 'To Do',
+    this.tags = const [],
+    this.dueDate,
     this.assigneeId,
     this.assigneeName,
     this.assigneeEmail,
@@ -42,6 +46,8 @@ class UserStoryModel extends Equatable {
       'priority': priority,
       'storyPoints': storyPoints,
       'status': status,
+      'tags': tags,
+      'dueDate': dueDate?.toIso8601String(),
       'assigneeId': assigneeId,
       'assigneeName': assigneeName,
       'assigneeEmail': assigneeEmail,
@@ -60,6 +66,16 @@ class UserStoryModel extends Equatable {
       return DateTime.now();
     }
 
+    DateTime? parseNullableDate(dynamic date) {
+      if (date == null) return null;
+      if (date is Timestamp) {
+        return date.toDate();
+      } else if (date is String) {
+        return DateTime.tryParse(date);
+      }
+      return null;
+    }
+
     return UserStoryModel(
       id: docId ?? (map['id'] as String? ?? ''),
       projectId: map['projectId'] as String? ?? '',
@@ -69,6 +85,9 @@ class UserStoryModel extends Equatable {
       priority: map['priority'] as String? ?? 'CAO',
       storyPoints: (map['storyPoints'] as num?)?.toInt() ?? 3,
       status: map['status'] as String? ?? 'To Do',
+      tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          const [],
+      dueDate: parseNullableDate(map['dueDate']),
       assigneeId: map['assigneeId'] as String?,
       assigneeName: map['assigneeName'] as String?,
       assigneeEmail: map['assigneeEmail'] as String?,
@@ -83,6 +102,8 @@ class UserStoryModel extends Equatable {
     String? priority,
     int? storyPoints,
     String? status,
+    List<String>? tags,
+    DateTime? dueDate,
     String? assigneeId,
     String? assigneeName,
     String? assigneeEmail,
@@ -97,6 +118,8 @@ class UserStoryModel extends Equatable {
       priority: priority ?? this.priority,
       storyPoints: storyPoints ?? this.storyPoints,
       status: status ?? this.status,
+      tags: tags ?? this.tags,
+      dueDate: dueDate ?? this.dueDate,
       assigneeId: assigneeId ?? this.assigneeId,
       assigneeName: assigneeName ?? this.assigneeName,
       assigneeEmail: assigneeEmail ?? this.assigneeEmail,
@@ -115,6 +138,8 @@ class UserStoryModel extends Equatable {
         priority,
         storyPoints,
         status,
+        tags,
+        dueDate,
         assigneeId,
         assigneeName,
         assigneeEmail,

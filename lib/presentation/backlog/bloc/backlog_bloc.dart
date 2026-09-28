@@ -14,6 +14,12 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
         super(BacklogInitial()) {
     on<BacklogSubscriptionRequested>(_onSubscriptionRequested);
     on<BacklogSeedMockRequested>(_onSeedMockRequested);
+    on<BacklogSearchChanged>(_onSearchChanged);
+    on<BacklogStatusFilterChanged>(_onStatusFilterChanged);
+    on<BacklogPriorityFilterChanged>(_onPriorityFilterChanged);
+    on<BacklogTagFilterChanged>(_onTagFilterChanged);
+    on<BacklogSortChanged>(_onSortChanged);
+    on<BacklogFilterResetRequested>(_onFilterResetRequested);
   }
 
   Future<void> _onSubscriptionRequested(
@@ -25,7 +31,13 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
 
     await emit.forEach(
       _repository.streamUserStories(event.projectId),
-      onData: (stories) => BacklogLoaded(stories: stories),
+      onData: (stories) {
+        if (state is BacklogLoaded) {
+          final current = state as BacklogLoaded;
+          return current.copyWith(stories: stories);
+        }
+        return BacklogLoaded(stories: stories);
+      },
       onError: (error, stackTrace) =>
           BacklogError('Lỗi tải Product Backlog: $error'),
     );
@@ -43,6 +55,66 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
       // Stream sẽ tự động emit danh sách mới
     } catch (e) {
       emit(BacklogError('Không thể tạo dữ liệu mẫu: $e'));
+    }
+  }
+
+  void _onSearchChanged(
+    BacklogSearchChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(searchQuery: event.query));
+    }
+  }
+
+  void _onStatusFilterChanged(
+    BacklogStatusFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(statusFilter: event.status));
+    }
+  }
+
+  void _onPriorityFilterChanged(
+    BacklogPriorityFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(priorityFilter: event.priority));
+    }
+  }
+
+  void _onTagFilterChanged(
+    BacklogTagFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(tagFilter: event.tag));
+    }
+  }
+
+  void _onSortChanged(
+    BacklogSortChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(sortBy: event.sortBy));
+    }
+  }
+
+  void _onFilterResetRequested(
+    BacklogFilterResetRequested event,
+    Emitter<BacklogState> emit,
+  ) {
+    if (state is BacklogLoaded) {
+      emit((state as BacklogLoaded).copyWith(
+        searchQuery: '',
+        statusFilter: 'Tất cả',
+        priorityFilter: 'Tất cả',
+        tagFilter: 'Tất cả',
+        sortBy: BacklogSortBy.priorityDesc,
+      ));
     }
   }
 
