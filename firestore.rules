@@ -97,6 +97,12 @@ service cloud.firestore {
       // rollback phía client khi bootstrap PO membership thất bại
       // ngay sau khi tạo project (xem ProjectRepositoryImpl.createProject).
       allow delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+
+      // ── Subcollection: userStories (US-005, US-006) ───────────────
+      match /userStories/{storyId} {
+        // Mọi người dùng đã đăng nhập đều có quyền đọc & thao tác User Stories
+        allow read, write: if isSignedIn();
+      }
     }
 
     // ── projectMembers/{membershipId} ───────────────────────────────

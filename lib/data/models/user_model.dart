@@ -38,13 +38,31 @@ class UserModel extends Equatable {
 
   /// Tạo từ Map (đọc từ Firestore hoặc SQLite).
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    DateTime parsedCreatedAt;
+    final rawCreatedAt = map['createdAt'];
+    if (rawCreatedAt is String) {
+      parsedCreatedAt = DateTime.tryParse(rawCreatedAt) ?? DateTime.now();
+    } else if (rawCreatedAt is DateTime) {
+      parsedCreatedAt = rawCreatedAt;
+    } else if (rawCreatedAt != null) {
+      try {
+        // Hỗ trợ Timestamp từ cloud_firestore (gọi toDate() động)
+        dynamic ts = rawCreatedAt;
+        parsedCreatedAt = (ts.toDate() as DateTime);
+      } catch (_) {
+        parsedCreatedAt = DateTime.now();
+      }
+    } else {
+      parsedCreatedAt = DateTime.now();
+    }
+
     return UserModel(
-      id: map['id'] as String,
-      fullName: map['fullName'] as String,
-      email: map['email'] as String,
+      id: (map['id'] as String?) ?? '',
+      fullName: (map['fullName'] as String?) ?? '',
+      email: (map['email'] as String?) ?? '',
       photoUrl: map['photoUrl'] as String?,
-      createdAt: DateTime.parse(map['createdAt'] as String),
-      loginProvider: map['loginProvider'] as String? ?? 'email',
+      createdAt: parsedCreatedAt,
+      loginProvider: (map['loginProvider'] as String?) ?? 'email',
     );
   }
 

@@ -18,6 +18,14 @@ abstract class ProjectRepository {
 
   Future<ProjectModel?> getProject(String projectId);
 
+  /// Cập nhật thông tin (tên, mục tiêu hoặc mô tả) của project.
+  /// Yêu cầu quyền [Permission.manageProject] (chỉ PO / Quản trị viên).
+  Future<void> updateProject({
+    required String projectId,
+    required String name,
+    required String description,
+  });
+
   /// Stream real-time cho 1 project.
   Stream<ProjectModel?> streamProject(String projectId);
 }

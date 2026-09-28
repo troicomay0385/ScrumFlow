@@ -22,16 +22,18 @@ void main() {
   });
 
   group('hasPermission', () {
-    test('PO có quyền quản lý thành viên và đổi role', () {
+    test('PO có quyền quản lý project, quản lý thành viên và đổi role', () {
       expect(hasPermission(ProjectRole.po, Permission.viewMembers), isTrue);
       expect(hasPermission(ProjectRole.po, Permission.manageMembers), isTrue);
       expect(hasPermission(ProjectRole.po, Permission.changeMemberRole), isTrue);
+      expect(hasPermission(ProjectRole.po, Permission.manageProject), isTrue);
     });
 
-    test('SM và MEMBER không có quyền quản lý thành viên', () {
+    test('SM và MEMBER không có quyền quản lý thành viên và quản lý project', () {
       for (final role in [ProjectRole.sm, ProjectRole.member]) {
         expect(hasPermission(role, Permission.manageMembers), isFalse);
         expect(hasPermission(role, Permission.changeMemberRole), isFalse);
+        expect(hasPermission(role, Permission.manageProject), isFalse);
       }
     });
 
