@@ -13,6 +13,9 @@ class UserStoryModel extends Equatable {
   final String? assigneeId;
   final String? assigneeName;
   final String? assigneeEmail;
+  final List<String> tags; // Nhãn tự do, VD: ['Frontend', 'Authentication'] (US-014)
+  final DateTime? deadline; // null = chưa đặt hạn (US-009 xếp cuối khi sort)
+  final String? createdBy; // uid người tạo (US-010); null với dữ liệu cũ/dữ liệu mẫu
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -28,6 +31,9 @@ class UserStoryModel extends Equatable {
     this.assigneeId,
     this.assigneeName,
     this.assigneeEmail,
+    this.tags = const [],
+    this.deadline,
+    this.createdBy,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -45,6 +51,11 @@ class UserStoryModel extends Equatable {
       'assigneeId': assigneeId,
       'assigneeName': assigneeName,
       'assigneeEmail': assigneeEmail,
+      'tags': tags,
+      'deadline': deadline?.toIso8601String(),
+      // Chỉ ghi khi có giá trị: Firestore Rules so khớp `createdBy` với uid
+      // người gọi, `null` tường minh (vd. dữ liệu mẫu) sẽ bị từ chối.
+      if (createdBy != null) 'createdBy': createdBy,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -60,6 +71,18 @@ class UserStoryModel extends Equatable {
       return DateTime.now();
     }
 
+    DateTime? parseOptionalDate(dynamic date) {
+      if (date is Timestamp) return date.toDate();
+      if (date is String) return DateTime.tryParse(date);
+      return null;
+    }
+
+    // Dữ liệu cũ không có `tags` (hoặc sai kiểu) → danh sách rỗng.
+    List<String> parseTags(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw.whereType<String>().toList(growable: false);
+    }
+
     return UserStoryModel(
       id: docId ?? (map['id'] as String? ?? ''),
       projectId: map['projectId'] as String? ?? '',
@@ -72,12 +95,16 @@ class UserStoryModel extends Equatable {
       assigneeId: map['assigneeId'] as String?,
       assigneeName: map['assigneeName'] as String?,
       assigneeEmail: map['assigneeEmail'] as String?,
+      tags: parseTags(map['tags']),
+      deadline: parseOptionalDate(map['deadline']),
+      createdBy: map['createdBy'] as String?,
       createdAt: parseDate(map['createdAt']),
       updatedAt: parseDate(map['updatedAt']),
     );
   }
 
   UserStoryModel copyWith({
+    String? id,
     String? title,
     String? description,
     String? priority,
@@ -86,10 +113,12 @@ class UserStoryModel extends Equatable {
     String? assigneeId,
     String? assigneeName,
     String? assigneeEmail,
+    List<String>? tags,
+    DateTime? deadline,
     DateTime? updatedAt,
   }) {
     return UserStoryModel(
-      id: id,
+      id: id ?? this.id,
       projectId: projectId,
       storyKey: storyKey,
       title: title ?? this.title,
@@ -100,6 +129,9 @@ class UserStoryModel extends Equatable {
       assigneeId: assigneeId ?? this.assigneeId,
       assigneeName: assigneeName ?? this.assigneeName,
       assigneeEmail: assigneeEmail ?? this.assigneeEmail,
+      tags: tags ?? this.tags,
+      deadline: deadline ?? this.deadline,
+      createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -118,6 +150,9 @@ class UserStoryModel extends Equatable {
         assigneeId,
         assigneeName,
         assigneeEmail,
+        tags,
+        deadline,
+        createdBy,
         createdAt,
         updatedAt,
       ];

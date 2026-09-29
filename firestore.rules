@@ -50,6 +50,22 @@ service cloud.firestore {
       return isProjectMember(projectId) && currentRole(projectId) == 'PO';
     }
 
+    // Permission.manageBacklog — PO và SM (khớp role_permissions.dart).
+    function canManageBacklog(projectId) {
+      return isProjectMember(projectId) && currentRole(projectId) in ['PO', 'SM'];
+    }
+
+    // Ràng buộc dữ liệu tối thiểu của 1 User Story (khớp UserStoryValidator).
+    // tags/deadline là field mới — dữ liệu cũ không có vẫn hợp lệ.
+    function isValidStory(data) {
+      return data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 200
+        && data.priority in ['CAO', 'TB', 'THẤP']
+        && data.get('tags', []) is list
+        && data.get('tags', []).size() <= 10;
+    }
+
     function isValidRole(role) {
       return role in ['PO', 'SM', 'MEMBER'];
     }
@@ -98,10 +114,28 @@ service cloud.firestore {
       // ngay sau khi tạo project (xem ProjectRepositoryImpl.createProject).
       allow delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
 
-      // ── Subcollection: userStories (US-005, US-006) ───────────────
+      // ── Subcollection: userStories (US-005/006/009/010/014) ───────
+      // Trước đây `allow read, write: if isSignedIn()` — BẤT KỲ user đăng
+      // nhập nào (kể cả người ngoài project) cũng đọc/ghi được. Siết lại
+      // theo permission matrix: viewBacklog = mọi thành viên,
+      // manageBacklog = PO/SM (xem role_permissions.dart).
       match /userStories/{storyId} {
-        // Mọi người dùng đã đăng nhập đều có quyền đọc & thao tác User Stories
-        allow read, write: if isSignedIn();
+        allow read: if isProjectMember(projectId);
+
+        // Tạo: story phải thuộc đúng project trên path (không ghi chéo
+        // sang project khác), createdBy (nếu có) phải là chính người gọi.
+        allow create: if canManageBacklog(projectId)
+          && request.resource.data.projectId == projectId
+          && request.resource.data.get('createdBy', request.auth.uid) == request.auth.uid
+          && isValidStory(request.resource.data);
+
+        // Sửa (vd. gắn tag): không được đổi projectId/createdBy.
+        allow update: if canManageBacklog(projectId)
+          && request.resource.data.projectId == resource.data.projectId
+          && request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null)
+          && isValidStory(request.resource.data);
+
+        allow delete: if canManageBacklog(projectId);
       }
     }
 

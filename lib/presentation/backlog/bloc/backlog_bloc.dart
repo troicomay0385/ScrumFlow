@@ -14,6 +14,8 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
         super(BacklogInitial()) {
     on<BacklogSubscriptionRequested>(_onSubscriptionRequested);
     on<BacklogSeedMockRequested>(_onSeedMockRequested);
+    on<BacklogStatusFilterChanged>(_onStatusFilterChanged);
+    on<BacklogSortChanged>(_onSortChanged);
   }
 
   Future<void> _onSubscriptionRequested(
@@ -25,7 +27,12 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
 
     await emit.forEach(
       _repository.streamUserStories(event.projectId),
-      onData: (stories) => BacklogLoaded(stories: stories),
+      // Giữ nguyên filter/sort người dùng đã chọn khi stream đẩy dữ liệu
+      // mới (vd. vừa tạo story) — chỉ thay danh sách gốc.
+      onData: (stories) => state is BacklogLoaded
+          ? (state as BacklogLoaded)
+              .copyWith(stories: stories, isSeeding: false)
+          : BacklogLoaded(stories: stories),
       onError: (error, stackTrace) =>
           BacklogError('Lỗi tải Product Backlog: $error'),
     );
@@ -43,6 +50,23 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
       // Stream sẽ tự động emit danh sách mới
     } catch (e) {
       emit(BacklogError('Không thể tạo dữ liệu mẫu: $e'));
+    }
+  }
+
+  void _onStatusFilterChanged(
+    BacklogStatusFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(statusFilter: () => event.status));
+    }
+  }
+
+  void _onSortChanged(BacklogSortChanged event, Emitter<BacklogState> emit) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(sortOption: event.sortOption));
     }
   }
 

@@ -245,15 +245,21 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signOut() async {
     try {
       // Xác định user đăng nhập bằng Google hay email
-      // để biết có cần signOut Google không
-      final cachedUser = await _localCacheDataSource.getCachedUser();
-      final isGoogleUser = cachedUser?.loginProvider == 'google';
+      // để biết có cần signOut Google không. Cache chỉ là phụ trợ —
+      // lỗi đọc cache KHÔNG được chặn việc đăng xuất Firebase.
+      var isGoogleUser = false;
+      try {
+        final cachedUser = await _localCacheDataSource.getCachedUser();
+        isGoogleUser = cachedUser?.loginProvider == 'google';
+      } catch (_) {}
 
       // 1. Đăng xuất Firebase (+ Google nếu cần)
       await _authDataSource.signOut(isGoogleUser: isGoogleUser);
 
       // 2. Xoá cache phiên nhưng GIỮ NGUYÊN recent accounts
-      await _localCacheDataSource.clearSessionData();
+      try {
+        await _localCacheDataSource.clearSessionData();
+      } catch (_) {}
     } on fb.FirebaseAuthException catch (e) {
       throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
     } catch (e) {
@@ -303,8 +309,10 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // Fallback: đọc từ SQLite cache
-      final cachedUser = await _localCacheDataSource.getCachedUser();
-      if (cachedUser != null) return cachedUser;
+      try {
+        final cachedUser = await _localCacheDataSource.getCachedUser();
+        if (cachedUser != null) return cachedUser;
+      } catch (_) {}
 
       // Trường hợp cuối: tạo UserModel tối thiểu từ Firebase User
       return UserModel.fromFirebaseUser(
