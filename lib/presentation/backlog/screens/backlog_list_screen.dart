@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../app/authorization/permission.dart';
+import '../../../app/authorization/project_role.dart';
+import '../../../app/authorization/role_permissions.dart';
 import '../../../app/constants/app_colors.dart';
+import '../../../data/repositories/backlog_repository.dart';
+import '../../../data/repositories/project_member_repository.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../bloc/backlog_bloc.dart';
 import '../bloc/backlog_event.dart';
 import '../bloc/backlog_state.dart';
+import '../utils/backlog_view.dart';
+import '../widgets/create_user_story_dialog.dart';
+import '../widgets/user_story_card.dart';
 import 'user_story_detail_screen.dart';
 
 class BacklogListScreen extends StatelessWidget {
@@ -22,8 +30,9 @@ class BacklogListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => BacklogBloc()
-        ..add(BacklogSubscriptionRequested(projectId)),
+      create: (context) =>
+          BacklogBloc(repository: context.read<BacklogRepository>())
+            ..add(BacklogSubscriptionRequested(projectId)),
       child: _BacklogListView(
         projectId: projectId,
         projectName: projectName,
@@ -46,112 +55,77 @@ class _BacklogListView extends StatefulWidget {
 }
 
 class _BacklogListViewState extends State<_BacklogListView> {
-  String _selectedFilter = 'Tất cả';
+  /// Nhãn chip filter → giá trị status (`null` = "Tất cả").
+  static const Map<String, String?> _statusFilters = {
+    'Tất cả': null,
+    'To Do': 'To Do',
+    'In Progress': 'In Progress',
+    'Done': 'Done',
+  };
 
-  Widget _buildPriorityBadge(String priority) {
-    Color textColor;
-    Color bgColor;
-    Color borderColor;
+  /// Role real-time của user trong project — quyết định hiển thị nút tạo
+  /// story / sửa tag qua `hasPermission(Permission.manageBacklog)`.
+  late final Stream<ProjectRole?> _roleStream;
 
-    switch (priority.toUpperCase()) {
-      case 'CAO':
-      case 'HIGH':
-      case 'URGENT':
-        textColor = const Color(0xFFB91C1C);
-        bgColor = const Color(0xFFFEE2E2);
-        borderColor = const Color(0xFFFECACA);
-        break;
-      case 'TB':
-      case 'TRUNG BÌNH':
-      case 'MEDIUM':
-        textColor = const Color(0xFFB45309);
-        bgColor = const Color(0xFFFEF3C7);
-        borderColor = const Color(0xFFFDE68A);
-        break;
-      default:
-        textColor = const Color(0xFF475569);
-        bgColor = const Color(0xFFF1F5F9);
-        borderColor = const Color(0xFFE2E8F0);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              color: textColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            priority,
-            style: GoogleFonts.plusJakartaSans(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 10,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _roleStream = context
+        .read<ProjectMemberRepository>()
+        .streamCurrentUserRole(widget.projectId);
   }
 
-  Widget _buildStatusBadge(String status) {
-    Color textColor;
-    Color bgColor;
-    Color borderColor;
-
-    switch (status.toLowerCase()) {
-      case 'done':
-        textColor = const Color(0xFF047857);
-        bgColor = const Color(0xFFD1FAE5);
-        borderColor = const Color(0xFFA7F3D0);
-        break;
-      case 'in progress':
-        textColor = const Color(0xFFB45309);
-        bgColor = const Color(0xFFFEF3C7);
-        borderColor = const Color(0xFFFDE68A);
-        break;
-      default: // To Do
-        textColor = const Color(0xFF475569);
-        bgColor = const Color(0xFFF1F5F9);
-        borderColor = const Color(0xFFE2E8F0);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: GoogleFonts.plusJakartaSans(
-          color: textColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 10,
-          letterSpacing: 0.4,
-        ),
-      ),
+  Future<void> _openCreateDialog() async {
+    final created = await showCreateUserStoryDialog(
+      context: context,
+      projectId: widget.projectId,
     );
+    if (created != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã tạo ${created.storyKey}: ${created.title}'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _seedMockStories(BuildContext context) {
+    context.read<BacklogBloc>().add(BacklogSeedMockRequested(widget.projectId));
   }
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<ProjectRole?>(
+      stream: _roleStream,
+      builder: (context, roleSnapshot) {
+        final canManageBacklog =
+            hasPermission(roleSnapshot.data, Permission.manageBacklog);
+        return _buildScaffold(context, canManageBacklog);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, bool canManageBacklog) {
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      floatingActionButton: canManageBacklog
+          ? FloatingActionButton.extended(
+              key: const Key('backlog_createStory'),
+              onPressed: _openCreateDialog,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: Text(
+                'Tạo User Story',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              ),
+            )
+          : null,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,9 +165,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   onPressed: isSeeding
                       ? null
                       : () {
-                          context
-                              .read<BacklogBloc>()
-                              .add(BacklogSeedMockRequested(widget.projectId));
+                          _seedMockStories(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Đang nạp 8 User Stories mẫu và User ảo...'),
@@ -256,82 +228,11 @@ class _BacklogListViewState extends State<_BacklogListView> {
             final allStories = state.stories;
 
             if (allStories.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.inventory_2_outlined,
-                          size: 56,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Product Backlog đang trống',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Bấm nút bên dưới để tự động nạp 8 User Stories mẫu của Sprint 1 & Sprint 2 kèm User ảo để kiểm thử tính năng.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: AppColors.onSurfaceVariant,
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 3,
-                        ),
-                        onPressed: () {
-                          context
-                              .read<BacklogBloc>()
-                              .add(BacklogSeedMockRequested(widget.projectId));
-                        },
-                        icon: const Icon(Icons.bolt_rounded, size: 20),
-                        label: Text(
-                          'Nạp 8 User Stories Mẫu',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _buildEmptyState(context, canManageBacklog);
             }
 
-            // Filter logic
-            final filteredStories = allStories.where((story) {
-              if (_selectedFilter == 'Tất cả') return true;
-              return story.status.toLowerCase() ==
-                  _selectedFilter.toLowerCase();
-            }).toList();
+            // Filter + sort đã được BacklogBloc áp dụng (US-009)
+            final visibleStories = state.visibleStories;
 
             final totalPoints =
                 allStories.fold<int>(0, (sum, s) => sum + s.storyPoints);
@@ -389,222 +290,62 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   ),
                 ),
 
-                // Filter tabs
+                // Filter tabs + Sort selector
                 Container(
                   color: AppColors.surface,
                   padding:
                       const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ['Tất cả', 'To Do', 'In Progress', 'Done']
-                          .map((filter) {
-                        final isSelected = _selectedFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(filter),
-                            selected: isSelected,
-                            selectedColor: AppColors.primary,
-                            backgroundColor: AppColors.canvas,
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.outline.withValues(alpha: 0.15),
-                            ),
-                            labelStyle: GoogleFonts.plusJakartaSans(
-                              color:
-                                  isSelected ? Colors.white : AppColors.onSurfaceVariant,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() {
-                                  _selectedFilter = filter;
-                                });
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStatusFilters(context, state),
+                      const SizedBox(height: 10),
+                      _buildSortSelector(context, state),
+                    ],
                   ),
                 ),
                 const Divider(height: 1, thickness: 1, color: AppColors.surfaceVariant),
 
                 // Stories List
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredStories.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final story = filteredStories[index];
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    UserStoryDetailScreen(story: story),
+                  child: visibleStories.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              'Không có User Story nào ở trạng thái này.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant,
                               ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.outline.withValues(alpha: 0.12),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Top row: Key, Priority, Status
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.canvas,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: AppColors.outline
-                                              .withValues(alpha: 0.15),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        story.storyKey,
-                                        style: GoogleFonts.jetBrainsMono(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 11,
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildPriorityBadge(story.priority),
-                                    const Spacer(),
-                                    _buildStatusBadge(story.status),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Title
-                                Text(
-                                  story.title,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.onSurface,
-                                    height: 1.3,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-
-                                // Description preview
-                                Text(
-                                  story.description,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: AppColors.onSurfaceVariant,
-                                    height: 1.4,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 14),
-
-                                // Bottom row: Points + Assignee
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.bolt_rounded,
-                                              size: 14,
-                                              color: Color(0xFFB45309)),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${story.storyPoints} SP',
-                                            style: GoogleFonts.jetBrainsMono(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
-                                              color: const Color(0xFF334155),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (story.assigneeName != null &&
-                                        story.assigneeName!.isNotEmpty)
-                                      Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor: AppColors
-                                                .primaryContainer
-                                                .withValues(alpha: 0.15),
-                                            child: Text(
-                                              story.assigneeName!
-                                                  .substring(0, 1)
-                                                  .toUpperCase(),
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            story.assigneeName!,
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.onSurface,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ],
                             ),
                           ),
+                        )
+                      : ListView.separated(
+                          // Chừa chỗ cho FAB "Tạo User Story" không che thẻ cuối.
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                          itemCount: visibleStories.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final story = visibleStories[index];
+                            return UserStoryCard(
+                              key: ValueKey(story.id),
+                              story: story,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => UserStoryDetailScreen(
+                                      story: story,
+                                      canManageBacklog: canManageBacklog,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ],
             );
@@ -659,11 +400,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      onPressed: () {
-                        context
-                            .read<BacklogBloc>()
-                            .add(BacklogSeedMockRequested(widget.projectId));
-                      },
+                      onPressed: () => _seedMockStories(context),
                       icon: const Icon(Icons.bolt_rounded),
                       label: Text(
                         'Nạp 8 User Stories Mẫu',
@@ -683,5 +420,189 @@ class _BacklogListViewState extends State<_BacklogListView> {
       ),
     );
   }
-}
 
+  Widget _buildEmptyState(BuildContext context, bool canManageBacklog) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.inventory_2_outlined,
+                size: 56,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Product Backlog đang trống',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bấm nút bên dưới để tự động nạp 8 User Stories mẫu của Sprint 1 & Sprint 2 kèm User ảo để kiểm thử tính năng.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 3,
+              ),
+              onPressed: () => _seedMockStories(context),
+              icon: const Icon(Icons.bolt_rounded, size: 20),
+              label: Text(
+                'Nạp 8 User Stories Mẫu',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            if (canManageBacklog) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _openCreateDialog,
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: Text(
+                  'Tạo User Story đầu tiên',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusFilters(BuildContext context, BacklogLoaded state) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _statusFilters.entries.map((entry) {
+          final isSelected = state.statusFilter == entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(entry.key),
+              selected: isSelected,
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.canvas,
+              side: BorderSide(
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.outline.withValues(alpha: 0.15),
+              ),
+              labelStyle: GoogleFonts.plusJakartaSans(
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                fontSize: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              onSelected: (selected) {
+                if (selected) {
+                  context
+                      .read<BacklogBloc>()
+                      .add(BacklogStatusFilterChanged(entry.value));
+                }
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// Dropdown "Sắp xếp theo" (US-009) — chỉ đổi thứ tự hiển thị.
+  Widget _buildSortSelector(BuildContext context, BacklogLoaded state) {
+    return Row(
+      children: [
+        const Icon(Icons.sort_rounded,
+            size: 18, color: AppColors.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Text(
+          'Sắp xếp theo:',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.canvas,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<BacklogSortOption>(
+              key: const Key('backlog_sortDropdown'),
+              value: state.sortOption,
+              borderRadius: BorderRadius.circular(14),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.primary),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+              items: BacklogSortOption.values
+                  .map((option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(option.label),
+                      ))
+                  .toList(),
+              onChanged: (option) {
+                if (option != null) {
+                  context.read<BacklogBloc>().add(BacklogSortChanged(option));
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

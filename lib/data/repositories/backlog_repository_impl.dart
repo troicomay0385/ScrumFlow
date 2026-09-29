@@ -1,12 +1,36 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart' as fs;
+
+import '../../app/authorization/permission.dart';
+import '../../app/authorization/role_permissions.dart';
+import '../../app/constants/firebase_error_mapper.dart';
 import '../datasources/backlog_datasource.dart';
+import '../datasources/firebase_auth_datasource.dart';
+import '../datasources/project_member_datasource.dart';
 import '../models/user_story_model.dart';
 import 'backlog_repository.dart';
 
+/// Implementation của [BacklogRepository].
+///
+/// Các thao tác ghi (tạo story, gắn tag) kiểm tra `Permission.manageBacklog`
+/// ở đây TRƯỚC khi gọi Firestore — lớp bảo vệ thứ 2 bên cạnh Firestore
+/// Security Rules (cùng cách làm với `ProjectRepositoryImpl.updateProject`).
 class BacklogRepositoryImpl implements BacklogRepository {
   final BacklogDataSource _dataSource;
+  final ProjectMemberDataSource _memberDataSource;
+  final FirebaseAuthDataSource _authDataSource;
+  final DateTime Function() _now;
 
-  BacklogRepositoryImpl({BacklogDataSource? dataSource})
-      : _dataSource = dataSource ?? BacklogDataSource();
+  BacklogRepositoryImpl({
+    BacklogDataSource? dataSource,
+    ProjectMemberDataSource? memberDataSource,
+    FirebaseAuthDataSource? authDataSource,
+    DateTime Function()? now,
+  })  : _dataSource = dataSource ?? BacklogDataSource(),
+        _memberDataSource = memberDataSource ?? ProjectMemberDataSource(),
+        _authDataSource = authDataSource ?? FirebaseAuthDataSource(),
+        _now = now ?? DateTime.now;
 
   @override
   Stream<List<UserStoryModel>> streamUserStories(String projectId) {
@@ -29,7 +53,95 @@ class BacklogRepositoryImpl implements BacklogRepository {
   }
 
   @override
+  Future<UserStoryModel> createUserStory({
+    required String projectId,
+    required String title,
+    required String description,
+    required String priority,
+    DateTime? deadline,
+  }) {
+    return _guard(() async {
+      final uid = await _requireManageBacklog(projectId);
+      final existing = await _dataSource.getUserStories(projectId);
+      final now = _now();
+
+      final story = UserStoryModel(
+        id: '',
+        projectId: projectId,
+        storyKey: nextStoryKey(existing),
+        title: title.trim(),
+        description: description.trim(),
+        priority: priority,
+        // Theo convention dữ liệu hiện có: story mới luôn ở trạng thái
+        // To Do; Story Points giữ mặc định của model cho tới US-013.
+        status: 'To Do',
+        deadline: deadline,
+        createdBy: uid,
+        createdAt: now,
+        updatedAt: now,
+      );
+      return _dataSource.createUserStory(projectId, story);
+    });
+  }
+
+  @override
+  Future<void> updateTags({
+    required String projectId,
+    required String storyId,
+    required List<String> tags,
+  }) {
+    return _guard(() async {
+      await _requireManageBacklog(projectId);
+      await _dataSource.updateTags(projectId, storyId, tags, _now());
+    });
+  }
+
+  @override
   Future<void> seedMockStories(String projectId) {
     return _dataSource.seedMockStories(projectId);
+  }
+
+  /// Sinh storyKey kế tiếp dạng `US-xxx` = số lớn nhất hiện có + 1.
+  ///
+  /// Lưu ý: tính phía client nên 2 người tạo cùng lúc có thể trùng key
+  /// (KHÔNG trùng document — mỗi story vẫn có document id riêng).
+  static String nextStoryKey(List<UserStoryModel> stories) {
+    final pattern = RegExp(r'^US-(\d+)$');
+    var maxNumber = 0;
+    for (final story in stories) {
+      final match = pattern.firstMatch(story.storyKey);
+      final number = match == null ? null : int.tryParse(match.group(1)!);
+      if (number != null && number > maxNumber) maxNumber = number;
+    }
+    return 'US-${(maxNumber + 1).toString().padLeft(3, '0')}';
+  }
+
+  Future<String> _requireManageBacklog(String projectId) async {
+    final uid = _authDataSource.currentUser?.uid;
+    if (uid == null) {
+      throw Exception('Bạn cần đăng nhập để thực hiện thao tác này.');
+    }
+    final membership = await _memberDataSource.getMembership(
+      projectId: projectId,
+      userId: uid,
+    );
+    if (membership == null ||
+        !hasPermission(membership.role, Permission.manageBacklog)) {
+      throw Exception(
+          'Chỉ Product Owner hoặc Scrum Master mới được chỉnh sửa Product Backlog.');
+    }
+    return uid;
+  }
+
+  /// Chuyển lỗi Firebase/timeout sang thông báo tiếng Việt qua
+  /// [FirebaseErrorMapper] — UI không bao giờ thấy lỗi kỹ thuật thô.
+  Future<T> _guard<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on fs.FirebaseException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
+    } on TimeoutException {
+      throw Exception(FirebaseErrorMapper.mapErrorCode('deadline-exceeded'));
+    }
   }
 }

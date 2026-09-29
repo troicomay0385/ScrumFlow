@@ -7,12 +7,15 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'app/routes/app_routes.dart';
 import 'app/theme/app_theme.dart';
+import 'data/datasources/backlog_datasource.dart';
 import 'data/datasources/firebase_auth_datasource.dart';
 import 'data/datasources/firestore_datasource.dart';
 import 'data/datasources/local_cache_datasource.dart';
 import 'data/datasources/project_datasource.dart';
 import 'data/datasources/project_member_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/backlog_repository.dart';
+import 'data/repositories/backlog_repository_impl.dart';
 import 'data/repositories/project_member_repository.dart';
 import 'data/repositories/project_member_repository_impl.dart';
 import 'data/repositories/project_repository.dart';
@@ -61,6 +64,11 @@ void main() async {
     userDataSource: firestoreDataSource,
     authDataSource: firebaseAuthDataSource,
   );
+  final BacklogRepository backlogRepository = BacklogRepositoryImpl(
+    dataSource: BacklogDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
 
   runApp(
     MultiRepositoryProvider(
@@ -69,6 +77,7 @@ void main() async {
         RepositoryProvider<ProjectMemberRepository>.value(
           value: projectMemberRepository,
         ),
+        RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
       ],
       child: MultiBlocProvider(
         providers: [

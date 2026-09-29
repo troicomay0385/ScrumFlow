@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
@@ -14,6 +15,11 @@ import '../models/user_model.dart';
 ///
 /// [clearSessionData] xoá cache user nhưng giữ nguyên recent accounts
 /// để lần đăng nhập sau vẫn hiển thị danh sách tài khoản cũ.
+///
+/// **Web:** `sqflite` không hỗ trợ Flutter Web (gọi vào sẽ throw) → trên
+/// Web phần cache SQLite là no-op: không cache, [getCachedUser] luôn trả về
+/// `null`. Cache offline là tính năng dành cho mobile (US-062); nếu không
+/// chặn ở đây thì đăng xuất và tải hồ sơ user trên Chrome đều bị lỗi.
 class LocalCacheDataSource {
   final FlutterSecureStorage _secureStorage;
 
@@ -73,6 +79,7 @@ class LocalCacheDataSource {
   /// Xoá dữ liệu cũ trước khi insert (chỉ giữ 1 user).
   /// Dùng [ConflictAlgorithm.replace] phòng trường hợp trùng ID.
   Future<void> cacheUser(UserModel user) async {
+    if (kIsWeb) return;
     final db = await _getDatabase();
     // Xoá tất cả user cũ — chỉ cache user đang đăng nhập
     await db.delete(_tableName);
@@ -88,6 +95,7 @@ class LocalCacheDataSource {
   /// Trả về `null` nếu chưa có cache (chưa từng đăng nhập
   /// hoặc đã bị xoá khi đăng xuất).
   Future<UserModel?> getCachedUser() async {
+    if (kIsWeb) return null;
     final db = await _getDatabase();
     final results = await db.query(_tableName, limit: 1);
 
@@ -99,6 +107,7 @@ class LocalCacheDataSource {
   ///
   /// Được gọi khi đăng xuất — xoá dữ liệu phiên cũ.
   Future<void> clearUserCache() async {
+    if (kIsWeb) return;
     final db = await _getDatabase();
     await db.delete(_tableName);
   }
