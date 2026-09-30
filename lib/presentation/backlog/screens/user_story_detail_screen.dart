@@ -7,6 +7,7 @@ import '../../../app/utils/date_formatter.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../bloc/story_tags_cubit.dart';
+import '../widgets/edit_user_story_dialog.dart';
 import '../widgets/story_tags_card.dart';
 
 class UserStoryDetailScreen extends StatelessWidget {
@@ -136,6 +137,30 @@ class UserStoryDetailScreen extends StatelessWidget {
               fontSize: 18,
             ),
           ),
+          actions: [
+            if (canManageBacklog)
+              IconButton(
+                icon: const Icon(Icons.edit_note_rounded),
+                tooltip: 'Sửa User Story',
+                onPressed: () async {
+                  final updated = await showEditUserStoryDialog(
+                    context: context,
+                    projectId: story.projectId,
+                    story: story,
+                  );
+                  if (updated != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã cập nhật User Story thành công'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                    Navigator.of(context).pop(); // Back to list to see changes
+                  }
+                },
+              ),
+            const SizedBox(width: 8),
+          ],
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

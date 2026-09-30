@@ -1,0 +1,101 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
+
+class SprintModel extends Equatable {
+  final String id;
+  final String projectId;
+  final String name; // e.g., "Sprint 1"
+  final String goal;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String status; // Planned, Active, Closed
+  final String? createdBy;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const SprintModel({
+    required this.id,
+    required this.projectId,
+    required this.name,
+    required this.goal,
+    required this.startDate,
+    required this.endDate,
+    this.status = 'Planned',
+    this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'projectId': projectId,
+      'name': name,
+      'goal': goal,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'status': status,
+      if (createdBy != null) 'createdBy': createdBy,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory SprintModel.fromMap(Map<String, dynamic> map, [String? docId]) {
+    DateTime parseDate(dynamic date) {
+      if (date is Timestamp) return date.toDate();
+      if (date is String) return DateTime.tryParse(date) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    return SprintModel(
+      id: docId ?? (map['id'] as String? ?? ''),
+      projectId: map['projectId'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      goal: map['goal'] as String? ?? '',
+      startDate: parseDate(map['startDate']),
+      endDate: parseDate(map['endDate']),
+      status: map['status'] as String? ?? 'Planned',
+      createdBy: map['createdBy'] as String?,
+      createdAt: parseDate(map['createdAt']),
+      updatedAt: parseDate(map['updatedAt']),
+    );
+  }
+
+  SprintModel copyWith({
+    String? id,
+    String? name,
+    String? goal,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+    DateTime? updatedAt,
+  }) {
+    return SprintModel(
+      id: id ?? this.id,
+      projectId: projectId,
+      name: name ?? this.name,
+      goal: goal ?? this.goal,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      status: status ?? this.status,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        projectId,
+        name,
+        goal,
+        startDate,
+        endDate,
+        status,
+        createdBy,
+        createdAt,
+        updatedAt,
+      ];
+}

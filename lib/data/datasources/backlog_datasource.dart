@@ -149,6 +149,23 @@ class BacklogDataSource {
     return created;
   }
 
+  /// Cập nhật các field cơ bản của User Story (US-011, US-013).
+  Future<void> updateUserStory(
+    String projectId,
+    UserStoryModel story,
+  ) async {
+    await _storiesCollection(projectId).doc(story.id).update({
+      'title': story.title,
+      'description': story.description,
+      'priority': story.priority,
+      'storyPoints': story.storyPoints,
+      'deadline': story.deadline?.toIso8601String(),
+      'updatedAt': story.updatedAt.toIso8601String(),
+    }).timeout(_writeTimeout);
+
+    _upsertLocal(projectId, story);
+  }
+
   /// Cập nhật RIÊNG field `tags` (+ `updatedAt`) của 1 User Story (US-014).
   ///
   /// Dùng `update()` thay vì `set()` toàn bộ object để không bao giờ ghi đè
