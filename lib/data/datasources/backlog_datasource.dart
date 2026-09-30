@@ -132,6 +132,88 @@ class BacklogDataSource {
     }
   }
 
+  /// Tạo mới 1 User Story (US-010) với document id do Firestore sinh.
+  ///
+  /// Khác [saveUserStory]: KHÔNG nuốt lỗi và KHÔNG ghi local cache trước —
+  /// lỗi permission-denied/mạng phải được báo lên UI thay vì giả vờ thành
+  /// công. Mỗi lần gọi luôn tạo đúng 1 document mới (không upsert theo
+  /// storyKey), nên chống bấm lặp được xử lý ở tầng Cubit.
+  Future<UserStoryModel> createUserStory(
+    String projectId,
+    UserStoryModel story,
+  ) async {
+    final docRef = _storiesCollection(projectId).doc();
+    final created = story.copyWith(id: docRef.id);
+    await docRef.set(created.toMap()).timeout(_writeTimeout);
+    _upsertLocal(projectId, created);
+    return created;
+  }
+
+  /// Cập nhật các field cơ bản của User Story (US-011, US-013).
+  Future<void> updateUserStory(
+    String projectId,
+    UserStoryModel story,
+  ) async {
+    await _storiesCollection(projectId).doc(story.id).update({
+      'title': story.title,
+      'description': story.description,
+      'priority': story.priority,
+      'storyPoints': story.storyPoints,
+      'deadline': story.deadline?.toIso8601String(),
+      'updatedAt': story.updatedAt.toIso8601String(),
+    }).timeout(_writeTimeout);
+
+    _upsertLocal(projectId, story);
+  }
+
+  /// Cập nhật RIÊNG field `tags` (+ `updatedAt`) của 1 User Story (US-014).
+  ///
+  /// Dùng `update()` thay vì `set()` toàn bộ object để không bao giờ ghi đè
+  /// các field khác (title, priority, status, storyPoints, deadline...).
+  Future<void> updateTags(
+    String projectId,
+    String storyId,
+    List<String> tags,
+    DateTime updatedAt,
+  ) async {
+    await _storiesCollection(projectId).doc(storyId).update({
+      'tags': tags,
+      'updatedAt': updatedAt.toIso8601String(),
+    }).timeout(_writeTimeout);
+
+    final cached = _localCache[projectId];
+    if (cached == null) return;
+    final index = cached.indexWhere((s) => s.id == storyId);
+    if (index >= 0) {
+      _upsertLocal(
+        projectId,
+        cached[index].copyWith(tags: tags, updatedAt: updatedAt),
+      );
+    }
+  }
+
+  /// Firestore Web chỉ hoàn thành Future ghi khi server xác nhận — nếu mất
+  /// mạng sẽ treo vô hạn, nên giới hạn thời gian chờ để UI báo lỗi được.
+  static const Duration _writeTimeout = Duration(seconds: 15);
+
+  /// Đồng bộ local cache + stream sau khi ghi thành công, để UI vẫn cập
+  /// nhật khi stream đang ở chế độ fallback (listener Firestore đã lỗi).
+  /// Upsert theo id nên không bao giờ tạo bản trùng.
+  void _upsertLocal(String projectId, UserStoryModel story) {
+    final list = List<UserStoryModel>.from(_localCache[projectId] ?? const []);
+    final index = list.indexWhere((s) => s.id == story.id);
+    if (index >= 0) {
+      list[index] = story;
+    } else {
+      list.add(story);
+    }
+    _localCache[projectId] = list;
+    final controller = _getController(projectId);
+    if (!controller.isClosed) {
+      controller.add(List.from(list));
+    }
+  }
+
   /// Tạo hàng loạt dữ liệu User Stories mẫu với các User ảo để kiểm thử (Seed Data).
   Future<void> seedMockStories(String projectId) async {
     final sampleStories = _buildSampleStories(projectId);
@@ -169,7 +251,7 @@ class BacklogDataSource {
         priority: 'CAO',
         storyPoints: 3,
         status: 'Done',
-        tags: const ['#Auth', '#Security'],
+        tags: const ['#Auth', '#Security', 'Authentication'],
         dueDate: now.subtract(const Duration(days: 4)),
         assigneeId: 'mock_u3',
         assigneeName: 'Trần Thúy',
@@ -187,7 +269,7 @@ class BacklogDataSource {
         priority: 'CAO',
         storyPoints: 3,
         status: 'Done',
-        tags: const ['#Auth', '#Core'],
+        tags: const ['#Auth', '#Core', 'Authentication', 'Frontend'],
         dueDate: now.subtract(const Duration(days: 3)),
         assigneeId: 'mock_u3',
         assigneeName: 'Trần Thúy',
@@ -205,7 +287,7 @@ class BacklogDataSource {
         priority: 'CAO',
         storyPoints: 5,
         status: 'Done',
-        tags: const ['#RBAC', '#Security'],
+        tags: const ['#RBAC', '#Security', 'Security'],
         dueDate: now.subtract(const Duration(days: 2)),
         assigneeId: 'mock_u1',
         assigneeName: 'Lê Phúc',
@@ -241,11 +323,12 @@ class BacklogDataSource {
         priority: 'CAO',
         storyPoints: 5,
         status: 'In Progress',
-        tags: const ['#Security', '#Biometric', '#Mobile'],
+        tags: const ['#Security', '#Biometric', '#Mobile', 'Authentication'],
         dueDate: now.add(const Duration(days: 2)),
         assigneeId: 'mock_u1',
         assigneeName: 'Lê Phúc',
         assigneeEmail: 'phuc.po@scrumflow.com',
+        deadline: now.add(const Duration(days: 5)),
         createdAt: now.subtract(const Duration(days: 3)),
         updatedAt: now.subtract(const Duration(days: 1)),
       ),
@@ -259,11 +342,12 @@ class BacklogDataSource {
         priority: 'CAO',
         storyPoints: 3,
         status: 'In Progress',
-        tags: const ['#Backlog', '#UI'],
+        tags: const ['#Backlog', '#UI', 'Frontend'],
         dueDate: now.add(const Duration(days: 3)),
         assigneeId: 'mock_u4',
         assigneeName: 'Phạm Duy',
         assigneeEmail: 'duy.dev@scrumflow.com',
+        deadline: now.add(const Duration(days: 2)),
         createdAt: now.subtract(const Duration(days: 2)),
         updatedAt: now,
       ),
@@ -282,6 +366,7 @@ class BacklogDataSource {
         assigneeId: 'mock_u4',
         assigneeName: 'Phạm Duy',
         assigneeEmail: 'duy.dev@scrumflow.com',
+        deadline: now.add(const Duration(days: 9)),
         createdAt: now.subtract(const Duration(days: 2)),
         updatedAt: now,
       ),
@@ -300,6 +385,7 @@ class BacklogDataSource {
         assigneeId: 'mock_u2',
         assigneeName: 'Nguyễn Hiếu',
         assigneeEmail: 'hieu.dev@scrumflow.com',
+        deadline: now.add(const Duration(days: 14)),
         createdAt: now.subtract(const Duration(days: 1)),
         updatedAt: now,
       ),

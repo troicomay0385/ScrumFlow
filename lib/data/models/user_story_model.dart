@@ -10,13 +10,17 @@ class UserStoryModel extends Equatable {
   final String priority; // CAO, TB, THẤP
   final int storyPoints; // 1, 2, 3, 5, 8
   final String status; // To Do, In Progress, Done, Rejected
-  final List<String> tags; // VD: ['#Auth', '#Security']
-  final DateTime? dueDate; // Hạn chót/Deadline
   final String? assigneeId;
   final String? assigneeName;
   final String? assigneeEmail;
+  final List<String> tags; // Nhãn tự do, VD: ['Frontend', 'Authentication'] (US-014)
+  final DateTime? deadline; // null = chưa đặt hạn (US-009 xếp cuối khi sort)
+  final String? createdBy; // uid người tạo (US-010); null với dữ liệu cũ/dữ liệu mẫu
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Getter tương thích ngược cho các nơi sử dụng `dueDate`
+  DateTime? get dueDate => deadline;
 
   const UserStoryModel({
     required this.id,
@@ -27,14 +31,16 @@ class UserStoryModel extends Equatable {
     this.priority = 'CAO',
     this.storyPoints = 3,
     this.status = 'To Do',
-    this.tags = const [],
-    this.dueDate,
     this.assigneeId,
     this.assigneeName,
     this.assigneeEmail,
+    this.tags = const [],
+    DateTime? deadline,
+    DateTime? dueDate,
+    this.createdBy,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : deadline = deadline ?? dueDate;
 
   Map<String, dynamic> toMap() {
     return {
@@ -46,11 +52,15 @@ class UserStoryModel extends Equatable {
       'priority': priority,
       'storyPoints': storyPoints,
       'status': status,
-      'tags': tags,
-      'dueDate': dueDate?.toIso8601String(),
       'assigneeId': assigneeId,
       'assigneeName': assigneeName,
       'assigneeEmail': assigneeEmail,
+      'tags': tags,
+      'deadline': deadline?.toIso8601String(),
+      'dueDate': deadline?.toIso8601String(),
+      // Chỉ ghi khi có giá trị: Firestore Rules so khớp `createdBy` với uid
+      // người gọi, `null` tường minh (vd. dữ liệu mẫu) sẽ bị từ chối.
+      if (createdBy != null) 'createdBy': createdBy,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -66,14 +76,16 @@ class UserStoryModel extends Equatable {
       return DateTime.now();
     }
 
-    DateTime? parseNullableDate(dynamic date) {
-      if (date == null) return null;
-      if (date is Timestamp) {
-        return date.toDate();
-      } else if (date is String) {
-        return DateTime.tryParse(date);
-      }
+    DateTime? parseOptionalDate(dynamic date) {
+      if (date is Timestamp) return date.toDate();
+      if (date is String) return DateTime.tryParse(date);
       return null;
+    }
+
+    // Dữ liệu cũ không có `tags` (hoặc sai kiểu) → danh sách rỗng.
+    List<String> parseTags(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw.whereType<String>().toList(growable: false);
     }
 
     return UserStoryModel(
@@ -85,32 +97,35 @@ class UserStoryModel extends Equatable {
       priority: map['priority'] as String? ?? 'CAO',
       storyPoints: (map['storyPoints'] as num?)?.toInt() ?? 3,
       status: map['status'] as String? ?? 'To Do',
-      tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-          const [],
-      dueDate: parseNullableDate(map['dueDate']),
       assigneeId: map['assigneeId'] as String?,
       assigneeName: map['assigneeName'] as String?,
       assigneeEmail: map['assigneeEmail'] as String?,
+      tags: parseTags(map['tags']),
+      deadline: parseOptionalDate(map['deadline']) ??
+          parseOptionalDate(map['dueDate']),
+      createdBy: map['createdBy'] as String?,
       createdAt: parseDate(map['createdAt']),
       updatedAt: parseDate(map['updatedAt']),
     );
   }
 
   UserStoryModel copyWith({
+    String? id,
     String? title,
     String? description,
     String? priority,
     int? storyPoints,
     String? status,
-    List<String>? tags,
-    DateTime? dueDate,
     String? assigneeId,
     String? assigneeName,
     String? assigneeEmail,
+    List<String>? tags,
+    DateTime? deadline,
+    DateTime? dueDate,
     DateTime? updatedAt,
   }) {
     return UserStoryModel(
-      id: id,
+      id: id ?? this.id,
       projectId: projectId,
       storyKey: storyKey,
       title: title ?? this.title,
@@ -118,11 +133,12 @@ class UserStoryModel extends Equatable {
       priority: priority ?? this.priority,
       storyPoints: storyPoints ?? this.storyPoints,
       status: status ?? this.status,
-      tags: tags ?? this.tags,
-      dueDate: dueDate ?? this.dueDate,
       assigneeId: assigneeId ?? this.assigneeId,
       assigneeName: assigneeName ?? this.assigneeName,
       assigneeEmail: assigneeEmail ?? this.assigneeEmail,
+      tags: tags ?? this.tags,
+      deadline: deadline ?? dueDate ?? this.deadline,
+      createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -138,11 +154,12 @@ class UserStoryModel extends Equatable {
         priority,
         storyPoints,
         status,
-        tags,
-        dueDate,
         assigneeId,
         assigneeName,
         assigneeEmail,
+        tags,
+        deadline,
+        createdBy,
         createdAt,
         updatedAt,
       ];

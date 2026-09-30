@@ -60,6 +60,12 @@ class FirebaseErrorMapper {
       case 'unavailable':
         return 'Dịch vụ cơ sở dữ liệu tạm thời không khả dụng. '
             'Vui lòng thử lại sau.';
+      case 'deadline-exceeded':
+        return 'Máy chủ phản hồi quá lâu. '
+            'Vui lòng kiểm tra kết nối mạng và thử lại.';
+      case 'not-found':
+        return 'Dữ liệu không tồn tại hoặc đã bị xoá. '
+            'Vui lòng tải lại danh sách.';
 
       // ── Google Sign-In ───────────────────────────────────
       case 'sign-in-canceled':

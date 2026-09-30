@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
+import '../../../app/utils/date_formatter.dart';
 import '../../../data/models/user_story_model.dart';
+import '../../../data/repositories/backlog_repository.dart';
+import '../bloc/story_tags_cubit.dart';
+import '../widgets/edit_user_story_dialog.dart';
+import '../widgets/story_tags_card.dart';
 
 class UserStoryDetailScreen extends StatelessWidget {
   final UserStoryModel story;
 
+  /// User hiện tại có `Permission.manageBacklog` (PO/SM) → được sửa tag.
+  final bool canManageBacklog;
+
   const UserStoryDetailScreen({
     super.key,
     required this.story,
+    this.canManageBacklog = false,
   });
 
   Widget _buildPriorityBadge(String priority) {
@@ -51,10 +61,7 @@ class UserStoryDetailScreen extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              color: textColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: textColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
@@ -113,355 +120,123 @@ class UserStoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      appBar: AppBar(
-        title: Text(
-          story.storyKey,
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
+    return BlocProvider(
+      create: (context) => StoryTagsCubit(
+        context.read<BacklogRepository>(),
+        projectId: story.projectId,
+        storyId: story.id,
+        initialTags: story.tags,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Hero Header Card ────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.12),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.04),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.canvas,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AppColors.outline.withValues(alpha: 0.15),
-                          ),
-                        ),
-                        child: Text(
-                          story.storyKey,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          _buildPriorityBadge(story.priority),
-                          const SizedBox(width: 8),
-                          _buildStatusBadge(story.status),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    story.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onSurface,
-                      height: 1.3,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
+      child: Scaffold(
+        backgroundColor: AppColors.canvas,
+        appBar: AppBar(
+          title: Text(
+            story.storyKey,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
             ),
-            const SizedBox(height: 16),
-
-            // ── Description Bento Card ──────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.12),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+          ),
+          actions: [
+            if (canManageBacklog)
+              IconButton(
+                icon: const Icon(Icons.edit_note_rounded),
+                tooltip: 'Sửa User Story',
+                onPressed: () async {
+                  final updated = await showEditUserStoryDialog(
+                    context: context,
+                    projectId: story.projectId,
+                    story: story,
+                  );
+                  if (updated != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã cập nhật User Story thành công'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                    Navigator.of(context).pop(); // Back to list to see changes
+                  }
+                },
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.description_outlined,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Nội dung User Story & Mô tả',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ],
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Hero Header Card ────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppColors.outline.withValues(alpha: 0.12),
                   ),
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.canvas,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.outline.withValues(alpha: 0.08),
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.04),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
                     ),
-                    child: Text(
-                      story.description.isNotEmpty
-                          ? story.description
-                          : 'Chưa có mô tả chi tiết cho User Story này.',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.onSurface,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Agile Metrics Bento Card ────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.12),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.speed_rounded,
-                          size: 18,
-                          color: Color(0xFFB45309),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Thông số Agile / Scrum',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildMetricTile(
-                          label: 'Story Points',
-                          value: '${story.storyPoints} SP',
-                          icon: Icons.bolt_rounded,
-                          iconColor: const Color(0xFFB45309),
-                          iconBgColor: const Color(0xFFFEF3C7),
-                          isMono: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildMetricTile(
-                          label: 'Trạng thái',
-                          value: story.status,
-                          icon: Icons.flag_rounded,
-                          iconColor: AppColors.primary,
-                          iconBgColor: AppColors.primary.withValues(alpha: 0.1),
-                          isMono: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Assignee Bento Card ─────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.12),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.person_outline_rounded,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Người phụ trách (Assignee)',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (story.assigneeName != null &&
-                      story.assigneeName!.isNotEmpty) ...[
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor:
-                              AppColors.primaryContainer.withValues(alpha: 0.15),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.canvas,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.outline.withValues(alpha: 0.15),
+                            ),
+                          ),
                           child: Text(
-                            story.assigneeName!.substring(0, 1).toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
-                              color: AppColors.primary,
+                            story.storyKey,
+                            style: GoogleFonts.jetBrainsMono(
                               fontWeight: FontWeight.w800,
-                              fontSize: 17,
+                              fontSize: 13,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                story.assigneeName!,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: AppColors.onSurface,
-                                ),
-                              ),
-                              if (story.assigneeEmail != null)
-                                Text(
-                                  story.assigneeEmail!,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: AppColors.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
+                        Row(
+                          children: [
+                            _buildPriorityBadge(story.priority),
+                            const SizedBox(width: 8),
+                            _buildStatusBadge(story.status),
+                          ],
                         ),
                       ],
                     ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.canvas,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.person_off_outlined,
-                              size: 18, color: AppColors.onSurfaceVariant),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Chưa gán người phụ trách cho User Story này.',
-                            style: GoogleFonts.inter(
-                              color: AppColors.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 16),
+                    Text(
+                      story.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface,
+                        height: 1.3,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            if (story.tags.isNotEmpty || story.dueDate != null) ...[
               const SizedBox(height: 16),
+
+              // ── Description Bento Card ──────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -486,18 +261,18 @@ class UserStoryDetailScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.secondaryContainer.withValues(alpha: 0.15),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
-                            Icons.label_outline_rounded,
+                            Icons.description_outlined,
                             size: 18,
-                            color: AppColors.secondary,
+                            color: AppColors.primary,
                           ),
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Nhãn phân loại & Hạn chót',
+                          'Nội dung User Story & Mô tả',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -506,65 +281,249 @@ class UserStoryDetailScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (story.dueDate != null) ...[
-                      const SizedBox(height: 14),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.outline.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Text(
+                        story.description.isNotEmpty
+                            ? story.description
+                            : 'Chưa có mô tả chi tiết cho User Story này.',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: AppColors.onSurface,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Tags Bento Card (US-014) ────────────────────────────────────
+              StoryTagsCard(canEdit: canManageBacklog),
+              const SizedBox(height: 16),
+
+              // ── Agile Metrics Bento Card ────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.outline.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.speed_rounded,
+                            size: 18,
+                            color: Color(0xFFB45309),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Thông số Agile / Scrum',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricTile(
+                            label: 'Story Points',
+                            value: '${story.storyPoints} SP',
+                            icon: Icons.bolt_rounded,
+                            iconColor: const Color(0xFFB45309),
+                            iconBgColor: const Color(0xFFFEF3C7),
+                            isMono: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricTile(
+                            label: 'Trạng thái',
+                            value: story.status,
+                            icon: Icons.flag_rounded,
+                            iconColor: AppColors.primary,
+                            iconBgColor: AppColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            isMono: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMetricTile(
+                      label: 'Deadline',
+                      value: story.deadline != null
+                          ? formatDateVi(story.deadline!)
+                          : 'Chưa đặt deadline',
+                      icon: Icons.event_rounded,
+                      iconColor: const Color(0xFF0284C7),
+                      iconBgColor: const Color(0xFFE0F2FE),
+                      isMono: story.deadline != null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Assignee Bento Card ─────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.outline.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.person_outline_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Người phụ trách (Assignee)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (story.assigneeName != null &&
+                        story.assigneeName!.isNotEmpty) ...[
                       Row(
                         children: [
-                          const Icon(Icons.event_note_rounded,
-                              size: 16, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Hạn chót (Deadline): ',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onSurfaceVariant,
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: AppColors.primaryContainer
+                                .withValues(alpha: 0.15),
+                            child: Text(
+                              story.assigneeName!.substring(0, 1).toUpperCase(),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 17,
+                              ),
                             ),
                           ),
-                          Text(
-                            '${story.dueDate!.day.toString().padLeft(2, '0')}/${story.dueDate!.month.toString().padLeft(2, '0')}/${story.dueDate!.year}',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  story.assigneeName!,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                                if (story.assigneeEmail != null)
+                                  Text(
+                                    story.assigneeEmail!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ],
-                    if (story.tags.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: story.tags.map((tag) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.primary.withValues(alpha: 0.15),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.canvas,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.person_off_outlined,
+                              size: 18,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Chưa gán người phụ trách cho User Story này.',
+                              style: GoogleFonts.inter(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 13,
                               ),
                             ),
-                            child: Text(
-                              tag,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -583,9 +542,7 @@ class UserStoryDetailScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.canvas,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.outline.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
@@ -629,4 +586,3 @@ class UserStoryDetailScreen extends StatelessWidget {
     );
   }
 }
-

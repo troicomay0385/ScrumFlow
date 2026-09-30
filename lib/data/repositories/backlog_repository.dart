@@ -13,6 +13,42 @@ abstract class BacklogRepository {
   /// Tạo hoặc cập nhật User Story.
   Future<void> saveUserStory(String projectId, UserStoryModel story);
 
+  /// Tạo mới 1 User Story trong Product Backlog của [projectId] (US-010).
+  ///
+  /// Chỉ user có `Permission.manageBacklog` (PO/SM). Tự sinh `storyKey`
+  /// kế tiếp và gắn `createdBy` = uid hiện tại. Throw [Exception] với thông
+  /// báo tiếng Việt khi không có quyền hoặc ghi Firestore thất bại.
+  Future<UserStoryModel> createUserStory({
+    required String projectId,
+    required String title,
+    required String description,
+    required String priority,
+    DateTime? deadline,
+  });
+
+  /// Cập nhật nội dung User Story (US-011) & Story Points (US-013).
+  ///
+  /// Chỉ user có `Permission.manageBacklog` (PO/SM). Cập nhật các field
+  /// cho phép (title, description, priority, storyPoints, deadline) —
+  /// KHÔNG đụng tags/projectId/createdBy/storyKey/status.
+  Future<UserStoryModel> updateUserStory({
+    required String projectId,
+    required String storyId,
+    required String title,
+    required String description,
+    required String priority,
+    required int storyPoints,
+    DateTime? deadline,
+  });
+
+  /// Thay toàn bộ danh sách tag của 1 User Story (US-014) — chỉ cập nhật
+  /// field `tags`, không đụng các field khác.
+  Future<void> updateTags({
+    required String projectId,
+    required String storyId,
+    required List<String> tags,
+  });
+
   /// Tạo dữ liệu User Story mẫu với các User ảo.
   Future<void> seedMockStories(String projectId);
 }

@@ -141,6 +141,53 @@
   - 5 files changed: `HuongDanKetNoiStitch.md`, `lib/app/constants/firebase_error_mapper.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/presentation/home/screens/home_screen.dart`, `test/app/constants/firebase_error_mapper_test.dart`.
   - Đã push thành công lên `origin/hieu`.
 
+### Ngày 30/09/2026: Sprint 2 — US-011, US-013 (Sửa & Gán điểm Story), US-015 (Danh sách Sprint)
+- **US-011 & US-013 — Chỉnh sửa & Gán Story Points:**
+  - Xây dựng `EditUserStoryCubit` (chống submit lặp, kiểm tra logic lỗi).
+  - Thêm hộp thoại `showEditUserStoryDialog` tương thích giao diện Kinetic Sprint, cho phép sửa tiêu đề, mô tả, ưu tiên, hạn chót và thêm chọn Story Points (US-013) dùng dãy Fibonacci (1, 2, 3, 5, 8, 13, 21).
+  - Cập nhật `BacklogRepository` và `BacklogDataSource` để map dữ liệu mới đẩy lên Firestore, phân quyền kỹ (chỉ PO/SM mới được sửa).
+- **US-015 — Danh sách Sprint:**
+  - Xây dựng `SprintModel`, `SprintDataSource` (hỗ trợ tạo dữ liệu mẫu dự phòng khi chưa có mạng/chưa cấu hình Firebase).
+  - Xây dựng `SprintRepository` và `SprintBloc`.
+  - Thiết kế màn hình `SprintListScreen` hiển thị các sprint đang Planned/Active/Closed, cập nhật navigation từ trang `ProjectDetailScreen` qua mục "Sprint & Kanban Board".
+- Đã sẵn sàng commit và push lên nhánh mới.
+
+### Ngày 29/09/2026: Sprint 2 — US-010 (Tạo User Story), US-014 (Gắn Tag), US-009 (Sắp xếp Backlog)
+
+- **Nguyên tắc:** mở rộng hệ thống Backlog sẵn có (US-005/US-006), KHÔNG tạo Backlog/Model/Bloc/Screen thứ hai. Luồng: UI → Bloc/Cubit → `BacklogRepository` → `BacklogDataSource` → Firestore `projects/{projectId}/userStories/{storyId}` (giữ nguyên path cũ).
+- **Firestore schema (`UserStoryModel`) — bổ sung, tương thích ngược:**
+  - `tags: List<String>` (mặc định `[]`), `deadline: DateTime?` (ISO string, nullable), `createdBy: String?` (uid người tạo).
+  - Dữ liệu cũ thiếu các field này vẫn parse được (`tags` thiếu/sai kiểu → `[]`, `deadline` thiếu → `null`). 8 story mẫu được bổ sung tag/deadline (một số để trống để kiểm thử trường hợp null).
+- **US-010 — Tạo User Story:**
+  - Nút FAB "Tạo User Story" trên `BacklogListScreen` (chỉ hiện với PO/SM) + nút "Tạo User Story đầu tiên" ở empty state.
+  - Dialog `create_user_story_dialog.dart`: Tiêu đề (bắt buộc, ≤200 ký tự), Mô tả (≤2000), Ưu tiên CAO/TB/THẤP (ChoiceChip), Deadline (tuỳ chọn, DatePicker). Có loading, error inline, disable nút khi đang gửi.
+  - `CreateUserStoryCubit` chặn submit lặp (đang gửi/đã thành công thì bỏ qua) → không tạo document trùng.
+  - `BacklogRepositoryImpl.createUserStory`: kiểm tra `Permission.manageBacklog`, sinh `storyKey` kế tiếp (`US-xxx` = số lớn nhất + 1), gắn `projectId`, `createdBy`, `createdAt/updatedAt`, status `To Do`. Story mới tự xuất hiện qua stream real-time sẵn có.
+  - `BacklogDataSource.createUserStory` mới: KHÔNG nuốt lỗi như `saveUserStory` cũ, có timeout 15s để báo lỗi khi mất mạng.
+- **US-014 — Gắn nhãn/Tag:**
+  - Card "Nhãn / Tags" (`story_tags_card.dart`) tích hợp vào `UserStoryDetailScreen` hiện có: xem tag, thêm tag (dialog), xoá tag (nút x trên chip), "Lưu tag"/"Hoàn tác". MEMBER chỉ xem.
+  - `StoryTagsCubit` quản lý bản nháp; validate tag rỗng/trùng (không phân biệt hoa thường)/quá 30 ký tự/tối đa 10 tag.
+  - `BacklogDataSource.updateTags` dùng `update({'tags', 'updatedAt'})` → không ghi đè các field khác của story.
+  - Thẻ story trong danh sách hiển thị tối đa 3 tag + "+n", và deadline (đỏ nếu quá hạn mà chưa Done). Màn chi tiết có thêm ô Deadline.
+- **US-009 — Sắp xếp Backlog:**
+  - Dropdown "Sắp xếp theo: Mặc định / Ưu tiên / Deadline" trên `BacklogListScreen`.
+  - Ưu tiên theo thứ tự nghiệp vụ CAO → TB → THẤP (`UserStoryPriority.rank`, không sort alphabet). Deadline gần nhất trước, story không có deadline xếp cuối. Sort ổn định, chỉ đổi thứ tự hiển thị, không sửa dữ liệu.
+  - Filter trạng thái được chuyển từ `setState` của widget vào `BacklogBloc` (`BacklogStatusFilterChanged`, `BacklogSortChanged`) → filter + sort kết hợp được và giữ nguyên khi stream đẩy dữ liệu mới.
+- **Phân quyền (RBAC):** bổ sung `Permission.manageBacklog` cho **SM** trong `role_permissions.dart` (actor các US Backlog Sprint 2 là "PO/SM"). UI hỏi qua `hasPermission(role, Permission.manageBacklog)` với role real-time từ `ProjectMemberRepository.streamCurrentUserRole`.
+- **Firestore Security Rules (đã deploy lên `scrumflow-c835d`):** rule `userStories` trước đây là `allow read, write: if isSignedIn()` (người ngoài project cũng đọc/ghi được) → siết lại:
+  - `read`: chỉ thành viên project.
+  - `create`: chỉ PO/SM, `projectId` phải khớp path, `createdBy` (nếu có) phải là chính người gọi, dữ liệu hợp lệ (`title` 1–200 ký tự, `priority` ∈ CAO/TB/THẤP, `tags` là list ≤10).
+  - `update`: chỉ PO/SM, không đổi `projectId`/`createdBy`. `delete`: chỉ PO/SM (chuẩn bị cho US-012).
+- **File mới:** `lib/app/constants/user_story_priority.dart`, `lib/app/utils/user_story_validator.dart`, `lib/app/utils/date_formatter.dart`, `lib/presentation/backlog/bloc/create_user_story_cubit.dart` (+ `_state`), `lib/presentation/backlog/bloc/story_tags_cubit.dart` (+ `_state`), `lib/presentation/backlog/utils/backlog_view.dart`, `lib/presentation/backlog/widgets/{create_user_story_dialog, story_tags_card, story_tag_chip, user_story_card}.dart`, và 5 file test mới.
+- **File sửa:** `user_story_model.dart`, `backlog_datasource.dart`, `backlog_repository.dart`, `backlog_repository_impl.dart`, `backlog_bloc/event/state.dart`, `backlog_list_screen.dart` (tách thẻ story sang `UserStoryCard`), `user_story_detail_screen.dart`, `role_permissions.dart`, `firebase_error_mapper.dart` (thêm `deadline-exceeded`, `not-found`), `firestore.rules`, `main.dart` (đăng ký `BacklogRepository` qua `RepositoryProvider`).
+- **Kiểm thử:**
+  - `flutter test`: **69/69 PASS** (tăng từ 28). Test mới: sort ưu tiên/deadline/null/không mất story/filter+sort, BacklogBloc giữ filter+sort khi stream cập nhật, tạo story thành công/validate/lỗi/chống bấm lặp, repository kiểm tra quyền PO/SM/MEMBER + map lỗi Firebase/timeout + sinh storyKey, thêm/xoá/lưu tag không mất field khác, parse dữ liệu cũ không có tags/deadline.
+  - `flutter analyze`: **0 error, 0 warning** (chỉ còn 10 info `prefer_initializing_formals` có từ trước).
+  - Firestore rules: compile + deploy thành công.
+  - Chrome: `flutter build web` và `flutter run -d chrome` chạy thành công. **Kịch bản kiểm thử thủ công** (tạo story, thêm/xoá tag, sort, đăng nhập SM/Member) chưa được xác nhận trong phiên này — cần chạy lại theo checklist khi kiểm thử.
+- **Sửa lỗi khi chạy trên Chrome (Web):** không đăng xuất được (báo "Đã xảy ra lỗi không mong muốn") và trang chủ chỉ hiện "Xin chào!" không có tên. Nguyên nhân: `LocalCacheDataSource` dùng `sqflite` — không hỗ trợ Web nên throw, làm `signOut()` dừng trước khi gọi Firebase signOut. Sửa: phần cache SQLite là no-op trên Web (`kIsWeb`), và `AuthRepositoryImpl.signOut()`/`authStateChanges` bọc try-catch phần cache để lỗi cache không bao giờ chặn đăng xuất. Android không bị ảnh hưởng.
+- **Lưu ý/rủi ro còn lại:** `storyKey` sinh phía client nên 2 người tạo cùng lúc có thể trùng key (không trùng document). Cơ chế fallback sang 8 story mẫu khi Firestore lỗi (có từ US-005) vẫn giữ nguyên — story mẫu chỉ ở local sẽ không lưu tag được (báo lỗi rõ ràng) cho đến khi bấm "Nạp mẫu" để đồng bộ lên Firestore.
+
 ---
 
 ### Ngày 28/09/2026: Hoàn thành 3 User Story đầu tiên của Sprint 2 (US-007, US-008, US-009) & Đẩy lên nhánh `Duy`
@@ -205,20 +252,25 @@
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **3 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **8 / 12 User Stories hoàn thành***
 
 - [x] **US-007** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh.  
   *(Đã hoàn thành: Thanh tìm kiếm Search Bar chuẩn Kinetic Sprint, tìm kiếm tức thời trên storyKey, title, description, assigneeName, tags, hỗ trợ nút xóa và Empty Search State).*
 - [x] **US-008** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn.  
   *(Đã hoàn thành: Chip lọc trạng thái nhanh, Modal Bottom Sheet lọc đa tiêu chí Trạng thái, Ưu tiên, Tag theo chuẩn màn hình Stitch 6a3a7004d771430f925f796377fb26f1, badge đếm filter).*
-- [x] **US-009** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline).  
-  *(Đã hoàn thành: Dropdown sắp xếp theo Ưu tiên Cao->Thấp, Thấp->Cao, Hạn chót gần nhất, Story Points, Mã US).*
-- [ ] **US-010** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên. *(Chưa hoàn thành)*
-- [ ] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung. *(Chưa hoàn thành)*
+- [x] **US-009** [Ưu tiên: CAO] *(Duy & Bửu Phúc)*: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline).  
+  *(Đã hoàn thành: Dropdown chọn tiêu chí sắp xếp: Ưu tiên Cao->Thấp, Thấp->Cao, Hạn chót/Deadline gần nhất, Story Points, Mã US).*
+- [x] **US-010** [Ưu tiên: CAO] *(Bửu Phúc)*: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên.  
+  *(Đã hoàn thành: Dialog tạo story + `CreateUserStoryCubit` chống bấm lặp, tự sinh storyKey, kiểm tra quyền PO/SM ở Repository và Firestore Rules).*
+- [x] **US-011** [Ưu tiên: CAO] *(Thu Thúy)*: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung.  
+  *(Đã hoàn thành: `showEditUserStoryDialog` + `EditUserStoryCubit`, chặn quyền PO/SM, update Firestore).*
 - [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*
-- [ ] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story. *(Chưa hoàn thành)*
-- [ ] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story. *(Chưa hoàn thành)*
-- [ ] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo. *(Chưa hoàn thành)*
+- [x] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story.  
+  *(Đã hoàn thành: Tích hợp chọn Story Points Fibonacci trong hộp thoại Edit User Story).*
+- [x] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story.  
+  *(Đã hoàn thành: Card "Nhãn / Tags" trong `UserStoryDetailScreen`, `StoryTagsCubit`, cập nhật riêng field `tags` trên Firestore).*
+- [x] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo.  
+  *(Đã hoàn thành: Màn hình `SprintListScreen`, Bloc, Repos, Mock data fallback).*
 - [ ] **US-016** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn tạo Sprint mới với tên, mục tiêu, ngày bắt đầu và kết thúc. *(Chưa hoàn thành)*
 - [ ] **US-017** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem chi tiết Sprint để biết mục tiêu và các User Story được chọn. *(Chưa hoàn thành)*
 - [ ] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint. *(Chưa hoàn thành)*
@@ -282,7 +334,7 @@
 - [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  
   *(Đã hoàn thành nền tảng: Đã áp dụng loading states, shimmer/indicator cho các màn hình Auth, Project).*
 - [x] **US-054** [Ưu tiên: CAO]: Là nhóm phát triển, tôi muốn viết và chạy bộ Test Case cho toàn bộ 5 Sprint để đảm bảo hệ thống vận hành ổn định.  
-  *(Đã hoàn thành cho các module hiện có: 28/28 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper, Platform Error Mapper).*
+  *(Đã hoàn thành cho các module hiện có: 69/69 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper, Platform Error Mapper, Product Backlog — tạo story/tag/sort).*
 - [x] **US-055** [Ưu tiên: CAO]: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
   *(Đã hoàn thành nền tảng: Tích hợp `flutter_screenutil`, căn chỉnh tỷ lệ giao diện).*
 

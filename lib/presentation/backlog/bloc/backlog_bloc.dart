@@ -31,13 +31,12 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
 
     await emit.forEach(
       _repository.streamUserStories(event.projectId),
-      onData: (stories) {
-        if (state is BacklogLoaded) {
-          final current = state as BacklogLoaded;
-          return current.copyWith(stories: stories);
-        }
-        return BacklogLoaded(stories: stories);
-      },
+      // Giữ nguyên filter/sort người dùng đã chọn khi stream đẩy dữ liệu
+      // mới (vd. vừa tạo story) — chỉ thay danh sách gốc.
+      onData: (stories) => state is BacklogLoaded
+          ? (state as BacklogLoaded)
+              .copyWith(stories: stories, isSeeding: false)
+          : BacklogLoaded(stories: stories),
       onError: (error, stackTrace) =>
           BacklogError('Lỗi tải Product Backlog: $error'),
     );
@@ -62,8 +61,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogSearchChanged event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(searchQuery: event.query));
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(searchQuery: event.query));
     }
   }
 
@@ -71,8 +71,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogStatusFilterChanged event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(statusFilter: event.status));
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(statusFilter: () => event.status));
     }
   }
 
@@ -80,8 +81,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogPriorityFilterChanged event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(priorityFilter: event.priority));
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(priorityFilter: () => event.priority));
     }
   }
 
@@ -89,8 +91,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogTagFilterChanged event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(tagFilter: event.tag));
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(tagFilter: () => event.tag));
     }
   }
 
@@ -98,8 +101,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogSortChanged event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(sortBy: event.sortBy));
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(sortOption: event.sortOption));
     }
   }
 
@@ -107,13 +111,13 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     BacklogFilterResetRequested event,
     Emitter<BacklogState> emit,
   ) {
-    if (state is BacklogLoaded) {
-      emit((state as BacklogLoaded).copyWith(
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(
         searchQuery: '',
-        statusFilter: 'Tất cả',
-        priorityFilter: 'Tất cả',
-        tagFilter: 'Tất cả',
-        sortBy: BacklogSortBy.priorityDesc,
+        statusFilter: () => null,
+        priorityFilter: () => null,
+        tagFilter: () => null,
       ));
     }
   }

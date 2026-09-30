@@ -11,6 +11,7 @@ import '../../../data/models/project_model.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/project_repository.dart';
 import '../../backlog/screens/backlog_list_screen.dart';
+import '../../sprints/screens/sprint_list_screen.dart';
 import '../../project_members/widgets/role_badge.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../widgets/edit_project_dialog.dart';
@@ -323,12 +324,12 @@ class ProjectDetailScreen extends StatelessWidget {
                     tagBgColor: const Color(0xFFFFEDD5),
                     tagTextColor: const Color(0xFFC2410C),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Sprint Kanban Board đang được kết nối trong dự án này.',
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SprintListScreen(
+                            projectId: project.id,
+                            projectName: project.name,
                           ),
-                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },

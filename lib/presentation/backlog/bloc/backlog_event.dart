@@ -1,16 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum BacklogSortBy {
-  priorityDesc('Ưu tiên: Cao -> Thấp'),
-  priorityAsc('Ưu tiên: Thấp -> Cao'),
-  dueDateAsc('Hạn chót: Gần nhất'),
-  pointsDesc('Story Points: Cao -> Thấp'),
-  pointsAsc('Story Points: Thấp -> Cao'),
-  storyKeyAsc('Mã US: Tăng dần');
-
-  final String label;
-  const BacklogSortBy(this.label);
-}
+import '../utils/backlog_view.dart';
 
 abstract class BacklogEvent extends Equatable {
   const BacklogEvent();
@@ -47,9 +37,9 @@ class BacklogSearchChanged extends BacklogEvent {
   List<Object?> get props => [query];
 }
 
-/// US-008: Thay đổi bộ lọc Trạng thái (Tất cả, To Do, In Progress, Done, Rejected)
+/// US-008: Đổi bộ lọc trạng thái; `null` hoặc 'Tất cả' = "Tất cả".
 class BacklogStatusFilterChanged extends BacklogEvent {
-  final String status;
+  final String? status;
 
   const BacklogStatusFilterChanged(this.status);
 
@@ -59,7 +49,7 @@ class BacklogStatusFilterChanged extends BacklogEvent {
 
 /// US-008: Thay đổi bộ lọc Độ ưu tiên (Tất cả, CAO, TB, THẤP)
 class BacklogPriorityFilterChanged extends BacklogEvent {
-  final String priority;
+  final String? priority;
 
   const BacklogPriorityFilterChanged(this.priority);
 
@@ -69,7 +59,7 @@ class BacklogPriorityFilterChanged extends BacklogEvent {
 
 /// US-008: Thay đổi bộ lọc Nhãn / Tag
 class BacklogTagFilterChanged extends BacklogEvent {
-  final String tag;
+  final String? tag;
 
   const BacklogTagFilterChanged(this.tag);
 
@@ -77,14 +67,14 @@ class BacklogTagFilterChanged extends BacklogEvent {
   List<Object?> get props => [tag];
 }
 
-/// US-009: Thay đổi tiêu chí sắp xếp
+/// US-009: Đổi tiêu chí sắp xếp hiển thị.
 class BacklogSortChanged extends BacklogEvent {
-  final BacklogSortBy sortBy;
+  final BacklogSortOption sortOption;
 
-  const BacklogSortChanged(this.sortBy);
+  const BacklogSortChanged(this.sortOption);
 
   @override
-  List<Object?> get props => [sortBy];
+  List<Object?> get props => [sortOption];
 }
 
 /// Đặt lại toàn bộ bộ lọc và từ khóa tìm kiếm về mặc định

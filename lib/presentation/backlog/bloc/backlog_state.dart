@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/user_story_model.dart';
-
-import 'backlog_event.dart';
+import '../utils/backlog_view.dart';
 
 abstract class BacklogState extends Equatable {
   const BacklogState();
@@ -15,165 +14,101 @@ class BacklogInitial extends BacklogState {}
 class BacklogLoading extends BacklogState {}
 
 class BacklogLoaded extends BacklogState {
+  /// Danh sách gốc từ stream (thứ tự Firestore) — KPI tổng số/tổng SP
+  /// luôn tính trên danh sách này, không phụ thuộc filter.
   final List<UserStoryModel> stories;
-  final String searchQuery;
-  final String statusFilter;
-  final String priorityFilter;
-  final String tagFilter;
-  final BacklogSortBy sortBy;
   final bool isSeeding;
 
-  const BacklogLoaded({
-    required this.stories,
-    this.searchQuery = '',
-    this.statusFilter = 'Tất cả',
-    this.priorityFilter = 'Tất cả',
-    this.tagFilter = 'Tất cả',
-    this.sortBy = BacklogSortBy.priorityDesc,
-    this.isSeeding = false,
-  });
+  /// US-007: Từ khóa tìm kiếm
+  final String searchQuery;
 
-  /// Tính toán danh sách User Stories sau khi áp dụng đồng thời Tìm kiếm, Lọc và Sắp xếp
-  List<UserStoryModel> get filteredStories {
-    final list = stories.where((story) {
-      // 1. Lọc theo trạng thái
-      if (statusFilter != 'Tất cả' &&
-          story.status.toLowerCase() != statusFilter.toLowerCase()) {
-        return false;
-      }
-      // 2. Lọc theo độ ưu tiên
-      if (priorityFilter != 'Tất cả' &&
-          story.priority.toUpperCase() != priorityFilter.toUpperCase()) {
-        return false;
-      }
-      // 3. Lọc theo nhãn / tag
-      if (tagFilter != 'Tất cả' &&
-          !story.tags
-              .map((t) => t.toLowerCase())
-              .contains(tagFilter.toLowerCase())) {
-        return false;
-      }
-      // 4. Tìm kiếm từ khóa (US-007)
-      if (searchQuery.trim().isNotEmpty) {
-        final query = searchQuery.trim().toLowerCase();
-        final matchKey = story.storyKey.toLowerCase().contains(query);
-        final matchTitle = story.title.toLowerCase().contains(query);
-        final matchDesc = story.description.toLowerCase().contains(query);
-        final matchAssignee =
-            story.assigneeName?.toLowerCase().contains(query) ?? false;
-        final matchTag =
-            story.tags.any((t) => t.toLowerCase().contains(query));
+  /// US-008: Bộ lọc trạng thái; `null` hoặc 'Tất cả' = "Tất cả".
+  final String? statusFilter;
 
-        if (!matchKey &&
-            !matchTitle &&
-            !matchDesc &&
-            !matchAssignee &&
-            !matchTag) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
+  /// US-008: Bộ lọc độ ưu tiên (CAO, TB, THẤP)
+  final String? priorityFilter;
 
-    // 5. Sắp xếp (US-009)
-    list.sort((a, b) {
-      switch (sortBy) {
-        case BacklogSortBy.priorityDesc:
-          return _priorityWeight(b.priority)
-              .compareTo(_priorityWeight(a.priority));
-        case BacklogSortBy.priorityAsc:
-          return _priorityWeight(a.priority)
-              .compareTo(_priorityWeight(b.priority));
-        case BacklogSortBy.dueDateAsc:
-          if (a.dueDate == null && b.dueDate == null) return 0;
-          if (a.dueDate == null) return 1;
-          if (b.dueDate == null) return -1;
-          return a.dueDate!.compareTo(b.dueDate!);
-        case BacklogSortBy.pointsDesc:
-          return b.storyPoints.compareTo(a.storyPoints);
-        case BacklogSortBy.pointsAsc:
-          return a.storyPoints.compareTo(b.storyPoints);
-        case BacklogSortBy.storyKeyAsc:
-          return a.storyKey.compareTo(b.storyKey);
-      }
-    });
+  /// US-008: Bộ lọc tag
+  final String? tagFilter;
 
-    return list;
-  }
+  /// US-009: Tiêu chí sắp xếp
+  final BacklogSortOption sortOption;
 
-  static int _priorityWeight(String priority) {
-    switch (priority.toUpperCase()) {
-      case 'CAO':
-      case 'HIGH':
-      case 'URGENT':
-        return 3;
-      case 'TB':
-      case 'TRUNG BÌNH':
-      case 'MEDIUM':
-        return 2;
-      case 'THẤP':
-      case 'LOW':
-        return 1;
-      default:
-        return 0;
-    }
-  }
+  /// Danh sách hiển thị = [stories] sau khi search, filter rồi sort.
+  final List<UserStoryModel> visibleStories;
 
-  /// Trích xuất danh sách tag duy nhất từ các User Stories
-  List<String> get availableTags {
-    final set = <String>{};
-    for (final s in stories) {
-      set.addAll(s.tags);
-    }
-    final list = set.toList();
-    list.sort();
-    return list;
-  }
+  /// Getter tương thích ngược với code nhánh Duy
+  List<UserStoryModel> get filteredStories => visibleStories;
 
-  /// Kiểm tra có đang áp dụng bất kỳ bộ lọc hoặc tìm kiếm nào không
-  bool get hasActiveFilters =>
-      searchQuery.trim().isNotEmpty ||
-      statusFilter != 'Tất cả' ||
-      priorityFilter != 'Tất cả' ||
-      tagFilter != 'Tất cả';
+  /// Getter tương thích ngược với code nhánh Duy
+  BacklogSortOption get sortBy => sortOption;
 
-  /// Số lượng bộ lọc thuộc tính đang kích hoạt (không tính search text)
+  /// Số lượng bộ lọc đang kích hoạt (phục vụ hiển thị badge filter)
   int get activeFilterCount {
     int count = 0;
-    if (statusFilter != 'Tất cả') count++;
-    if (priorityFilter != 'Tất cả') count++;
-    if (tagFilter != 'Tất cả') count++;
+    if (searchQuery.trim().isNotEmpty) count++;
+    if (statusFilter != null &&
+        statusFilter!.isNotEmpty &&
+        statusFilter != 'Tất cả') {
+      count++;
+    }
+    if (priorityFilter != null &&
+        priorityFilter!.isNotEmpty &&
+        priorityFilter != 'Tất cả') {
+      count++;
+    }
+    if (tagFilter != null && tagFilter!.isNotEmpty && tagFilter != 'Tất cả') {
+      count++;
+    }
     return count;
   }
+
+  BacklogLoaded({
+    required this.stories,
+    this.isSeeding = false,
+    this.searchQuery = '',
+    this.statusFilter,
+    this.priorityFilter,
+    this.tagFilter,
+    this.sortOption = BacklogSortOption.defaultOrder,
+  }) : visibleStories = applyBacklogView(
+          stories,
+          searchQuery: searchQuery,
+          statusFilter: statusFilter,
+          priorityFilter: priorityFilter,
+          tagFilter: tagFilter,
+          sortOption: sortOption,
+        );
 
   @override
   List<Object?> get props => [
         stories,
+        isSeeding,
         searchQuery,
         statusFilter,
         priorityFilter,
         tagFilter,
-        sortBy,
-        isSeeding,
+        sortOption,
       ];
 
   BacklogLoaded copyWith({
     List<UserStoryModel>? stories,
-    String? searchQuery,
-    String? statusFilter,
-    String? priorityFilter,
-    String? tagFilter,
-    BacklogSortBy? sortBy,
     bool? isSeeding,
+    String? searchQuery,
+    String? Function()? statusFilter,
+    String? Function()? priorityFilter,
+    String? Function()? tagFilter,
+    BacklogSortOption? sortOption,
   }) {
     return BacklogLoaded(
       stories: stories ?? this.stories,
-      searchQuery: searchQuery ?? this.searchQuery,
-      statusFilter: statusFilter ?? this.statusFilter,
-      priorityFilter: priorityFilter ?? this.priorityFilter,
-      tagFilter: tagFilter ?? this.tagFilter,
-      sortBy: sortBy ?? this.sortBy,
       isSeeding: isSeeding ?? this.isSeeding,
+      searchQuery: searchQuery ?? this.searchQuery,
+      statusFilter: statusFilter != null ? statusFilter() : this.statusFilter,
+      priorityFilter:
+          priorityFilter != null ? priorityFilter() : this.priorityFilter,
+      tagFilter: tagFilter != null ? tagFilter() : this.tagFilter,
+      sortOption: sortOption ?? this.sortOption,
     );
   }
 }

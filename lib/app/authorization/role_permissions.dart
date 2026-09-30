@@ -22,6 +22,9 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
   ProjectRole.sm: {
     Permission.viewProject,
     Permission.viewBacklog,
+    // Sprint 2 (US-007 → US-014): actor của các US quản lý Backlog là
+    // "PO/SM" → SM được tạo/sửa/gắn tag User Story như PO.
+    Permission.manageBacklog,
     Permission.viewSprint,
     Permission.manageSprint,
     Permission.viewTask,

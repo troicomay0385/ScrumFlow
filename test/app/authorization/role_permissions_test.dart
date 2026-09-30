@@ -29,6 +29,16 @@ void main() {
       expect(hasPermission(ProjectRole.po, Permission.manageProject), isTrue);
     });
 
+    test('Product Backlog (US-009/010/014): PO & SM được quản lý, MEMBER chỉ xem', () {
+      expect(hasPermission(ProjectRole.po, Permission.manageBacklog), isTrue);
+      expect(hasPermission(ProjectRole.sm, Permission.manageBacklog), isTrue);
+      expect(hasPermission(ProjectRole.member, Permission.manageBacklog), isFalse);
+      expect(hasPermission(null, Permission.manageBacklog), isFalse);
+      for (final role in ProjectRole.values) {
+        expect(hasPermission(role, Permission.viewBacklog), isTrue);
+      }
+    });
+
     test('SM và MEMBER không có quyền quản lý thành viên và quản lý project', () {
       for (final role in [ProjectRole.sm, ProjectRole.member]) {
         expect(hasPermission(role, Permission.manageMembers), isFalse);
