@@ -128,6 +128,17 @@ class BacklogRepositoryImpl implements BacklogRepository {
   }
 
   @override
+  Future<void> deleteUserStory({
+    required String projectId,
+    required String storyId,
+  }) {
+    return _guard(() async {
+      await _requireManageBacklog(projectId);
+      await _dataSource.deleteUserStory(projectId, storyId);
+    });
+  }
+
+  @override
   Future<void> seedMockStories(String projectId) {
     return _dataSource.seedMockStories(projectId);
   }

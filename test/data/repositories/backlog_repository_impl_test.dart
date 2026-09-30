@@ -204,6 +204,47 @@ void main() {
     });
   });
 
+  group('deleteUserStory (US-012)', () {
+    for (final role in [ProjectRole.po, ProjectRole.sm]) {
+      test('${role.name.toUpperCase()} xóa User Story thành công', () async {
+        givenRole(role);
+        when(() => dataSource.deleteUserStory(projectId, 'doc-1'))
+            .thenAnswer((_) async {});
+
+        await repository.deleteUserStory(
+          projectId: projectId,
+          storyId: 'doc-1',
+        );
+
+        verify(() => dataSource.deleteUserStory(projectId, 'doc-1')).called(1);
+      });
+    }
+
+    test('MEMBER không được quyền xóa User Story', () async {
+      givenRole(ProjectRole.member);
+
+      await expectLater(
+        repository.deleteUserStory(projectId: projectId, storyId: 'doc-1'),
+        throwsA(
+          predicate<Exception>(
+            (e) => e.toString().contains('Chỉ Product Owner hoặc Scrum Master'),
+          ),
+        ),
+      );
+      verifyNever(() => dataSource.deleteUserStory(any(), any()));
+    });
+
+    test('User ngoài dự án (role null) bị từ chối xóa User Story', () async {
+      givenRole(null);
+
+      await expectLater(
+        repository.deleteUserStory(projectId: projectId, storyId: 'doc-1'),
+        throwsA(isA<Exception>()),
+      );
+      verifyNever(() => dataSource.deleteUserStory(any(), any()));
+    });
+  });
+
   group('nextStoryKey', () {
     test('backlog trống → US-001', () {
       expect(BacklogRepositoryImpl.nextStoryKey(const []), 'US-001');

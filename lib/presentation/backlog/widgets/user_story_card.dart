@@ -11,11 +11,17 @@ import 'story_tag_chip.dart';
 class UserStoryCard extends StatelessWidget {
   final UserStoryModel story;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   /// Số tag tối đa hiển thị trên thẻ, phần còn lại gộp thành "+n".
   static const int _maxVisibleTags = 3;
 
-  const UserStoryCard({super.key, required this.story, required this.onTap});
+  const UserStoryCard({
+    super.key,
+    required this.story,
+    required this.onTap,
+    this.onDelete,
+  });
 
   Widget _buildPriorityBadge(String priority) {
     Color textColor;
@@ -216,6 +222,23 @@ class UserStoryCard extends StatelessWidget {
                   _buildPriorityBadge(story.priority),
                   const Spacer(),
                   _buildStatusBadge(story.status),
+                  if (onDelete != null) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: AppColors.error,
+                      ),
+                      tooltip: 'Xóa User Story',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: onDelete,
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),

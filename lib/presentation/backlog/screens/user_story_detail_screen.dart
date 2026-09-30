@@ -7,6 +7,7 @@ import '../../../app/utils/date_formatter.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../bloc/story_tags_cubit.dart';
+import '../widgets/delete_user_story_dialog.dart';
 import '../widgets/edit_user_story_dialog.dart';
 import '../widgets/story_tags_card.dart';
 
@@ -138,7 +139,7 @@ class UserStoryDetailScreen extends StatelessWidget {
             ),
           ),
           actions: [
-            if (canManageBacklog)
+            if (canManageBacklog) ...[
               IconButton(
                 icon: const Icon(Icons.edit_note_rounded),
                 tooltip: 'Sửa User Story',
@@ -159,6 +160,31 @@ class UserStoryDetailScreen extends StatelessWidget {
                   }
                 },
               ),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                ),
+                tooltip: 'Xóa User Story',
+                onPressed: () async {
+                  final deleted = await showDeleteUserStoryDialog(
+                    context: context,
+                    projectId: story.projectId,
+                    story: story,
+                  );
+                  if (deleted == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Đã xóa ${story.storyKey}: ${story.title}'),
+                        backgroundColor: AppColors.success,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+            ],
             const SizedBox(width: 8),
           ],
         ),
@@ -522,6 +548,90 @@ class UserStoryDetailScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // ── Danger Zone (US-012) ──────────────────────────────────────────
+              if (canManageBacklog) ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.error,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Vùng nguy hiểm',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppColors.error,
+                              ),
+                            ),
+                            Text(
+                              'Xóa vĩnh viễn User Story khỏi Product Backlog',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final deleted = await showDeleteUserStoryDialog(
+                            context: context,
+                            projectId: story.projectId,
+                            story: story,
+                          );
+                          if (deleted == true && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Đã xóa ${story.storyKey}: ${story.title}'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        icon:
+                            const Icon(Icons.delete_outline_rounded, size: 16),
+                        label: Text(
+                          'Xóa Story',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 32),
             ],
           ),
         ),

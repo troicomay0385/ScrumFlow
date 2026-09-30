@@ -49,6 +49,15 @@ abstract class BacklogRepository {
     required List<String> tags,
   });
 
+  /// Xóa 1 User Story khỏi Product Backlog của [projectId] (US-012).
+  ///
+  /// Chỉ user có `Permission.manageBacklog` (PO/SM). Throw [Exception] với
+  /// thông báo tiếng Việt khi không có quyền hoặc ghi Firestore thất bại.
+  Future<void> deleteUserStory({
+    required String projectId,
+    required String storyId,
+  });
+
   /// Tạo dữ liệu User Story mẫu với các User ảo.
   Future<void> seedMockStories(String projectId);
 }

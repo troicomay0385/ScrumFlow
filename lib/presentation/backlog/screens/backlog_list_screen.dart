@@ -14,6 +14,7 @@ import '../bloc/backlog_event.dart';
 import '../bloc/backlog_state.dart';
 import '../utils/backlog_view.dart';
 import '../widgets/create_user_story_dialog.dart';
+import '../widgets/delete_user_story_dialog.dart';
 import '../widgets/user_story_card.dart';
 import 'user_story_detail_screen.dart';
 
@@ -817,6 +818,30 @@ class _BacklogListViewState extends State<_BacklogListView> {
                                         ),
                                       );
                                     },
+                                    onDelete: canManageBacklog
+                                        ? () async {
+                                            final deleted =
+                                                await showDeleteUserStoryDialog(
+                                              context: context,
+                                              projectId: widget.projectId,
+                                              story: story,
+                                            );
+                                            if (deleted == true &&
+                                                context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Đã xóa ${story.storyKey}: ${story.title}'),
+                                                  backgroundColor:
+                                                      AppColors.success,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        : null,
                                   ),
                                 );
                               },

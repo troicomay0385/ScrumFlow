@@ -214,6 +214,23 @@ class BacklogDataSource {
     }
   }
 
+  /// Xóa 1 User Story khỏi Firestore và local cache (US-012).
+  Future<void> deleteUserStory(String projectId, String storyId) async {
+    await _storiesCollection(projectId).doc(storyId).delete().timeout(_writeTimeout);
+    _deleteLocal(projectId, storyId);
+  }
+
+  /// Xoá story khỏi local cache và phát dữ liệu mới vào stream.
+  void _deleteLocal(String projectId, String storyId) {
+    final list = List<UserStoryModel>.from(_localCache[projectId] ?? const []);
+    list.removeWhere((s) => s.id == storyId);
+    _localCache[projectId] = list;
+    final controller = _getController(projectId);
+    if (!controller.isClosed) {
+      controller.add(List.from(list));
+    }
+  }
+
   /// Tạo hàng loạt dữ liệu User Stories mẫu với các User ảo để kiểm thử (Seed Data).
   Future<void> seedMockStories(String projectId) async {
     final sampleStories = _buildSampleStories(projectId);

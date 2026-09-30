@@ -141,6 +141,16 @@
   - 5 files changed: `HuongDanKetNoiStitch.md`, `lib/app/constants/firebase_error_mapper.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/presentation/home/screens/home_screen.dart`, `test/app/constants/firebase_error_mapper_test.dart`.
   - Đã push thành công lên `origin/hieu`.
 
+### Ngày 30/09/2026 (Phiên 3): Sprint 2 — US-012 (Xóa User Story khỏi Product Backlog)
+- **US-012 — Xóa User Story:**
+  - Xây dựng `DeleteUserStoryCubit` và `DeleteUserStoryState` (chống bấm lặp, quản lý trạng thái loading/thành công/lỗi).
+  - Thiết kế hộp thoại xác nhận `showDeleteUserStoryDialog` chuẩn phong cách Kinetic Sprint với badge cảnh báo đỏ, tóm tắt thông tin User Story (mã story, tiêu đề, độ ưu tiên, điểm SP), cảnh báo không thể hoàn tác, xử lý hiển thị lỗi trực tiếp và nút xác nhận xóa vĩnh viễn.
+  - Tích hợp tính năng xóa vào màn hình chi tiết `UserStoryDetailScreen`: nút xóa trên `AppBar.actions` (chỉ hiển thị cho PO/SM) và khu vực "Vùng nguy hiểm" (Danger Zone) ở cuối trang chi tiết.
+  - Tích hợp nút xóa nhanh trực tiếp trên từng thẻ `UserStoryCard` tại màn hình `BacklogListScreen` (chỉ hiển thị cho PO/SM).
+  - Cập nhật `BacklogDataSource.deleteUserStory`: xóa document trên Cloud Firestore kèm timeout 15s và xóa khỏi local cache, phát dữ liệu mới vào stream giúp giao diện cập nhật real-time.
+  - Cập nhật `BacklogRepository` và `BacklogRepositoryImpl`: kiểm tra quyền `Permission.manageBacklog` (chỉ PO/SM được xóa), bọc `_guard` chuyển đổi mã lỗi Firebase/mạng sang thông báo tiếng Việt thân thiện.
+  - Đảm bảo kiểm thử: Thêm 3 unit tests cho repository (PO/SM xóa thành công, Member và người ngoài dự án bị từ chối) và 3 unit tests cho `DeleteUserStoryCubit` (xóa thành công, báo lỗi, chống bấm lặp). Tổng số test đạt **81/81 tests PASS 100%**, `flutter analyze` **0 lỗi**.
+
 ### Ngày 30/09/2026: Sprint 2 — US-011, US-013 (Sửa & Gán điểm Story), US-015 (Danh sách Sprint)
 - **US-011 & US-013 — Chỉnh sửa & Gán Story Points:**
   - Xây dựng `EditUserStoryCubit` (chống submit lặp, kiểm tra logic lỗi).
@@ -252,7 +262,7 @@
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **8 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **9 / 12 User Stories hoàn thành***
 
 - [x] **US-007** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh.  
   *(Đã hoàn thành: Thanh tìm kiếm Search Bar chuẩn Kinetic Sprint, tìm kiếm tức thời trên storyKey, title, description, assigneeName, tags, hỗ trợ nút xóa và Empty Search State).*
@@ -264,7 +274,8 @@
   *(Đã hoàn thành: Dialog tạo story + `CreateUserStoryCubit` chống bấm lặp, tự sinh storyKey, kiểm tra quyền PO/SM ở Repository và Firestore Rules).*
 - [x] **US-011** [Ưu tiên: CAO] *(Thu Thúy)*: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung.  
   *(Đã hoàn thành: `showEditUserStoryDialog` + `EditUserStoryCubit`, chặn quyền PO/SM, update Firestore).*
-- [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*
+- [x] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp.  
+  *(Đã hoàn thành: `DeleteUserStoryCubit`, hộp thoại xác nhận `showDeleteUserStoryDialog` chuẩn Kinetic Sprint, nút xóa trên `UserStoryDetailScreen` và `UserStoryCard`, phân quyền PO/SM ở Repository và Firestore Security Rules, tự động đồng bộ real-time).*
 - [x] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story.  
   *(Đã hoàn thành: Tích hợp chọn Story Points Fibonacci trong hộp thoại Edit User Story).*
 - [x] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story.  
