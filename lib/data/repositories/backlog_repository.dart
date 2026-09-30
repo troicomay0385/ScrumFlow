@@ -26,6 +26,21 @@ abstract class BacklogRepository {
     DateTime? deadline,
   });
 
+  /// Cập nhật nội dung User Story (US-011) & Story Points (US-013).
+  ///
+  /// Chỉ user có `Permission.manageBacklog` (PO/SM). Cập nhật các field
+  /// cho phép (title, description, priority, storyPoints, deadline) —
+  /// KHÔNG đụng tags/projectId/createdBy/storyKey/status.
+  Future<UserStoryModel> updateUserStory({
+    required String projectId,
+    required String storyId,
+    required String title,
+    required String description,
+    required String priority,
+    required int storyPoints,
+    DateTime? deadline,
+  });
+
   /// Thay toàn bộ danh sách tag của 1 User Story (US-014) — chỉ cập nhật
   /// field `tags`, không đụng các field khác.
   Future<void> updateTags({

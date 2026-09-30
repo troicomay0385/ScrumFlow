@@ -1,0 +1,49 @@
+import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/repositories/sprint_repository.dart';
+import 'sprint_event.dart';
+import 'sprint_state.dart';
+
+class SprintBloc extends Bloc<SprintEvent, SprintState> {
+  final SprintRepository _repository;
+  StreamSubscription? _subscription;
+
+  SprintBloc({required SprintRepository repository})
+      : _repository = repository,
+        super(SprintInitial()) {
+    on<SprintSubscriptionRequested>(_onSubscriptionRequested);
+    on<SprintSeedMockRequested>(_onSeedMockRequested);
+  }
+
+  Future<void> _onSubscriptionRequested(
+    SprintSubscriptionRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    emit(SprintLoading());
+    await _subscription?.cancel();
+
+    await emit.forEach(
+      _repository.streamSprints(event.projectId),
+      onData: (sprints) => SprintLoaded(sprints: sprints),
+      onError: (error, stackTrace) =>
+          SprintError('Lỗi tải danh sách Sprint: $error'),
+    );
+  }
+
+  Future<void> _onSeedMockRequested(
+    SprintSeedMockRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.seedMockSprints(event.projectId);
+    } catch (e) {
+      emit(SprintError('Không thể tạo dữ liệu mẫu: $e'));
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _subscription?.cancel();
+    return super.close();
+  }
+}

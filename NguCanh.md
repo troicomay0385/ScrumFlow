@@ -141,6 +141,17 @@
   - 5 files changed: `HuongDanKetNoiStitch.md`, `lib/app/constants/firebase_error_mapper.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/presentation/home/screens/home_screen.dart`, `test/app/constants/firebase_error_mapper_test.dart`.
   - Đã push thành công lên `origin/hieu`.
 
+### Ngày 30/09/2026: Sprint 2 — US-011, US-013 (Sửa & Gán điểm Story), US-015 (Danh sách Sprint)
+- **US-011 & US-013 — Chỉnh sửa & Gán Story Points:**
+  - Xây dựng `EditUserStoryCubit` (chống submit lặp, kiểm tra logic lỗi).
+  - Thêm hộp thoại `showEditUserStoryDialog` tương thích giao diện Kinetic Sprint, cho phép sửa tiêu đề, mô tả, ưu tiên, hạn chót và thêm chọn Story Points (US-013) dùng dãy Fibonacci (1, 2, 3, 5, 8, 13, 21).
+  - Cập nhật `BacklogRepository` và `BacklogDataSource` để map dữ liệu mới đẩy lên Firestore, phân quyền kỹ (chỉ PO/SM mới được sửa).
+- **US-015 — Danh sách Sprint:**
+  - Xây dựng `SprintModel`, `SprintDataSource` (hỗ trợ tạo dữ liệu mẫu dự phòng khi chưa có mạng/chưa cấu hình Firebase).
+  - Xây dựng `SprintRepository` và `SprintBloc`.
+  - Thiết kế màn hình `SprintListScreen` hiển thị các sprint đang Planned/Active/Closed, cập nhật navigation từ trang `ProjectDetailScreen` qua mục "Sprint & Kanban Board".
+- Đã sẵn sàng commit và push lên nhánh mới.
+
 ### Ngày 29/09/2026: Sprint 2 — US-010 (Tạo User Story), US-014 (Gắn Tag), US-009 (Sắp xếp Backlog)
 
 - **Nguyên tắc:** mở rộng hệ thống Backlog sẵn có (US-005/US-006), KHÔNG tạo Backlog/Model/Bloc/Screen thứ hai. Luồng: UI → Bloc/Cubit → `BacklogRepository` → `BacklogDataSource` → Firestore `projects/{projectId}/userStories/{storyId}` (giữ nguyên path cũ).
@@ -212,7 +223,7 @@
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **3 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **6 / 12 User Stories hoàn thành***
 
 - [ ] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh. *(Chưa hoàn thành)*
 - [ ] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn. *(Chưa hoàn thành)*
@@ -220,12 +231,15 @@
   *(Đã hoàn thành: Dropdown Mặc định/Ưu tiên/Deadline trong `BacklogListScreen`, sort ổn định CAO→TB→THẤP, deadline null xếp cuối, kết hợp với filter trạng thái trong `BacklogBloc`).*
 - [x] **US-010** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên.  
   *(Đã hoàn thành: Dialog tạo story + `CreateUserStoryCubit` chống bấm lặp, tự sinh storyKey, kiểm tra quyền PO/SM ở Repository và Firestore Rules).*
-- [ ] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung. *(Chưa hoàn thành)*
+- [x] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung.  
+  *(Đã hoàn thành: `showEditUserStoryDialog` + `EditUserStoryCubit`, chặn quyền PO/SM, update Firestore).*
 - [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*
-- [ ] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story. *(Chưa hoàn thành)*
+- [x] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story.  
+  *(Đã hoàn thành: Tích hợp chọn Story Points Fibonacci trong hộp thoại Edit User Story).*
 - [x] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story.  
   *(Đã hoàn thành: Card "Nhãn / Tags" trong `UserStoryDetailScreen`, `StoryTagsCubit`, cập nhật riêng field `tags` trên Firestore).*
-- [ ] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo. *(Chưa hoàn thành)*
+- [x] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo.  
+  *(Đã hoàn thành: Màn hình `SprintListScreen`, Bloc, Repos, Mock data fallback).*
 - [ ] **US-016** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn tạo Sprint mới với tên, mục tiêu, ngày bắt đầu và kết thúc. *(Chưa hoàn thành)*
 - [ ] **US-017** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem chi tiết Sprint để biết mục tiêu và các User Story được chọn. *(Chưa hoàn thành)*
 - [ ] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint. *(Chưa hoàn thành)*

@@ -20,6 +20,9 @@ import 'data/repositories/project_member_repository.dart';
 import 'data/repositories/project_member_repository_impl.dart';
 import 'data/repositories/project_repository.dart';
 import 'data/repositories/project_repository_impl.dart';
+import 'data/datasources/sprint_datasource.dart';
+import 'data/repositories/sprint_repository.dart';
+import 'data/repositories/sprint_repository_impl.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'app/services/connectivity_service.dart';
@@ -69,6 +72,9 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
   );
+  final SprintRepository sprintRepository = SprintRepositoryImpl(
+    dataSource: SprintDataSource(firestore: firestore),
+  );
 
   runApp(
     MultiRepositoryProvider(
@@ -78,6 +84,7 @@ void main() async {
           value: projectMemberRepository,
         ),
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
+        RepositoryProvider<SprintRepository>.value(value: sprintRepository),
       ],
       child: MultiBlocProvider(
         providers: [

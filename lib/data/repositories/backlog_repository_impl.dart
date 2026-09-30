@@ -85,6 +85,37 @@ class BacklogRepositoryImpl implements BacklogRepository {
   }
 
   @override
+  Future<UserStoryModel> updateUserStory({
+    required String projectId,
+    required String storyId,
+    required String title,
+    required String description,
+    required String priority,
+    required int storyPoints,
+    DateTime? deadline,
+  }) {
+    return _guard(() async {
+      await _requireManageBacklog(projectId);
+      final existing = await _dataSource.getUserStory(projectId, storyId);
+      if (existing == null) {
+        throw Exception('User Story không tồn tại hoặc đã bị xoá.');
+      }
+
+      final updated = existing.copyWith(
+        title: title.trim(),
+        description: description.trim(),
+        priority: priority,
+        storyPoints: storyPoints,
+        deadline: deadline,
+        updatedAt: _now(),
+      );
+
+      await _dataSource.updateUserStory(projectId, updated);
+      return updated;
+    });
+  }
+
+  @override
   Future<void> updateTags({
     required String projectId,
     required String storyId,
