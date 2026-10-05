@@ -8,7 +8,7 @@ import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/sprint_repository.dart';
 
-/// Task Board hiển thị các User Stories theo từng Sprint dưới dạng bảng Kanban
+/// Sprint Board hiển thị các User Stories theo từng Sprint dưới dạng bảng Kanban
 /// với 3 cột: To Do, In Progress, Done (US-055).
 ///
 /// Người dùng chọn Sprint từ dropdown ở AppBar. Danh sách User Stories
@@ -125,7 +125,7 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Task Board',
+              'Sprint Board',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,

@@ -526,7 +526,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
                 if (visibleStories.isNotEmpty)
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        EdgeInsets.only(left: 16, right: 16, top: 8, bottom: canManageBacklog ? 80 : 8),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       border: Border(

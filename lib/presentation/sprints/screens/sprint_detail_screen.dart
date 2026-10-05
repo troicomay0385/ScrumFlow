@@ -68,11 +68,11 @@ class SprintDetailScreen extends StatelessWidget {
 			  appBar: AppBar(
 				title: Text(sprint.name),
 				actions: [
-				  // Nút mở Task Board theo Sprint (US-055)
+				  // Nút mở Sprint Board theo Sprint (US-055)
 				  IconButton(
 					key: const Key('sprintDetail_openTaskBoard'),
 					icon: const Icon(Icons.view_kanban_outlined),
-					tooltip: 'Xem Task Board',
+					tooltip: 'Xem Sprint Board',
 					onPressed: () {
 					  Navigator.of(context).push(
 						MaterialPageRoute(
@@ -114,7 +114,7 @@ class SprintDetailScreen extends StatelessWidget {
 					),
 				  ),
 				  const SizedBox(height: 16),
-				  // Nút mở Task Board dạng banner (US-055)
+				  // Nút mở Sprint Board dạng banner (US-055)
 				  InkWell(
 					borderRadius: BorderRadius.circular(14),
 					onTap: () {
@@ -150,7 +150,7 @@ class SprintDetailScreen extends StatelessWidget {
 							  crossAxisAlignment: CrossAxisAlignment.start,
 							  children: [
 								Text(
-								  'Mở Task Board',
+								  'Mở Sprint Board',
 								  style: GoogleFonts.plusJakartaSans(
 									fontSize: 14,
 									fontWeight: FontWeight.w800,

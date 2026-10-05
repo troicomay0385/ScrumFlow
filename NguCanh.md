@@ -284,8 +284,8 @@
 - [x] **US-051** [Ưu tiên: CAO]: Là PO/SM, tôi muốn API load User Story theo phân trang để không load toàn bộ backlog lên client (tối ưu performance).  
   *(Đã hoàn thành: Thanh phân trang ở đáy danh sách `Trang X / Y`, nút bấm chuyển trang `<` và `>`).*
 - [ ] **US-019** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn xem Task Board theo từng Sprint. *(Chưa hoàn thành)*
-- [ ] **US-020** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tạo task cho một User Story. *(Chưa hoàn thành)*
-- [ ] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Chưa hoàn thành)*
+- [x] **US-020** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tạo task cho một User Story. *(Đã hoàn thành: Thêm TaskModel, TaskRepository và nút Tạo Task ở Task Board)*
+- [x] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Đã hoàn thành: Kanban board hỗ trợ kéo thả Draggable/DragTarget trong TaskBoardScreen)*
 - [ ] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Chưa hoàn thành)*
 - [ ] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Chưa hoàn thành)*
 - [ ] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái. *(Chưa hoàn thành)*

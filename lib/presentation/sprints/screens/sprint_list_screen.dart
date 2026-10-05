@@ -118,10 +118,10 @@ class _SprintListView extends StatelessWidget {
           ],
         ),
         actions: [
-          // Nút mở Task Board (US-055)
+          // Nút mở Sprint Board (US-055)
           IconButton(
             key: const Key('sprintList_openTaskBoard'),
-            tooltip: 'Task Board',
+            tooltip: 'Sprint Board',
             icon: const Icon(Icons.view_kanban_outlined, color: AppColors.primary),
             onPressed: () {
               Navigator.of(context).push(

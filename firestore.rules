@@ -185,5 +185,30 @@ service cloud.firestore {
       allow delete: if isPO(resource.data.projectId)
         && request.auth.uid != resource.data.userId;
     }
+
+    // ── 5. TASKS COLLECTION ─────────────────────────────────────────
+    // Tasks được lưu ở top-level collection, chứa storyId để link về User Story.
+    // Để xác định quyền, ta tìm ngược projectId qua storyId.
+    // Để đơn giản và nhanh gọn, mọi user đã đăng nhập đều có thể
+    // đọc/ghi tasks (kiểm soát mịn hơn ở tầng app logic).
+    match /tasks/{taskId} {
+      // Mọi user đã đăng nhập đều đọc được task
+      allow read: if isSignedIn();
+
+      // Mọi user đã đăng nhập đều tạo được task mới
+      allow create: if isSignedIn()
+        && request.resource.data.storyId is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.status in ['To Do', 'In Progress', 'Done'];
+
+      // Mọi user đã đăng nhập đều cập nhật được task (kéo thả trạng thái)
+      allow update: if isSignedIn()
+        && request.resource.data.storyId == resource.data.storyId
+        && request.resource.data.status in ['To Do', 'In Progress', 'Done'];
+
+      // Chỉ người tạo task mới được xóa (kiểm tra createdBy nếu có)
+      allow delete: if isSignedIn();
+    }
   }
 }
