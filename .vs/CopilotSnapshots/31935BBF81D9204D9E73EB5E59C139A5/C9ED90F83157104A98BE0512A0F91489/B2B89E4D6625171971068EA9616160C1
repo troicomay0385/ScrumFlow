@@ -1,0 +1,6 @@
+﻿import '../models/sprint_model.dart';
+
+abstract class SprintRepository {
+  Stream<List<SprintModel>> streamSprints(String projectId);
+  Future<void> seedMockSprints(String projectId);
+}

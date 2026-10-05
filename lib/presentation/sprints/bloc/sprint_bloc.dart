@@ -13,6 +13,59 @@ class SprintBloc extends Bloc<SprintEvent, SprintState> {
         super(SprintInitial()) {
     on<SprintSubscriptionRequested>(_onSubscriptionRequested);
     on<SprintSeedMockRequested>(_onSeedMockRequested);
+    on<SprintCreateRequested>(_onCreateRequested);
+    on<SprintStoryAddRequested>(_onStoryAddRequested);
+    on<SprintStoriesAddRequested>(_onStoriesAddRequested);
+  }
+
+  Future<void> _onCreateRequested(
+    SprintCreateRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.createSprint(
+        projectId: event.projectId,
+        name: event.name,
+        goal: event.goal,
+        startDate: event.startDate,
+        endDate: event.endDate,
+      );
+      emit(const SprintActionCompleted('Đã tạo Sprint mới.'));
+    } catch (e) {
+      emit(SprintError(e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  Future<void> _onStoryAddRequested(
+    SprintStoryAddRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.addStoryToSprint(
+        projectId: event.projectId,
+        sprintId: event.sprintId,
+        storyId: event.storyId,
+      );
+      emit(const SprintActionCompleted('Đã thêm User Story vào Sprint.'));
+    } catch (e) {
+      emit(SprintError(e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  Future<void> _onStoriesAddRequested(
+    SprintStoriesAddRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.addStoriesToSprint(
+        projectId: event.projectId,
+        sprintId: event.sprintId,
+        storyIds: event.storyIds,
+      );
+      emit(SprintActionCompleted('Đã thêm ${event.storyIds.length} User Story vào Sprint.'));
+    } catch (e) {
+      emit(SprintError(e.toString().replaceFirst('Exception: ', '')));
+    }
   }
 
   Future<void> _onSubscriptionRequested(
@@ -37,7 +90,10 @@ class SprintBloc extends Bloc<SprintEvent, SprintState> {
     try {
       await _repository.seedMockSprints(event.projectId);
     } catch (e) {
-      emit(SprintError('Không thể tạo dữ liệu mẫu: $e'));
+      emit(SprintError(
+        'Không thể tạo dữ liệu mẫu: $e',
+        sprints: state is SprintLoaded ? (state as SprintLoaded).sprints : const [],
+      ));
     }
   }
 

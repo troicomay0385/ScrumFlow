@@ -1,0 +1,113 @@
+﻿import 'package:flutter/material.dart';
+
+import '../../../app/constants/app_colors.dart';
+import '../bloc/sprint_bloc.dart';
+import '../bloc/sprint_event.dart';
+
+Future<void> showCreateSprintDialog({
+  required BuildContext context,
+  required String projectId,
+}) async {
+  final formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final goalController = TextEditingController();
+  var startDate = DateTime.now();
+  var endDate = startDate.add(const Duration(days: 14));
+  await showDialog<void>(
+	context: context,
+	builder: (dialogContext) => StatefulBuilder(
+	  builder: (context, setState) => AlertDialog(
+		title: const Text('Tạo Sprint mới'),
+		content: Form(
+		  key: formKey,
+		  child: SingleChildScrollView(
+			child: Column(
+			  mainAxisSize: MainAxisSize.min,
+			  children: [
+				TextFormField(
+				  controller: nameController,
+				  decoration: const InputDecoration(labelText: 'Tên Sprint'),
+				  validator: (value) => value == null || value.trim().isEmpty
+					  ? 'Vui lòng nhập tên Sprint.'
+					  : null,
+				),
+				TextFormField(
+				  controller: goalController,
+				  decoration: const InputDecoration(labelText: 'Mục tiêu Sprint'),
+				  minLines: 2,
+				  maxLines: 4,
+				  validator: (value) => value == null || value.trim().isEmpty
+					  ? 'Vui lòng nhập mục tiêu Sprint.'
+					  : null,
+				),
+				const SizedBox(height: 12),
+				_dateButton(
+				  context,
+				  label: 'Bắt đầu',
+				  date: startDate,
+				  onPicked: (date) => setState(() => startDate = date),
+				),
+				_dateButton(
+				  context,
+				  label: 'Kết thúc',
+				  date: endDate,
+				  onPicked: (date) => setState(() => endDate = date),
+				),
+				if (!endDate.isAfter(startDate))
+				  const Text(
+					'Ngày kết thúc phải sau ngày bắt đầu.',
+					style: TextStyle(color: AppColors.error),
+				  ),
+			  ],
+			),
+		  ),
+		),
+		actions: [
+		  TextButton(
+			onPressed: () => Navigator.pop(dialogContext),
+			child: const Text('Hủy'),
+		  ),
+		  FilledButton(
+			onPressed: () {
+			  if (!formKey.currentState!.validate() ||
+				  !endDate.isAfter(startDate)) return;
+			  context.read<SprintBloc>().add(SprintCreateRequested(
+					projectId: projectId,
+					name: nameController.text,
+					goal: goalController.text,
+					startDate: startDate,
+					endDate: endDate,
+				  ));
+			  Navigator.pop(dialogContext);
+			},
+			child: const Text('Tạo Sprint'),
+		  ),
+		],
+	  ),
+	),
+  );
+  nameController.dispose();
+  goalController.dispose();
+}
+
+Widget _dateButton(
+  BuildContext context, {
+  required String label,
+  required DateTime date,
+  required ValueChanged<DateTime> onPicked,
+}) {
+  return ListTile(
+	contentPadding: EdgeInsets.zero,
+	title: Text('$label: ${date.day}/${date.month}/${date.year}'),
+	trailing: const Icon(Icons.calendar_month_outlined),
+	onTap: () async {
+	  final picked = await showDatePicker(
+		context: context,
+		initialDate: date,
+		firstDate: DateTime(2020),
+		lastDate: DateTime(2100),
+	  );
+	  if (picked != null) onPicked(picked);
+	},
+  );
+}

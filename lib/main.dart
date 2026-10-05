@@ -23,6 +23,7 @@ import 'data/repositories/project_repository_impl.dart';
 import 'data/datasources/sprint_datasource.dart';
 import 'data/repositories/sprint_repository.dart';
 import 'data/repositories/sprint_repository_impl.dart';
+import 'data/repositories/task_repository.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'app/services/connectivity_service.dart';
@@ -85,6 +86,7 @@ void main() async {
         ),
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
+        RepositoryProvider<TaskRepository>(create: (_) => TaskRepository(firestore: firestore)),
       ],
       child: MultiBlocProvider(
         providers: [

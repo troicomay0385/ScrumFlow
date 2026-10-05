@@ -1,0 +1,153 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\.copilot\\plans\\plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}|MarkdownSecurePreview"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\NguCanh.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:NguCanh.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\LICENSE||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:LICENSE||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\HuongDanKetNoiStitch.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:HuongDanKetNoiStitch.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firestore.rules||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:firestore.rules||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firebase.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:firebase.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\README.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:README.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md [Preview]",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\.copilot\\plans\\plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md",
+              "RelativeDocumentMoniker": "..\\..\\.copilot\\plans\\plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\.copilot\\plans\\plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md [Preview]",
+              "RelativeToolTip": "..\\..\\.copilot\\plans\\plan-sa-li-assertion-khi-thao-tc-sprint-v-i-vai-tr.md [Preview]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-10-03T16:09:54.801Z",
+              "EditorCaption": " [Preview]"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "NguCanh.md",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\NguCanh.md",
+              "RelativeDocumentMoniker": "NguCanh.md",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\NguCanh.md",
+              "RelativeToolTip": "NguCanh.md",
+              "ViewState": "AgIAAGAAAAAAAAAAAAAAAAoAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-10-03T15:50:35.249Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "firebase.json",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firebase.json",
+              "RelativeDocumentMoniker": "firebase.json",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firebase.json",
+              "RelativeToolTip": "firebase.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-10-03T15:50:24.34Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LICENSE",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\LICENSE",
+              "RelativeDocumentMoniker": "LICENSE",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\LICENSE",
+              "RelativeToolTip": "LICENSE",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-10-03T15:50:22.46Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "HuongDanKetNoiStitch.md",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\HuongDanKetNoiStitch.md",
+              "RelativeDocumentMoniker": "HuongDanKetNoiStitch.md",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\HuongDanKetNoiStitch.md",
+              "RelativeToolTip": "HuongDanKetNoiStitch.md",
+              "ViewState": "AgIAAEsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-10-03T15:50:04.056Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "README.md",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\README.md",
+              "RelativeDocumentMoniker": "README.md",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\README.md",
+              "RelativeToolTip": "README.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-10-02T17:16:14.055Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "firestore.rules",
+              "DocumentMoniker": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firestore.rules",
+              "RelativeDocumentMoniker": "firestore.rules",
+              "ToolTip": "C:\\Users\\Hieu Dinh\\StudioProjects\\ScrumFlow\\firestore.rules",
+              "RelativeToolTip": "firestore.rules",
+              "ViewState": "AgIAAMcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-10-02T16:51:59.506Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

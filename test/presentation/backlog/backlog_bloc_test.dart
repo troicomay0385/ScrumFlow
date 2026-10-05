@@ -102,4 +102,25 @@ void main() {
           .having((s) => s.visibleStories, 'visible', [low, highDone]),
     ],
   );
+
+  blocTest<BacklogBloc, BacklogState>(
+    'xóa hàng loạt User Stories gọi repository deleteUserStories (US-053)',
+    build: () {
+      when(() => repository.deleteUserStories(
+            projectId: projectId,
+            storyIds: ['US-001', 'US-002'],
+          )).thenAnswer((_) async {});
+      return BacklogBloc(repository: repository);
+    },
+    act: (bloc) => bloc.add(const BacklogDeleteStoriesRequested(
+      projectId: projectId,
+      storyIds: ['US-001', 'US-002'],
+    )),
+    verify: (_) {
+      verify(() => repository.deleteUserStories(
+            projectId: projectId,
+            storyIds: ['US-001', 'US-002'],
+          )).called(1);
+    },
+  );
 }

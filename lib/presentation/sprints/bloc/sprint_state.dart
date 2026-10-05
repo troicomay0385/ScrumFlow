@@ -8,6 +8,16 @@ abstract class SprintState extends Equatable {
   List<Object?> get props => [];
 }
 
+class SprintActionCompleted extends SprintState {
+  final String message;
+  final List<SprintModel> sprints;
+
+  const SprintActionCompleted(this.message, {this.sprints = const []});
+
+  @override
+  List<Object?> get props => [message, sprints];
+}
+
 class SprintInitial extends SprintState {}
 
 class SprintLoading extends SprintState {}
@@ -23,9 +33,10 @@ class SprintLoaded extends SprintState {
 
 class SprintError extends SprintState {
   final String message;
+  final List<SprintModel> sprints;
 
-  const SprintError(this.message);
+  const SprintError(this.message, {this.sprints = const []});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, sprints];
 }

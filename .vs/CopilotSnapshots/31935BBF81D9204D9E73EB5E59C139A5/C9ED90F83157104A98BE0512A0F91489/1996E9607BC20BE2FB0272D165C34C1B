@@ -1,0 +1,169 @@
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../app/authorization/permission.dart';
+import '../../../app/authorization/role_permissions.dart';
+import '../../../app/constants/app_colors.dart';
+import '../../../data/models/sprint_model.dart';
+import '../../../data/models/user_story_model.dart';
+import '../../../data/repositories/backlog_repository.dart';
+import '../../../data/repositories/project_member_repository.dart';
+import '../bloc/sprint_bloc.dart';
+import '../bloc/sprint_event.dart';
+import '../bloc/sprint_state.dart';
+
+class SprintDetailScreen extends StatelessWidget {
+  final String projectId;
+  final String projectName;
+  final String sprintId;
+
+  const SprintDetailScreen({
+	super.key,
+	required this.projectId,
+	required this.projectName,
+	required this.sprintId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+	return StreamBuilder(
+	  stream: context.read<ProjectMemberRepository>().streamCurrentUserRole(projectId),
+	  builder: (context, roleSnapshot) {
+		final canManage = hasPermission(roleSnapshot.data, Permission.manageSprint);
+		return BlocConsumer<SprintBloc, SprintState>(
+		  listener: (context, state) {
+			if (state is SprintError || state is SprintActionCompleted) {
+			  final message = state is SprintError
+				  ? state.message
+				  : (state as SprintActionCompleted).message;
+			  ScaffoldMessenger.of(context).showSnackBar(
+				SnackBar(content: Text(message)),
+			  );
+			}
+		  },
+		  builder: (context, state) {
+			if (state is! SprintLoaded) {
+			  return const Scaffold(
+				body: Center(child: CircularProgressIndicator()),
+			  );
+			}
+			final matches = state.sprints.where((sprint) => sprint.id == sprintId);
+			if (matches.isEmpty) {
+			  return Scaffold(
+				appBar: AppBar(title: Text(projectName)),
+				body: const Center(child: Text('Sprint không tồn tại hoặc đã bị xóa.')),
+			  );
+			}
+			final sprint = matches.first;
+			return Scaffold(
+			  backgroundColor: AppColors.canvas,
+			  appBar: AppBar(title: Text(sprint.name)),
+			  floatingActionButton: canManage
+				  ? FloatingActionButton.extended(
+					  onPressed: () => _showBacklogPicker(context, sprint),
+					  icon: const Icon(Icons.add),
+					  label: const Text('Thêm từ backlog'),
+					)
+				  : null,
+			  body: ListView(
+				padding: const EdgeInsets.all(16),
+				children: [
+				  Card(
+					child: Padding(
+					  padding: const EdgeInsets.all(16),
+					  child: Column(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+						  Text('Mục tiêu Sprint', style: Theme.of(context).textTheme.titleMedium),
+						  const SizedBox(height: 8),
+						  Text(sprint.goal.isEmpty ? 'Chưa có mục tiêu.' : sprint.goal),
+						  const SizedBox(height: 12),
+						  Text('${_format(sprint.startDate)} – ${_format(sprint.endDate)} · ${sprint.status}'),
+						],
+					  ),
+					),
+				  ),
+				  const SizedBox(height: 12),
+				  Text('User Stories đã chọn (${sprint.storyIds.length})',
+					  style: Theme.of(context).textTheme.titleMedium),
+				  const SizedBox(height: 8),
+				  FutureBuilder<List<UserStoryModel>>(
+					future: context.read<BacklogRepository>().getUserStories(projectId),
+					builder: (context, snapshot) {
+					  if (snapshot.connectionState == ConnectionState.waiting) {
+						return const Padding(
+						  padding: EdgeInsets.all(24),
+						  child: Center(child: CircularProgressIndicator()),
+						);
+					  }
+					  final stories = snapshot.data ?? const <UserStoryModel>[];
+					  final selected = stories
+						  .where((story) => sprint.storyIds.contains(story.id))
+						  .toList();
+					  if (selected.isEmpty) {
+						return const Card(
+						  child: ListTile(title: Text('Chưa có User Story nào trong Sprint.')),
+						);
+					  }
+					  return Column(
+						children: selected
+							.map((story) => Card(
+								  child: ListTile(
+									leading: const Icon(Icons.bookmark_border, color: AppColors.primary),
+									title: Text('${story.storyKey} · ${story.title}'),
+									subtitle: Text('${story.storyPoints} điểm · ${story.status}'),
+								  ),
+								))
+							.toList(),
+					  );
+					},
+				  ),
+				],
+			  ),
+			);
+		  },
+		);
+	  },
+	);
+  }
+
+  Future<void> _showBacklogPicker(BuildContext context, SprintModel sprint) async {
+	final stories = await context.read<BacklogRepository>().getUserStories(projectId);
+	if (!context.mounted) return;
+	final available = stories.where((story) => !sprint.storyIds.contains(story.id)).toList();
+	if (available.isEmpty) {
+	  ScaffoldMessenger.of(context).showSnackBar(
+		const SnackBar(content: Text('Không còn User Story nào trong backlog để thêm.')),
+	  );
+	  return;
+	}
+	await showModalBottomSheet<void>(
+	  context: context,
+	  isScrollControlled: true,
+	  builder: (sheetContext) => SafeArea(
+		child: SizedBox(
+		  height: MediaQuery.sizeOf(context).height * 0.7,
+		  child: ListView(
+			children: [
+			  const ListTile(title: Text('Chọn User Story từ backlog')),
+			  ...available.map((story) => ListTile(
+					title: Text('${story.storyKey} · ${story.title}'),
+					subtitle: Text('${story.storyPoints} điểm · ${story.status}'),
+					onTap: () {
+					  context.read<SprintBloc>().add(SprintStoryAddRequested(
+							projectId: projectId,
+							sprintId: sprint.id,
+							storyId: story.id,
+						  ));
+					  Navigator.pop(sheetContext);
+					},
+				  )),
+			],
+		  ),
+		),
+	  ),
+	);
+  }
+
+  String _format(DateTime date) => '${date.day}/${date.month}/${date.year}';
+}

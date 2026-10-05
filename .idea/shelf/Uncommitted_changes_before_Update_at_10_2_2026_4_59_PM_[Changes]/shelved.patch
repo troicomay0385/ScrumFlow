@@ -1,0 +1,121 @@
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"NONE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"77afa35b-9427-4a9d-9a34-1841528a33f8\" name=\"Changes\" comment=\"\">\r\n      <change afterPath=\"$PROJECT_DIR$/NguCanh.md\" afterDir=\"false\" />\r\n      <change afterPath=\"$PROJECT_DIR$/README_MoTaChucNang.md\" afterDir=\"false\" />\r\n      <change afterPath=\"$PROJECT_DIR$/README_MoTaDoAnMonHoc.md\" afterDir=\"false\" />\r\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\r\n    </list>\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"ClangdSettings\">\r\n    <option name=\"formatViaClangd\" value=\"false\" />\r\n  </component>\r\n  <component name=\"FileEditorManager\">\r\n    <leaf>\r\n      <file leaf-file-name=\"main.dart\" pinned=\"false\" current-in-tab=\"true\">\r\n        <entry file=\"file://$PROJECT_DIR$/lib/main.dart\">\r\n          <provider selected=\"true\" editor-type-id=\"text-editor\">\r\n            <state relative-caret-position=\"0\">\r\n              <caret line=\"0\" column=\"0\" lean-forward=\"false\" selection-start-line=\"0\" selection-start-column=\"0\" selection-end-line=\"0\" selection-end-column=\"0\" />\r\n            </state>\r\n          </provider>\r\n        </entry>\r\n      </file>\r\n    </leaf>\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\r\n  </component>\r\n  <component name=\"ProjectColorInfo\">{\r\n  &quot;associatedIndex&quot;: 8,\r\n  &quot;fromUser&quot;: false\r\n}</component>\r\n  <component name=\"ProjectId\" id=\"3JVJ842sC78rBFb07RvCnOKdGKl\" />\r\n  <component name=\"ProjectView\">\r\n    <navigator currentView=\"ProjectPane\" proportions=\"\" version=\"1\" />\r\n    <panes>\r\n      <pane id=\"ProjectPane\">\r\n        <option name=\"show-excluded-files\" value=\"false\" />\r\n      </pane>\r\n    </panes>\r\n  </component>\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\"><![CDATA[{\r\n  \"keyToString\": {\r\n    \"Flutter.main.dart.executor\": \"Run\",\r\n    \"ModuleVcsDetector.initialDetectionPerformed\": \"true\",\r\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\r\n    \"RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252\": \"true\",\r\n    \"RunOnceActivity.cidr.known.project.marker\": \"true\",\r\n    \"RunOnceActivity.git.unshallow\": \"true\",\r\n    \"RunOnceActivity.readMode.enableVisualFormatting\": \"true\",\r\n    \"cf.first.check.clang-format\": \"false\",\r\n    \"cidr.known.project.marker\": \"true\",\r\n    \"com.android.tools.idea.streaming.zoom.toolbar.visible\": \"false\",\r\n    \"dart.analysis.tool.window.visible\": \"false\",\r\n    \"git-widget-placeholder\": \"Merging feature/auth\",\r\n    \"io.flutter.project.isFirstOpen\": \"true\",\r\n    \"io.flutter.reload.alreadyRun\": \"true\",\r\n    \"kotlin-language-version-configured\": \"true\",\r\n    \"last_opened_file_path\": \"D:/DO_AN_LTTTBDD/ScrumFlow\",\r\n    \"settings.editor.selected.configurable\": \"AndroidSdkUpdater\",\r\n    \"show.migrate.to.gradle.popup\": \"false\"\r\n  }\r\n}]]></component>\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\r\n      <changelist id=\"77afa35b-9427-4a9d-9a34-1841528a33f8\" name=\"Changes\" comment=\"\" />\r\n      <created>1789740142088</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1789740142088</updated>\r\n    </task>\r\n    <servers />\r\n  </component>\r\n  <component name=\"ToolWindowManager\">\r\n    <editor active=\"true\" />\r\n    <layout>\r\n      <window_info id=\"Project\" active=\"false\" anchor=\"left\" auto_hide=\"false\" internal_type=\"DOCKED\" type=\"DOCKED\" visible=\"true\" show_stripe_button=\"true\" weight=\"0.25\" sideWeight=\"0.5\" order=\"0\" side_tool=\"false\" content_ui=\"combo\" />\r\n    </layout>\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision a02234f5b8cb08ae4203c03bdb58066f43680b13)
++++ b/.idea/workspace.xml	(date 1790935172400)
+@@ -1,13 +1,15 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
++  <component name="AndroidLayouts">
++    <shared>
++      <config />
++    </shared>
++  </component>
+   <component name="AutoImportSettings">
+     <option name="autoReloadType" value="NONE" />
+   </component>
+   <component name="ChangeListManager">
+     <list default="true" id="77afa35b-9427-4a9d-9a34-1841528a33f8" name="Changes" comment="">
+-      <change afterPath="$PROJECT_DIR$/NguCanh.md" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/README_MoTaChucNang.md" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/README_MoTaDoAnMonHoc.md" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+@@ -18,6 +20,7 @@
+   <component name="ClangdSettings">
+     <option name="formatViaClangd" value="false" />
+   </component>
++  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[PhysicalDevice::serial=1da3c261]" />
+   <component name="FileEditorManager">
+     <leaf>
+       <file leaf-file-name="main.dart" pinned="false" current-in-tab="true">
+@@ -32,8 +35,27 @@
+     </leaf>
+   </component>
+   <component name="Git.Settings">
++    <option name="RECENT_BRANCH_BY_REPOSITORY">
++      <map>
++        <entry key="$PROJECT_DIR$" value="hieu" />
++      </map>
++    </option>
+     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
++    <option name="SWAP_SIDES_IN_COMPARE_BRANCHES" value="true" />
++    <option name="UPDATE_TYPE" value="REBASE" />
+   </component>
++  <component name="GitHubPullRequestSearchHistory">{
++  &quot;lastFilter&quot;: {
++    &quot;state&quot;: &quot;OPEN&quot;,
++    &quot;assignee&quot;: &quot;MrJ613&quot;
++  }
++}</component>
++  <component name="GithubPullRequestsUISettings">{
++  &quot;selectedUrlAndAccountId&quot;: {
++    &quot;url&quot;: &quot;https://github.com/troicomay0385/ScrumFlow.git&quot;,
++    &quot;accountId&quot;: &quot;aa0deb8e-fa26-40b8-9021-906a76dfaeef&quot;
++  }
++}</component>
+   <component name="ProjectColorInfo">{
+   &quot;associatedIndex&quot;: 8,
+   &quot;fromUser&quot;: false
+@@ -64,15 +86,36 @@
+     "cidr.known.project.marker": "true",
+     "com.android.tools.idea.streaming.zoom.toolbar.visible": "false",
+     "dart.analysis.tool.window.visible": "false",
+-    "git-widget-placeholder": "Merging feature/auth",
++    "git-widget-placeholder": "main",
+     "io.flutter.project.isFirstOpen": "true",
+     "io.flutter.reload.alreadyRun": "true",
+     "kotlin-language-version-configured": "true",
+     "last_opened_file_path": "D:/DO_AN_LTTTBDD/ScrumFlow",
+-    "settings.editor.selected.configurable": "AndroidSdkUpdater",
++    "settings.editor.selected.configurable": "Template Data Languages",
+     "show.migrate.to.gradle.popup": "false"
+   }
+ }]]></component>
++  <component name="RunManager" selected="Flutter.main.dart">
++    <configuration name="main.dart" type="FlutterRunConfigurationType" factoryName="Flutter" temporary="true" nameIsGenerated="true">
++      <option name="filePath" value="$PROJECT_DIR$/lib/main.dart" />
++      <method v="2" />
++    </configuration>
++    <configuration name="tests in Android Studio" type="FlutterTestConfigType" factoryName="Flutter Test" nameIsGenerated="true">
++      <option name="testFile" value="" />
++      <option name="useRegexp" value="false" />
++      <option name="additionalArgs" value="" />
++      <method v="2" />
++    </configuration>
++    <list>
++      <item itemvalue="Flutter.main.dart" />
++      <item itemvalue="Flutter Test.tests in Android Studio" />
++    </list>
++    <recent_temporary>
++      <list>
++        <item itemvalue="Flutter.main.dart" />
++      </list>
++    </recent_temporary>
++  </component>
+   <component name="TaskManager">
+     <task active="true" id="Default" summary="Default task">
+       <changelist id="77afa35b-9427-4a9d-9a34-1841528a33f8" name="Changes" comment="" />
+@@ -89,4 +132,15 @@
+       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+     </layout>
+   </component>
++  <component name="Vcs.Log.Tabs.Properties">
++    <option name="TAB_STATES">
++      <map>
++        <entry key="MAIN">
++          <value>
++            <State />
++          </value>
++        </entry>
++      </map>
++    </option>
++  </component>
+ </project>
+\ No newline at end of file

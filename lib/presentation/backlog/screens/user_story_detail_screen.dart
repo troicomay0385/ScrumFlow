@@ -6,6 +6,7 @@ import '../../../app/constants/app_colors.dart';
 import '../../../app/utils/date_formatter.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
+import '../../tasks/screens/task_board_screen.dart';
 import '../bloc/story_tags_cubit.dart';
 import '../widgets/edit_user_story_dialog.dart';
 import '../widgets/story_tags_card.dart';
@@ -232,6 +233,37 @@ class UserStoryDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Task Board Navigation Button ────────────────────────────────
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TaskBoardScreen(
+                        storyId: story.id,
+                        storyTitle: story.title,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.view_kanban_outlined),
+                label: Text(
+                  'Xem Task Board',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

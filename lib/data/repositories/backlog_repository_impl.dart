@@ -43,6 +43,30 @@ class BacklogRepositoryImpl implements BacklogRepository {
   }
 
   @override
+  Future<PaginatedResult> getUserStoriesPaginated({
+    required String projectId,
+    required int pageSize,
+    fs.DocumentSnapshot? startAfterDoc,
+    String? statusFilter,
+  }) {
+    return _dataSource.getUserStoriesPaginated(
+      projectId: projectId,
+      pageSize: pageSize,
+      startAfterDoc: startAfterDoc,
+      statusFilter: statusFilter,
+    );
+  }
+
+  @override
+  Future<List<UserStoryModel>> getStoriesByIds(
+    String projectId,
+    List<String> storyIds,
+  ) {
+    return _dataSource.getStoriesByIds(projectId, storyIds);
+  }
+
+
+  @override
   Future<UserStoryModel?> getUserStory(String projectId, String storyId) {
     return _dataSource.getUserStory(projectId, storyId);
   }
@@ -124,6 +148,25 @@ class BacklogRepositoryImpl implements BacklogRepository {
     return _guard(() async {
       await _requireManageBacklog(projectId);
       await _dataSource.updateTags(projectId, storyId, tags, _now());
+    });
+  }
+
+  @override
+  Future<void> deleteUserStory({
+    required String projectId,
+    required String storyId,
+  }) {
+    return deleteUserStories(projectId: projectId, storyIds: [storyId]);
+  }
+
+  @override
+  Future<void> deleteUserStories({
+    required String projectId,
+    required List<String> storyIds,
+  }) {
+    return _guard(() async {
+      await _requireManageBacklog(projectId);
+      await _dataSource.deleteUserStories(projectId, storyIds);
     });
   }
 

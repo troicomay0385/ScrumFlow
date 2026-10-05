@@ -1,0 +1,26 @@
+﻿import 'package:equatable/equatable.dart';
+
+abstract class SprintEvent extends Equatable {
+  const SprintEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class SprintSubscriptionRequested extends SprintEvent {
+  final String projectId;
+
+  const SprintSubscriptionRequested(this.projectId);
+
+  @override
+  List<Object?> get props => [projectId];
+}
+
+class SprintSeedMockRequested extends SprintEvent {
+  final String projectId;
+
+  const SprintSeedMockRequested(this.projectId);
+
+  @override
+  List<Object?> get props => [projectId];
+}
