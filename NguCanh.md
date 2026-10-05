@@ -19,6 +19,10 @@
   * [design.md](file:///d:/ThuMucOE/BTVN/LTDD%20BTVN/Scrumflow/design.md) (Design System trích xuất từ Stitch)
   * [HuongDanKetNoiStitch.md](file:///d:/ThuMucOE/BTVN/LTDD%20BTVN/Scrumflow/HuongDanKetNoiStitch.md) (Hướng dẫn kết nối MCP Stitch)
 
+* **Khả năng tương thích thiết bị & Đóng gói:**
+  * **Khi Bật Chế độ Nhà phát triển (Developer Mode / USB Debugging ON):** Dùng để lập trình viên kết nối cáp USB với máy tính (`flutter run`, `adb install`) chạy và debug live reload ứng dụng.
+  * **Khi KHÔNG Bật Chế độ Nhà phát triển (Developer Mode OFF):** Bản phát hành Release (file APK/AAB hoặc tải từ Google Play Store / App Store) hoạt động hoàn hảo trên điện thoại của mọi người dùng thông thường mà không đòi hỏi bất kỳ quyền hay chế độ nhà phát triển nào.
+
 * **Danh sách tài khoản kiểm thử / Người dùng ảo (Mock Users):**
   1. **Lê Phúc (PO / Admin):** `phuc.po@scrumflow.com` | Password: `Password123!` | Vai trò: Product Owner (PO)
   2. **Nguyễn Hiếu (Dev / SM):** `hieu.dev@scrumflow.com` | Password: `Password123!` | Vai trò: Scrum Master (SM)
@@ -188,6 +192,27 @@
 - **Sửa lỗi khi chạy trên Chrome (Web):** không đăng xuất được (báo "Đã xảy ra lỗi không mong muốn") và trang chủ chỉ hiện "Xin chào!" không có tên. Nguyên nhân: `LocalCacheDataSource` dùng `sqflite` — không hỗ trợ Web nên throw, làm `signOut()` dừng trước khi gọi Firebase signOut. Sửa: phần cache SQLite là no-op trên Web (`kIsWeb`), và `AuthRepositoryImpl.signOut()`/`authStateChanges` bọc try-catch phần cache để lỗi cache không bao giờ chặn đăng xuất. Android không bị ảnh hưởng.
 - **Lưu ý/rủi ro còn lại:** `storyKey` sinh phía client nên 2 người tạo cùng lúc có thể trùng key (không trùng document). Cơ chế fallback sang 8 story mẫu khi Firestore lỗi (có từ US-005) vẫn giữ nguyên — story mẫu chỉ ở local sẽ không lưu tag được (báo lỗi rõ ràng) cho đến khi bấm "Nạp mẫu" để đồng bộ lên Firestore.
 
+### Ngày 03/10/2026 – 04/10/2026: Nâng cấp Quản lý Sprint cho Scrum Master & Cập nhật Firestore Security Rules
+
+- **Hoàn thiện các tính năng quản lý Sprint cho Scrum Master (US-016, US-017, US-018):**
+  - **US-016 — Tạo Sprint thủ công:** Xây dựng `_CreateSprintDialog`, cho phép Scrum Master (SM) hoặc Product Owner (PO) nhập Tên Sprint, Mục tiêu (Goal), chọn Ngày bắt đầu và Ngày kết thúc. Có kiểm tra ràng buộc ngày kết thúc phải sau ngày bắt đầu và tự động ghi dữ liệu vào sub-collection `/projects/{projectId}/sprints/{sprintId}` trên Firestore.
+  - **US-017 — Xem chi tiết Sprint:** Hoàn thiện `SprintDetailScreen` hiển thị thông tin mục tiêu, ngày triển khai, trạng thái (Planned / Active / Closed) và danh sách các User Stories thuộc Sprint.
+  - **US-018 — Thêm User Story từ Backlog vào Sprint:** Cho phép Scrum Master/PO chọn các User Story sẵn có từ Product Backlog để đưa vào Sprint (`storyIds`), tự động cập nhật danh sách và đồng bộ trạng thái giữa Backlog và Sprint Board.
+
+- **Nâng cấp và Đồng bộ Firestore Security Rules (`firestore.rules`):**
+  - Cập nhật toàn bộ các quy tắc bảo mật trên file local và đồng bộ lên Firebase Console (`scrumflow-c835d`) để xử lý dứt điểm lỗi `missing or insufficient permissions`:
+    - Cho phép thành viên dự án (`isProjectMember`) đọc thông tin Sprint.
+    - Cấp quyền quản lý Sprint (`canManageSprint`) cho cả vai trò **Product Owner (PO)** và **Scrum Master (SM)**.
+    - Ràng buộc kiểu dữ liệu đầu vào chuẩn xác cho document Sprint (`projectId`, `name`, `goal`, `storyIds` kiểu `list`).
+  - Sửa lỗi xử lý vòng đời controller (`TextEditingController`) trong các hộp thoại giao diện (`security_settings_dialog.dart`, `create_sprint_dialog.dart`), thêm bảo vệ `if (!mounted) return;` chống crash ứng dụng.
+
+- **Ngày 05/10/2026: Loại bỏ dữ liệu sinh mẫu tự động, Nâng cấp Chức năng Thêm từ Backlog vào Sprint & Xác minh tương thích thiết bị di động:**
+  - **Khả năng chạy trên điện thoại (Developer Mode ON & OFF):** Xác nhận ứng dụng Flutter `ScrumFlow` hoàn toàn hoạt động mượt mà trên tất cả các điện thoại Android/iOS ở cả 2 môi trường:
+    1. **Khi Bật Chế độ Nhà phát triển (Developer Options / USB Debugging ON):** Dùng để debug, nạp phần mềm qua cáp USB (`flutter run`, `adb install`).
+    2. **Khi KHÔNG Bật Chế độ Nhà phát triển (Developer Mode OFF):** Bản đóng gói Release (file APK/AAB hoặc phát hành Google Play Store / App Store) cho phép mọi người dùng cuối mở và sử dụng bình thường mà không cần bất kỳ quyền hay thao tác cài đặt kỹ thuật nào.
+  - **Loại bỏ tính năng tự động sinh mẫu Backlog & Sprint:** Xóa bỏ hoàn toàn nút "Nạp mẫu" và cơ chế tự nạp mảng `_buildSampleStories`/`_buildSampleSprints` trên `backlog_datasource.dart` & `sprint_datasource.dart`. Chuyển 100% sang luồng tạo mới và quản lý dữ liệu thủ công.
+  - **Nâng cấp tính năng "Thêm từ backlog" vào Sprint (`sprint_detail_screen.dart`):** Bổ sung sự kiện batch `SprintStoriesAddRequested` trong `SprintBloc` giúp thêm danh sách User Story vào Sprint bằng 1 thao tác duy nhất (tránh xung đột ghi race condition). Thiết kế lại Modal Sheet chọn story với giao diện trực quan, hỗ trợ chọn tất cả, xem điểm Story Points và độ ưu tiên.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -223,7 +248,7 @@
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **6 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **9 / 12 User Stories hoàn thành***
 
 - [ ] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh. *(Chưa hoàn thành)*
 - [ ] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn. *(Chưa hoàn thành)*
@@ -240,18 +265,24 @@
   *(Đã hoàn thành: Card "Nhãn / Tags" trong `UserStoryDetailScreen`, `StoryTagsCubit`, cập nhật riêng field `tags` trên Firestore).*
 - [x] **US-015** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem danh sách Sprint đã tạo.  
   *(Đã hoàn thành: Màn hình `SprintListScreen`, Bloc, Repos, Mock data fallback).*
-- [ ] **US-016** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn tạo Sprint mới với tên, mục tiêu, ngày bắt đầu và kết thúc. *(Chưa hoàn thành)*
-- [ ] **US-017** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem chi tiết Sprint để biết mục tiêu và các User Story được chọn. *(Chưa hoàn thành)*
-- [ ] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint. *(Chưa hoàn thành)*
+- [x] **US-016** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn tạo Sprint mới với tên, mục tiêu, ngày bắt đầu và kết thúc.  
+  *(Đã hoàn thành: Hộp thoại `CreateSprintDialog`, validate ngày, lưu sub-collection `sprints` trên Firestore).*
+- [x] **US-017** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn xem chi tiết Sprint để biết mục tiêu và các User Story được chọn.  
+  *(Đã hoàn thành: Màn hình `SprintDetailScreen`, hiển thị danh sách User Story chọn trong Sprint).*
+- [x] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint.  
+  *(Đã hoàn thành: Luồng chọn User Story từ Backlog gán vào Sprint `storyIds`, cập nhật real-time trên Firestore).*
 
 ---
 
 ### 📋 SPRINT 3: Task Board, Cộng Tác & Trợ Lý Gợi Ý Phân Công AI
-*Tiến độ thực tế: **0 / 17 User Stories hoàn thành***
+*Tiến độ thực tế: **3 / 17 User Stories hoàn thành***
 
-- [ ] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt. *(Chưa hoàn thành)*
-- [ ] **US-052** [Ưu tiên: CAO]: Là PO/SM, tôi muốn giao diện Product Backlog có phân trang và mỗi row gọn để hiển thị ít nhất 10 row trên màn hình mà không cần scroll. *(Chưa hoàn thành)*
-- [ ] **US-051** [Ưu tiên: CAO]: Là PO/SM, tôi muốn API load User Story theo phân trang để không load toàn bộ backlog lên client (tối ưu performance). *(Chưa hoàn thành)*
+- [x] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt.  
+  *(Đã hoàn thành: Tích hợp checkbox lựa chọn trên từng hàng/thẻ, thanh thao tác hàng loạt "Di chuyển vào Sprint" qua `MoveToSprintDialog` và "Xóa hàng loạt" qua `deleteUserStories`).*
+- [x] **US-052** [Ưu tiên: CAO]: Là PO/SM, tôi muốn giao diện Product Backlog có phân trang và mỗi row gọn để hiển thị ít nhất 10 row trên màn hình mà không cần scroll.  
+  *(Đã hoàn thành: Giao diện `CompactUserStoryRow` chiều cao ~46px tối ưu cho 10+ dòng/màn hình, tích hợp nút chuyển chế độ Hàng gọn / Thẻ chi tiết).*
+- [x] **US-051** [Ưu tiên: CAO]: Là PO/SM, tôi muốn API load User Story theo phân trang để không load toàn bộ backlog lên client (tối ưu performance).  
+  *(Đã hoàn thành: Thanh phân trang ở đáy danh sách `Trang X / Y`, nút bấm chuyển trang `<` và `>`).*
 - [ ] **US-019** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn xem Task Board theo từng Sprint. *(Chưa hoàn thành)*
 - [ ] **US-020** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tạo task cho một User Story. *(Chưa hoàn thành)*
 - [ ] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Chưa hoàn thành)*

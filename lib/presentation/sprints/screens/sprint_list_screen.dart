@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../app/authorization/permission.dart';
+import '../../../app/authorization/role_permissions.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../app/utils/date_formatter.dart';
 import '../../../data/models/sprint_model.dart';
+// SprintModel import confirmed — no changes required
 import '../../../data/repositories/sprint_repository.dart';
+import '../../../data/repositories/project_member_repository.dart';
+import 'sprint_detail_screen.dart';
+import '../../task_board/screens/task_board_screen.dart';
+import '../widgets/create_sprint_dialog.dart';
 import '../bloc/sprint_bloc.dart';
 import '../bloc/sprint_event.dart';
 import '../bloc/sprint_state.dart';
@@ -111,21 +118,42 @@ class _SprintListView extends StatelessWidget {
           ],
         ),
         actions: [
+          // Nút mở Task Board (US-055)
           IconButton(
-            tooltip: 'Nạp mẫu',
-            icon: const Icon(Icons.bolt_rounded, color: AppColors.primary),
+            key: const Key('sprintList_openTaskBoard'),
+            tooltip: 'Task Board',
+            icon: const Icon(Icons.view_kanban_outlined, color: AppColors.primary),
             onPressed: () {
-              context.read<SprintBloc>().add(SprintSeedMockRequested(projectId));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã yêu cầu nạp dữ liệu Sprint mẫu'),
-                  backgroundColor: AppColors.success,
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TaskBoardScreen(
+                    projectId: projectId,
+                    projectName: projectName,
+                  ),
                 ),
               );
             },
           ),
           const SizedBox(width: 8),
         ],
+      ),
+      floatingActionButton: StreamBuilder(
+        stream: context
+            .read<ProjectMemberRepository>()
+            .streamCurrentUserRole(projectId),
+        builder: (context, snapshot) {
+          if (!hasPermission(snapshot.data, Permission.manageSprint)) {
+            return const SizedBox.shrink();
+          }
+          return FloatingActionButton.extended(
+            onPressed: () => showCreateSprintDialog(
+              context: context,
+              projectId: projectId,
+            ),
+            icon: const Icon(Icons.add),
+            label: const Text('Tạo Sprint'),
+          );
+        },
       ),
       body: BlocConsumer<SprintBloc, SprintState>(
         listener: (context, state) {
@@ -136,22 +164,63 @@ class _SprintListView extends StatelessWidget {
                 backgroundColor: AppColors.error,
               ),
             );
+          } else if (state is SprintActionCompleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
           }
         },
         builder: (context, state) {
-          if (state is SprintLoading) {
+          if (state is SprintLoading || state is SprintInitial) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is SprintLoaded) {
-            final sprints = state.sprints;
+          final sprints = switch (state) {
+            SprintLoaded(:final sprints) => sprints,
+            SprintActionCompleted(:final sprints) => sprints,
+            SprintError(:final sprints) => sprints,
+            _ => const <SprintModel>[],
+          };
+          if (state is SprintLoaded || state is SprintActionCompleted || state is SprintError) {
 
             if (sprints.isEmpty) {
               return Center(
-                child: Text(
-                  'Chưa có Sprint nào.',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppColors.onSurfaceVariant,
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.directions_run_rounded,
+                          size: 56,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Chưa có Sprint nào',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Bấm nút dấu cộng (+) ở góc dưới để tạo Sprint mới thủ công.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -160,10 +229,24 @@ class _SprintListView extends StatelessWidget {
             return ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: sprints.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final sprint = sprints[index];
-                return Container(
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<SprintBloc>(),
+                        child: SprintDetailScreen(
+                          projectId: projectId,
+                          projectName: projectName,
+                          sprintId: sprint.id,
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
@@ -221,6 +304,7 @@ class _SprintListView extends StatelessWidget {
                         ],
                       ),
                     ],
+                  ),
                   ),
                 );
               },

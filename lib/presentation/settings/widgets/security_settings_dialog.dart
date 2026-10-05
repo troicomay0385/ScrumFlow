@@ -28,23 +28,15 @@ class SecuritySettingsDialog extends StatefulWidget {
 
 class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
   final _biometricService = BiometricService();
-  final _passwordController = TextEditingController();
   bool _isLoading = true;
   bool _isAvailable = false;
   bool _isEnabled = false;
   String _savedEmail = '';
-  bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
     _loadStatus();
-  }
-
-  @override
-  void dispose() {
-    _passwordController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadStatus() async {
@@ -81,142 +73,13 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
   }
 
   void _showPasswordConfirmationDialog(String currentEmail) {
-    _passwordController.clear();
     showDialog(
       context: context,
-      builder: (confirmContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryContainer.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.fingerprint, color: AppColors.primaryContainer, size: 24),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Kích hoạt Sinh trắc học',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tài khoản liên kết: $currentEmail',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Vui lòng nhập mật khẩu tài khoản hiện tại để xác thực và liên kết sinh trắc học vào máy:',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                    decoration: InputDecoration(
-                      labelText: 'Mật khẩu',
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined),
-                        onPressed: () {
-                          setDialogState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(confirmContext).pop(),
-                  child: Text(
-                    'Hủy',
-                    style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryContainer,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () async {
-                    final password = _passwordController.text;
-                    if (password.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Vui lòng nhập mật khẩu của bạn')),
-                      );
-                      return;
-                    }
-
-                    final messenger = ScaffoldMessenger.of(context);
-                    Navigator.of(confirmContext).pop();
-
-                    final authenticated = await _biometricService.authenticate(
-                      localizedReason:
-                          'Chạm vân tay hoặc quét Face ID để kích hoạt liên kết tài khoản',
-                    );
-
-                    if (authenticated) {
-                      await _biometricService.enableBiometricLogin(
-                        email: currentEmail,
-                        password: password,
-                      );
-                      await _loadStatus();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Đã liên kết sinh trắc học thành công cho $currentEmail!'),
-                          backgroundColor: Colors.green.shade700,
-                        ),
-                      );
-                    } else {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Xác thực sinh trắc học thất bại hoặc đã bị hủy.'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                    }
-                  },
-                  child: Text(
-                    'Xác nhận & Quét',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (confirmContext) => _PasswordConfirmationDialog(
+        currentEmail: currentEmail,
+        biometricService: _biometricService,
+        onSuccess: _loadStatus,
+      ),
     );
   }
 
@@ -564,3 +427,163 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
     );
   }
 }
+
+class _PasswordConfirmationDialog extends StatefulWidget {
+  final String currentEmail;
+  final BiometricService biometricService;
+  final VoidCallback onSuccess;
+
+  const _PasswordConfirmationDialog({
+    required this.currentEmail,
+    required this.biometricService,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_PasswordConfirmationDialog> createState() =>
+      _PasswordConfirmationDialogState();
+}
+
+class _PasswordConfirmationDialogState
+    extends State<_PasswordConfirmationDialog> {
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.fingerprint,
+                color: AppColors.primaryContainer, size: 24),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Kích hoạt Sinh trắc học',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tài khoản liên kết: ${widget.currentEmail}',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Vui lòng nhập mật khẩu tài khoản hiện tại để xác thực và liên kết sinh trắc học vào máy:',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            style: GoogleFonts.plusJakartaSans(fontSize: 14),
+            decoration: InputDecoration(
+              labelText: 'Mật khẩu',
+              suffixIcon: IconButton(
+                icon: Icon(_obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Hủy',
+            style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryContainer,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onPressed: () async {
+            final password = _passwordController.text;
+            if (password.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Vui lòng nhập mật khẩu của bạn')),
+              );
+              return;
+            }
+
+            final messenger = ScaffoldMessenger.of(context);
+            Navigator.of(context).pop();
+
+            final authenticated = await widget.biometricService.authenticate(
+              localizedReason:
+                  'Chạm vân tay hoặc quét Face ID để kích hoạt liên kết tài khoản',
+            );
+
+            if (authenticated) {
+              await widget.biometricService.enableBiometricLogin(
+                email: widget.currentEmail,
+                password: password,
+              );
+              widget.onSuccess();
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Đã liên kết sinh trắc học thành công cho ${widget.currentEmail}!'),
+                  backgroundColor: Colors.green.shade700,
+                ),
+              );
+            } else {
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Xác thực sinh trắc học thất bại hoặc đã bị hủy.'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          },
+          child: Text(
+            'Xác nhận & Quét',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

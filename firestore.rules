@@ -1,62 +1,62 @@
 rules_version = '2';
 
 // ═══════════════════════════════════════════════════════════════════
-// ScrumFlow — Firestore Security Rules
+// ScrumFlow — Firestore Security Rules (Cập nhật chuẩn đầy đủ)
 //
-// Collections:
-//   users/{userId}                      — hồ sơ user (tính năng Auth)
-//   projects/{projectId}                — 1 project
-//   projectMembers/{projectId_userId}   — membership + role (PO/SM/MEMBER)
-//     doc id LUÔN là '<projectId>_<userId>' (xem ProjectMemberModel
-//     .membershipIdFor trong app) để rule dùng exists()/get() trực tiếp
-//     thay vì phải query.
-//
-// Giải thích chi tiết từng rule nằm ngay cạnh rule đó bên dưới.
+// Cấu trúc Collections:
+//   1. users/{userId}                      — Hồ sơ người dùng
+//   2. projects/{projectId}                — Thông tin dự án (Project)
+//   3. projects/{projectId}/userStories    — Subcollection User Stories trong Backlog
+//   4. projects/{projectId}/sprints        — Subcollection Sprints trong Dự án
+//   5. projectMembers/{projectId_userId}   — Thành viên & Vai trò (PO / SM / MEMBER)
 // ═══════════════════════════════════════════════════════════════════
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ────────────────────────────────────────────────────
+    // ── 1. HÀM BỔ TRỢ (HELPERS) ─────────────────────────────────────
 
+    // Kiểm tra người dùng đã đăng nhập chưa
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Đặt tên khác với path capture `{membershipId}` trong match block bên
-    // dưới để tránh shadowing (biến path trùng tên hàm khiến gọi hàm bị
-    // hiểu nhầm thành gọi giá trị string — lỗi từng khiến rule tạo
-    // membership luôn bị từ chối dù logic đúng).
+    // Tạo ID chuẩn cho document membership: '<projectId>_<userId>'
     function memberDocId(projectId, userId) {
       return projectId + '_' + userId;
     }
 
+    // Tạo reference tới document membership
     function membershipDoc(projectId, userId) {
       return /databases/$(database)/documents/projectMembers/$(memberDocId(projectId, userId));
     }
 
-    // User hiện tại có phải thành viên (bất kỳ role nào) của project không.
+    // Kiểm tra user hiện tại có phải thành viên (PO, SM hoặc MEMBER) của project không
     function isProjectMember(projectId) {
       return isSignedIn() && exists(membershipDoc(projectId, request.auth.uid));
     }
 
-    // Role của user hiện tại trong project (chỉ gọi sau khi đã biết
-    // isProjectMember() == true, tránh get() vào doc không tồn tại).
+    // Lấy vai trò (role) của user hiện tại trong project
     function currentRole(projectId) {
       return get(membershipDoc(projectId, request.auth.uid)).data.role;
     }
 
+    // Kiểm tra user có phải Product Owner (PO) không
     function isPO(projectId) {
       return isProjectMember(projectId) && currentRole(projectId) == 'PO';
     }
 
-    // Permission.manageBacklog — PO và SM (khớp role_permissions.dart).
+    // Quyền quản lý Backlog (User Story): PO và SM
     function canManageBacklog(projectId) {
       return isProjectMember(projectId) && currentRole(projectId) in ['PO', 'SM'];
     }
 
-    // Ràng buộc dữ liệu tối thiểu của 1 User Story (khớp UserStoryValidator).
-    // tags/deadline là field mới — dữ liệu cũ không có vẫn hợp lệ.
+    // Quyền quản lý Sprint: PO và SM
+    function canManageSprint(projectId) {
+      return isProjectMember(projectId) && currentRole(projectId) in ['PO', 'SM'];
+    }
+
+    // Kiểm tra tính hợp lệ của User Story
     function isValidStory(data) {
       return data.title is string
         && data.title.size() > 0
@@ -66,104 +66,103 @@ service cloud.firestore {
         && data.get('tags', []).size() <= 10;
     }
 
+    // Kiểm tra vai trò hợp lệ
     function isValidRole(role) {
       return role in ['PO', 'SM', 'MEMBER'];
     }
 
-    // ── users/{userId} ─────────────────────────────────────────────
-    // Đã tồn tại từ tính năng Auth (Login/Register). Trước đây chưa có
-    // rules file trong repo — bổ sung ở đây để: (1) giữ đúng hành vi
-    // hiện tại (user tự tạo/đọc/sửa hồ sơ của mình), và (2) cho phép
-    // MỌI user đã đăng nhập ĐỌC hồ sơ user khác — cần thiết để:
-    //   - PO tìm user theo email khi thêm thành viên (findUserByEmail)
-    //   - Hiển thị avatar/tên/email của thành viên trong project
-    // Đây là dữ liệu hồ sơ công khai trong nội bộ app (không có field
-    // nhạy cảm), không phải toàn quyền ghi.
+    // ── 2. USERS COLLECTION ─────────────────────────────────────────
     match /users/{userId} {
+      // Cho phép mọi người dùng đã đăng nhập đọc hồ sơ công khai của nhau
       allow read: if isSignedIn();
 
+      // Chỉ chính user mới được tạo hồ sơ cho mình
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.id == userId;
 
+      // Chỉ chính user mới được sửa hồ sơ của mình (không đổi ID)
       allow update: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.id == resource.data.id; // không đổi id
+        && request.resource.data.id == resource.data.id;
 
       allow delete: if false;
     }
 
-    // ── projects/{projectId} ──────────────────────────────────────
+    // ── 3. PROJECTS COLLECTION ──────────────────────────────────────
     match /projects/{projectId} {
-      // Chỉ thành viên project mới đọc được (viewProject permission).
+      // Tất cả thành viên trong dự án đều được đọc thông tin project
       allow read: if isProjectMember(projectId);
 
-      // Bất kỳ user đã đăng nhập đều tạo được project mới — họ trở
-      // thành PO qua 1 write riêng ngay sau đó (ProjectRepositoryImpl).
+      // Mọi người dùng đăng nhập đều được tạo project mới
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.id == projectId;
 
-      // Chỉ PO được sửa thông tin project, không được đổi createdBy/id.
+      // Chỉ PO mới được sửa thông tin project
       allow update: if isPO(projectId)
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.id == resource.data.id;
 
-      // Cho phép người tạo xoá project của chính họ — CHỦ YẾU để
-      // rollback phía client khi bootstrap PO membership thất bại
-      // ngay sau khi tạo project (xem ProjectRepositoryImpl.createProject).
+      // Người tạo có quyền xóa project (để rollback khi cần)
       allow delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
 
-      // ── Subcollection: userStories (US-005/006/009/010/014) ───────
-      // Trước đây `allow read, write: if isSignedIn()` — BẤT KỲ user đăng
-      // nhập nào (kể cả người ngoài project) cũng đọc/ghi được. Siết lại
-      // theo permission matrix: viewBacklog = mọi thành viên,
-      // manageBacklog = PO/SM (xem role_permissions.dart).
+      // ── Subcollection: userStories (Backlog) ──────────────────────
       match /userStories/{storyId} {
+        // Mọi thành viên project đều đọc được danh sách User Story
         allow read: if isProjectMember(projectId);
 
-        // Tạo: story phải thuộc đúng project trên path (không ghi chéo
-        // sang project khác), createdBy (nếu có) phải là chính người gọi.
+        // PO và SM có quyền tạo mới User Story
         allow create: if canManageBacklog(projectId)
           && request.resource.data.projectId == projectId
           && request.resource.data.get('createdBy', request.auth.uid) == request.auth.uid
           && isValidStory(request.resource.data);
 
-        // Sửa (vd. gắn tag): không được đổi projectId/createdBy.
+        // PO và SM có quyền cập nhật User Story
         allow update: if canManageBacklog(projectId)
           && request.resource.data.projectId == resource.data.projectId
           && request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null)
           && isValidStory(request.resource.data);
 
+        // PO và SM có quyền xóa User Story
         allow delete: if canManageBacklog(projectId);
+      }
+
+      // ── Subcollection: sprints (Sprint Management) ────────────────
+      match /sprints/{sprintId} {
+        // Mọi thành viên project đều đọc được danh sách Sprint
+        allow read: if isProjectMember(projectId);
+
+        // PO và SM có quyền tạo Sprint mới
+        allow create: if canManageSprint(projectId)
+          && request.resource.data.projectId == projectId
+          && request.resource.data.get('createdBy', request.auth.uid) == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.goal is string
+          && request.resource.data.goal.size() > 0
+          && request.resource.data.storyIds is list;
+
+        // PO và SM có quyền cập nhật Sprint (thêm story, đổi mục tiêu, trạng thái)
+        allow update: if canManageSprint(projectId)
+          && request.resource.data.projectId == resource.data.projectId
+          && request.resource.data.get('createdBy', null) == resource.data.get('createdBy', null)
+          && request.resource.data.storyIds is list;
+
+        // PO và SM có quyền xóa Sprint
+        allow delete: if canManageSprint(projectId);
       }
     }
 
-    // ── projectMembers/{membershipId} ───────────────────────────────
+    // ── 4. PROJECT MEMBERS COLLECTION ──────────────────────────────
     match /projectMembers/{membershipId} {
-      // Đọc: user luôn đọc được membership CỦA CHÍNH MÌNH (để biết role
-      // → tính permission), PO đọc được TOÀN BỘ danh sách thành viên
-      // (viewMembers permission — theo permission matrix hiện tại chỉ
-      // PO mới xem được danh sách đầy đủ, SM/MEMBER chỉ biết role của
-      // riêng mình).
-      // `resource == null` (doc CHƯA tồn tại) phải được cho phép đọc —
-      // ProjectMemberDataSource.createMembership() luôn get() kiểm tra
-      // tồn tại trước khi tạo; nếu không có nhánh này, truy cập
-      // resource.data trên document chưa tồn tại sẽ lỗi runtime và bị
-      // Firestore từ chối như permission-denied (không lộ dữ liệu gì vì
-      // doc không tồn tại).
+      // Thành viên trong project hoặc chính mình được đọc thông tin membership
       allow read: if isSignedIn()
         && (resource == null
           || request.auth.uid == resource.data.userId
-          || isPO(resource.data.projectId));
+          || isProjectMember(resource.data.projectId));
 
-      // Tạo membership mới — 2 trường hợp:
-      //   (a) Bootstrap: user tự tạo membership PO cho project họ VỪA
-      //       tạo (get() dưới đây đọc doc `projects` ĐÃ COMMIT — client
-      //       tạo project trước, tạo membership sau bằng 2 write tuần
-      //       tự, không dùng batch, để get() ở đây thấy đúng dữ liệu).
-      //   (b) PO thêm thành viên mới (manageMembers permission).
-      // Luôn bắt buộc doc id khớp đúng projectId_userId và role hợp lệ.
+      // Tạo membership mới: User tự tạo quyền PO khi mới lập project HOẶC PO thêm thành viên
       allow create: if isSignedIn()
         && membershipId == memberDocId(request.resource.data.projectId, request.resource.data.userId)
         && isValidRole(request.resource.data.role)
@@ -176,20 +175,13 @@ service cloud.firestore {
           isPO(request.resource.data.projectId)
         );
 
-      // Đổi role: chỉ PO, KHÔNG được đổi role của CHÍNH MÌNH (self-role
-      // protection — mục J/K của yêu cầu). Đây cũng là cơ chế duy nhất
-      // đảm bảo project không bao giờ mất hết PO: vì PO không thể tự hạ
-      // quyền chính mình, project luôn còn tối thiểu 1 PO (người tạo,
-      // hoặc PO được người khác chỉ định) có thể quản trị tiếp.
-      // hasOnly(['role','updatedAt']) đảm bảo projectId/userId/createdBy/
-      // createdAt không thể bị sửa qua đường update.
+      // Đổi role: Chỉ PO mới có quyền đổi role, không được tự đổi role của chính mình
       allow update: if isPO(resource.data.projectId)
         && request.auth.uid != resource.data.userId
         && isValidRole(request.resource.data.role)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt']);
 
-      // Xoá thành viên: chỉ PO, không tự xoá chính mình (cùng lý do
-      // với update — tránh project mất PO qua đường xoá membership).
+      // Xóa thành viên: Chỉ PO mới có quyền xóa thành viên, không tự xóa chính mình
       allow delete: if isPO(resource.data.projectId)
         && request.auth.uid != resource.data.userId;
     }

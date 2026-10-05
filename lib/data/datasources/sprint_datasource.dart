@@ -15,6 +15,91 @@ class SprintDataSource {
     return _firestore.collection('projects').doc(projectId).collection('sprints');
   }
 
+  Future<SprintModel> createSprint(SprintModel sprint) async {
+    final docRef = _sprintsCollection(sprint.projectId).doc();
+    final created = sprint.copyWith(id: docRef.id);
+    await docRef.set(created.toMap()).timeout(const Duration(seconds: 15));
+    final sprints = List<SprintModel>.from(_localCache[sprint.projectId] ?? const []);
+    sprints.add(created);
+    _publish(sprint.projectId, sprints);
+    return created;
+  }
+
+  Future<void> addStoryToSprint({
+    required String projectId,
+    required String sprintId,
+    required String storyId,
+  }) async {
+    await addStoriesToSprint(
+      projectId: projectId,
+      sprintId: sprintId,
+      storyIds: [storyId],
+    );
+  }
+
+  Future<void> addStoriesToSprint({
+    required String projectId,
+    required String sprintId,
+    required List<String> storyIds,
+  }) async {
+    if (storyIds.isEmpty) return;
+    try {
+      await _sprintsCollection(projectId).doc(sprintId).update({
+        'storyIds': FieldValue.arrayUnion(storyIds),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // Offline fallback
+    }
+
+    final sprints = List<SprintModel>.from(_localCache[projectId] ?? const []);
+    final index = sprints.indexWhere((sprint) => sprint.id == sprintId);
+    if (index >= 0) {
+      final updatedIds = {...sprints[index].storyIds, ...storyIds}.toList();
+      sprints[index] = sprints[index].copyWith(
+        storyIds: updatedIds,
+        updatedAt: DateTime.now(),
+      );
+      _publish(projectId, sprints);
+    }
+  }
+
+  Future<void> removeStoriesFromSprint({
+    required String projectId,
+    required String sprintId,
+    required List<String> storyIds,
+  }) async {
+    if (storyIds.isEmpty) return;
+    try {
+      await _sprintsCollection(projectId).doc(sprintId).update({
+        'storyIds': FieldValue.arrayRemove(storyIds),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // Offline fallback
+    }
+
+    final sprints = List<SprintModel>.from(_localCache[projectId] ?? const []);
+    final index = sprints.indexWhere((sprint) => sprint.id == sprintId);
+    if (index >= 0) {
+      final updatedIds = sprints[index]
+          .storyIds
+          .where((id) => !storyIds.contains(id))
+          .toList();
+      sprints[index] = sprints[index].copyWith(
+        storyIds: updatedIds,
+        updatedAt: DateTime.now(),
+      );
+      _publish(projectId, sprints);
+    }
+  }
+
+  void _publish(String projectId, List<SprintModel> sprints) {
+    _localCache[projectId] = sprints;
+    final controller = _getController(projectId);
+    if (!controller.isClosed) controller.add(List.from(sprints));
+  }
+
   StreamController<List<SprintModel>> _getController(String projectId) {
     if (!_controllers.containsKey(projectId) || _controllers[projectId]!.isClosed) {
       _controllers[projectId] = StreamController<List<SprintModel>>.broadcast();
@@ -47,8 +132,8 @@ class SprintDataSource {
         }
       },
       onError: (error) {
-        if (!_localCache.containsKey(projectId) || _localCache[projectId]!.isEmpty) {
-          _localCache[projectId] = _buildSampleSprints(projectId);
+        if (!_localCache.containsKey(projectId)) {
+          _localCache[projectId] = [];
         }
         if (!controller.isClosed) {
           controller.add(List.from(_localCache[projectId]!));
@@ -60,51 +145,6 @@ class SprintDataSource {
   }
 
   Future<void> seedMockSprints(String projectId) async {
-    final sampleSprints = _buildSampleSprints(projectId);
-
-    _localCache[projectId] = sampleSprints;
-    final controller = _getController(projectId);
-    if (!controller.isClosed) {
-      controller.add(List.from(sampleSprints));
-    }
-
-    try {
-      final batch = _firestore.batch();
-      for (final sprint in sampleSprints) {
-        final docRef = _sprintsCollection(projectId).doc(sprint.id);
-        batch.set(docRef, sprint.toMap());
-      }
-      await batch.commit();
-    } catch (_) {
-      // Ignore cloud errors
-    }
-  }
-
-  List<SprintModel> _buildSampleSprints(String projectId) {
-    final now = DateTime.now();
-    return [
-      SprintModel(
-        id: 'mock_sprint_1',
-        projectId: projectId,
-        name: 'Sprint 1',
-        goal: 'Hoàn thiện chức năng đăng nhập và khởi tạo dự án',
-        startDate: now.subtract(const Duration(days: 7)),
-        endDate: now.add(const Duration(days: 7)),
-        status: 'Active',
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(days: 8)),
-      ),
-      SprintModel(
-        id: 'mock_sprint_2',
-        projectId: projectId,
-        name: 'Sprint 2',
-        goal: 'Quản lý User Story và Backlog',
-        startDate: now.add(const Duration(days: 8)),
-        endDate: now.add(const Duration(days: 22)),
-        status: 'Planned',
-        createdAt: now.subtract(const Duration(days: 8)),
-        updatedAt: now.subtract(const Duration(days: 8)),
-      ),
-    ];
+    // Chức năng tự sinh mẫu đã bị loại bỏ theo yêu cầu người dùng
   }
 }

@@ -32,20 +32,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _passwordController.addListener(() {
-      setState(() {
-        _password = _passwordController.text;
-      });
+    _passwordController.addListener(_onPasswordChanged);
+    _confirmPasswordController.addListener(_onConfirmPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    if (!mounted) return;
+    setState(() {
+      _password = _passwordController.text;
     });
-    _confirmPasswordController.addListener(() {
-      setState(() {
-        _confirmPassword = _confirmPasswordController.text;
-      });
+  }
+
+  void _onConfirmPasswordChanged() {
+    if (!mounted) return;
+    setState(() {
+      _confirmPassword = _confirmPasswordController.text;
     });
   }
 
   @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
+    _confirmPasswordController.removeListener(_onConfirmPasswordChanged);
     _fullNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -235,7 +243,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               prefixIcon: const Icon(Icons.mail_outline_rounded,
                                   color: Color(0xFF64748B), size: 20),
                             ),
-                            onChanged: (_) => setState(() {}),
+                            onChanged: (_) {
+                              if (mounted) setState(() {});
+                            },
                           ),
                           const SizedBox(height: 16),
 

@@ -6,6 +6,7 @@ class SprintModel extends Equatable {
   final String projectId;
   final String name; // e.g., "Sprint 1"
   final String goal;
+  final List<String> storyIds;
   final DateTime startDate;
   final DateTime endDate;
   final String status; // Planned, Active, Closed
@@ -18,6 +19,7 @@ class SprintModel extends Equatable {
     required this.projectId,
     required this.name,
     required this.goal,
+    this.storyIds = const [],
     required this.startDate,
     required this.endDate,
     this.status = 'Planned',
@@ -32,6 +34,7 @@ class SprintModel extends Equatable {
       'projectId': projectId,
       'name': name,
       'goal': goal,
+      'storyIds': storyIds,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'status': status,
@@ -53,6 +56,10 @@ class SprintModel extends Equatable {
       projectId: map['projectId'] as String? ?? '',
       name: map['name'] as String? ?? '',
       goal: map['goal'] as String? ?? '',
+      storyIds: (map['storyIds'] as List?)
+              ?.whereType<String>()
+              .toList() ??
+          const [],
       startDate: parseDate(map['startDate']),
       endDate: parseDate(map['endDate']),
       status: map['status'] as String? ?? 'Planned',
@@ -66,6 +73,7 @@ class SprintModel extends Equatable {
     String? id,
     String? name,
     String? goal,
+    List<String>? storyIds,
     DateTime? startDate,
     DateTime? endDate,
     String? status,
@@ -76,6 +84,7 @@ class SprintModel extends Equatable {
       projectId: projectId,
       name: name ?? this.name,
       goal: goal ?? this.goal,
+      storyIds: storyIds ?? this.storyIds,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       status: status ?? this.status,
@@ -91,6 +100,7 @@ class SprintModel extends Equatable {
         projectId,
         name,
         goal,
+        storyIds,
         startDate,
         endDate,
         status,

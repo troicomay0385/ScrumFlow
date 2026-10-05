@@ -16,6 +16,9 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     on<BacklogSeedMockRequested>(_onSeedMockRequested);
     on<BacklogStatusFilterChanged>(_onStatusFilterChanged);
     on<BacklogSortChanged>(_onSortChanged);
+    on<BacklogDeleteStoriesRequested>(_onDeleteStoriesRequested);
+    on<BacklogPaginatedLoadRequested>(_onPaginatedLoadRequested);
+    on<BacklogNextPageRequested>(_onNextPageRequested);
   }
 
   Future<void> _onSubscriptionRequested(
@@ -36,6 +39,55 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
       onError: (error, stackTrace) =>
           BacklogError('Lỗi tải Product Backlog: $error'),
     );
+  }
+
+  /// Load trang đầu tiên theo phân trang server-side (US-054).
+  Future<void> _onPaginatedLoadRequested(
+    BacklogPaginatedLoadRequested event,
+    Emitter<BacklogState> emit,
+  ) async {
+    emit(BacklogLoading());
+    try {
+      final result = await _repository.getUserStoriesPaginated(
+        projectId: event.projectId,
+        pageSize: event.pageSize,
+        statusFilter: event.statusFilter,
+      );
+      emit(BacklogLoaded(
+        stories: result.stories,
+        lastDocument: result.lastDocument,
+        hasMore: result.hasMore,
+      ));
+    } catch (e) {
+      emit(BacklogError('Lỗi tải Product Backlog: $e'));
+    }
+  }
+
+  /// Load trang tiếp theo (cursor-based) — append vào danh sách hiện có.
+  Future<void> _onNextPageRequested(
+    BacklogNextPageRequested event,
+    Emitter<BacklogState> emit,
+  ) async {
+    final current = state;
+    if (current is! BacklogLoaded || current.isLoadingMore) return;
+
+    emit(current.copyWith(isLoadingMore: true));
+    try {
+      final result = await _repository.getUserStoriesPaginated(
+        projectId: event.projectId,
+        pageSize: event.pageSize,
+        startAfterDoc: event.lastDocument ?? current.lastDocument,
+        statusFilter: event.statusFilter ?? current.statusFilter,
+      );
+      emit(current.copyWith(
+        stories: [...current.stories, ...result.stories],
+        lastDocument: () => result.lastDocument,
+        hasMore: result.hasMore,
+        isLoadingMore: false,
+      ));
+    } catch (e) {
+      emit(current.copyWith(isLoadingMore: false));
+    }
   }
 
   Future<void> _onSeedMockRequested(
@@ -67,6 +119,20 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     final current = state;
     if (current is BacklogLoaded) {
       emit(current.copyWith(sortOption: event.sortOption));
+    }
+  }
+
+  Future<void> _onDeleteStoriesRequested(
+    BacklogDeleteStoriesRequested event,
+    Emitter<BacklogState> emit,
+  ) async {
+    try {
+      await _repository.deleteUserStories(
+        projectId: event.projectId,
+        storyIds: event.storyIds,
+      );
+    } catch (e) {
+      emit(BacklogError('Lỗi xóa User Story: $e'));
     }
   }
 

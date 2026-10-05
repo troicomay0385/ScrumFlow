@@ -14,6 +14,7 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.viewBacklog,
     Permission.manageBacklog,
     Permission.viewSprint,
+    Permission.manageSprint,
     Permission.viewTask,
     Permission.viewMembers,
     Permission.manageMembers,
