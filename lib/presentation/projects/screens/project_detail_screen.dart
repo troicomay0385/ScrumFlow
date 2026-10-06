@@ -15,6 +15,10 @@ import '../../sprints/screens/sprint_list_screen.dart';
 import '../../project_members/widgets/role_badge.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../widgets/edit_project_dialog.dart';
+import '../../standup/screens/daily_standup_form_screen.dart';
+import '../../standup/screens/standup_history_screen.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 
 /// Màn hình Chi tiết Project — không gian làm việc chính phong cách Kinetic Sprint Bento:
 /// 1. Bento Header dự án: Tên, mục tiêu, role pill, action chỉnh sửa (PO).
@@ -327,6 +331,65 @@ class ProjectDetailScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => SprintListScreen(
+                            projectId: project.id,
+                            projectName: project.name,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Bento Module 3: Daily Stand-up ────────────────────────
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.mic_rounded,
+                    iconBgColor: const Color(0xFFE0F2FE),
+                    iconColor: const Color(0xFF0284C7),
+                    title: 'Ghi Daily Stand-up',
+                    subtitle: 'Báo cáo tiến độ và vướng mắc hàng ngày',
+                    tag: 'Daily',
+                    tagBgColor: const Color(0xFFBAE6FD),
+                    tagTextColor: const Color(0xFF0369A1),
+                    onTap: () {
+                      final authState = context.read<AuthBloc>().state;
+                      String userId = '';
+                      String userName = '';
+                      if (authState is AuthAuthenticated) {
+                        userId = authState.user.id;
+                        userName = authState.user.fullName;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DailyStandupFormScreen(
+                            userId: userId,
+                            userName: userName,
+                            sprintId: '', // Todo: Truyền active sprint ID
+                            sprintName: 'Sprint hiện tại', 
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Bento Module 4: Lịch sử Stand-up ──────────────────────
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.history_rounded,
+                    iconBgColor: const Color(0xFFFCE7F3),
+                    iconColor: const Color(0xFFBE185D),
+                    title: 'Lịch sử Stand-up',
+                    subtitle: 'Xem lại các báo cáo Stand-up của đội',
+                    tag: 'History',
+                    tagBgColor: const Color(0xFFFBCFE8),
+                    tagTextColor: const Color(0xFF9D174D),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => StandupHistoryScreen(
                             projectId: project.id,
                             projectName: project.name,
                           ),
