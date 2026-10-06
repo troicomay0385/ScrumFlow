@@ -210,5 +210,20 @@ service cloud.firestore {
       // Chỉ người tạo task mới được xóa (kiểm tra createdBy nếu có)
       allow delete: if isSignedIn();
     }
+
+    // ── 6. NOTIFICATIONS COLLECTION ─────────────────────────────────
+    match /notifications/{notificationId} {
+      // User đọc được thông báo gửi cho chính mình
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // User đăng nhập được tạo thông báo (bắn thông báo cho người khác hoặc chính mình)
+      allow create: if isSignedIn();
+
+      // User cập nhật thông báo của chính mình (đánh dấu đã đọc)
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // User xóa thông báo của chính mình
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
   }
 }

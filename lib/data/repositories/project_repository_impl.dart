@@ -7,6 +7,7 @@ import '../datasources/project_member_datasource.dart';
 import '../models/project_model.dart';
 import '../models/project_summary.dart';
 import 'project_repository.dart';
+import 'notification_repository.dart';
 
 /// Implementation của [ProjectRepository].
 ///
@@ -23,14 +24,17 @@ class ProjectRepositoryImpl implements ProjectRepository {
   final ProjectDataSource _projectDataSource;
   final ProjectMemberDataSource _memberDataSource;
   final FirebaseAuthDataSource _authDataSource;
+  final NotificationRepository? _notificationRepository;
 
   ProjectRepositoryImpl({
     required ProjectDataSource projectDataSource,
     required ProjectMemberDataSource memberDataSource,
     required FirebaseAuthDataSource authDataSource,
+    NotificationRepository? notificationRepository,
   })  : _projectDataSource = projectDataSource,
         _memberDataSource = memberDataSource,
-        _authDataSource = authDataSource;
+        _authDataSource = authDataSource,
+        _notificationRepository = notificationRepository;
 
   String get _currentUserId {
     final uid = _authDataSource.currentUser?.uid;
@@ -116,6 +120,18 @@ class ProjectRepositoryImpl implements ProjectRepository {
       name: name,
       description: description,
     );
+
+    if (_notificationRepository != null) {
+      final memberships = await _memberDataSource.getMembers(projectId);
+      final memberIds = memberships.map((m) => m.userId).where((id) => id != uid).toList();
+      if (memberIds.isNotEmpty) {
+        _notificationRepository!.notifyProjectUpdated(
+          memberIds: memberIds,
+          projectName: name,
+          projectId: projectId,
+        );
+      }
+    }
   }
 
   @override

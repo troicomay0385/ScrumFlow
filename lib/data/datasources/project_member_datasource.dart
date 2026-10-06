@@ -88,6 +88,14 @@ class ProjectMemberDataSource {
             .toList());
   }
 
+  Future<List<ProjectMemberModel>> getMembers(String projectId) async {
+    final snapshot =
+        await _membersCollection.where('projectId', isEqualTo: projectId).get();
+    return snapshot.docs
+        .map((doc) => ProjectMemberModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   /// Lấy toàn bộ membership của 1 user (project nào user đó tham gia).
   Future<List<ProjectMemberModel>> getMembershipsForUser(String userId) async {
     final snapshot =

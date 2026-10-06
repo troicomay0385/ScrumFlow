@@ -51,9 +51,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
     // Ghi lên Firestore (stream sẽ confirm lại)
     try {
+      print('[TASK BLOC] Kéo thả task ${event.taskId} sang trạng thái: ${event.newStatus}');
       await _repository.updateTaskStatus(event.taskId, event.newStatus);
     } catch (e) {
       // Rollback nếu lỗi
+      print('[TASK BLOC ERROR] Lỗi cập nhật trạng thái task: $e');
       if (!isClosed) add(_TaskError('Lỗi cập nhật trạng thái: $e'));
     }
   }

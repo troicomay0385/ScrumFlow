@@ -19,6 +19,7 @@ import '../../standup/screens/daily_standup_form_screen.dart';
 import '../../standup/screens/standup_history_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../../notifications/widgets/notification_bell_widget.dart';
 
 /// Màn hình Chi tiết Project — không gian làm việc chính phong cách Kinetic Sprint Bento:
 /// 1. Bento Header dự án: Tên, mục tiêu, role pill, action chỉnh sửa (PO).
@@ -100,6 +101,7 @@ class ProjectDetailScreen extends StatelessWidget {
                         project: project,
                       ),
                     ),
+                  const NotificationBellWidget(),
                   IconButton(
                     icon: const Icon(Icons.settings_outlined),
                     tooltip: 'Cài đặt bảo mật & Vân tay',
