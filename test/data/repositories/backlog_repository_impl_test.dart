@@ -10,6 +10,7 @@ import 'package:scrumflow/data/datasources/project_member_datasource.dart';
 import 'package:scrumflow/data/models/project_member_model.dart';
 import 'package:scrumflow/data/models/user_story_model.dart';
 import 'package:scrumflow/data/repositories/backlog_repository_impl.dart';
+import 'package:scrumflow/data/repositories/notification_repository.dart';
 
 class MockBacklogDataSource extends Mock implements BacklogDataSource {}
 
@@ -20,6 +21,9 @@ class MockFirebaseAuthDataSource extends Mock
     implements FirebaseAuthDataSource {}
 
 class MockUser extends Mock implements User {}
+
+class MockNotificationRepository extends Mock
+    implements NotificationRepository {}
 
 UserStoryModel existingStory(String key) => UserStoryModel(
       id: 'doc-$key',
@@ -93,6 +97,9 @@ void main() {
       memberDataSource: memberDataSource,
       authDataSource: authDataSource,
       now: () => now,
+      // Không truyền thì BacklogRepositoryImpl tự tạo NotificationRepository
+      // thật → cần Firebase.initializeApp(), không chạy được trong unit test.
+      notificationRepository: MockNotificationRepository(),
     );
   });
 

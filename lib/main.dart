@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'app/routes/app_routes.dart';
 import 'app/theme/app_theme.dart';
 import 'data/datasources/backlog_datasource.dart';
+import 'data/datasources/comment_datasource.dart';
 import 'data/datasources/firebase_auth_datasource.dart';
 import 'data/datasources/firestore_datasource.dart';
 import 'data/datasources/local_cache_datasource.dart';
@@ -16,6 +17,8 @@ import 'data/datasources/project_member_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/backlog_repository.dart';
 import 'data/repositories/backlog_repository_impl.dart';
+import 'data/repositories/comment_repository.dart';
+import 'data/repositories/comment_repository_impl.dart';
 import 'data/repositories/project_member_repository.dart';
 import 'data/repositories/project_member_repository_impl.dart';
 import 'data/repositories/project_repository.dart';
@@ -91,6 +94,12 @@ void main() async {
     dataSource: SprintDataSource(firestore: firestore),
   );
   final StandupRepository standupRepository = StandupRepository(firestore: firestore);
+  final CommentRepository commentRepository = CommentRepositoryImpl(
+    dataSource: CommentDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    userDataSource: firestoreDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
 
   runApp(
     MultiRepositoryProvider(
@@ -108,6 +117,7 @@ void main() async {
           ),
         ),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),
+        RepositoryProvider<CommentRepository>.value(value: commentRepository),
         RepositoryProvider<NotificationRepository>.value(value: notificationRepository),
       ],
       child: MultiBlocProvider(
@@ -140,6 +150,13 @@ class ScrumFlowApp extends StatelessWidget {
       title: 'ScrumFlow',
       theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.login,
+      // Luôn khởi động từ Login, bỏ qua URL của trình duyệt. Trên Web, khi
+      // reload ở một màn con (vd. `#/projects/detail`), Flutter sẽ dựng lại
+      // route đó mà KHÔNG có `arguments` (projectId) → crash màn hình đỏ.
+      // Login tự chuyển sang Home nếu phiên đăng nhập còn hiệu lực.
+      onGenerateInitialRoutes: (_) => [
+        AppRoutes.generateRoute(const RouteSettings(name: AppRoutes.login)),
+      ],
       onGenerateRoute: AppRoutes.generateRoute,
       debugShowCheckedModeBanner: false,
     );

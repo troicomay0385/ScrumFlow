@@ -213,6 +213,44 @@
   - **Loại bỏ tính năng tự động sinh mẫu Backlog & Sprint:** Xóa bỏ hoàn toàn nút "Nạp mẫu" và cơ chế tự nạp mảng `_buildSampleStories`/`_buildSampleSprints` trên `backlog_datasource.dart` & `sprint_datasource.dart`. Chuyển 100% sang luồng tạo mới và quản lý dữ liệu thủ công.
   - **Nâng cấp tính năng "Thêm từ backlog" vào Sprint (`sprint_detail_screen.dart`):** Bổ sung sự kiện batch `SprintStoriesAddRequested` trong `SprintBloc` giúp thêm danh sách User Story vào Sprint bằng 1 thao tác duy nhất (tránh xung đột ghi race condition). Thiết kế lại Modal Sheet chọn story với giao diện trực quan, hỗ trợ chọn tất cả, xem điểm Story Points và độ ưu tiên.
 
+### Ngày 06/10/2026: Sprint 3 — US-043 (Đổi assignee Task), US-044 (Deadline Task), US-045 (Comment User Story), US-046 (Comment Task)
+
+- **Nguyên tắc:** mở rộng hệ thống Task/Backlog sẵn có, KHÔNG tạo Task/User Story system thứ hai. Tái sử dụng `TaskModel`, `TaskRepository`, `TaskBloc`, `ProjectMemberRepository.streamMembers`, `FirebaseErrorMapper`, `RoleBadge`, `formatDateVi`.
+- **Hiện trạng trước khi làm:** Task lưu ở collection top-level `tasks/{taskId}` (chỉ có `storyId`, không có `projectId`), đã có `assigneeId`/`assigneeName`, chưa có deadline, **chưa có màn Task Detail**; chưa có bất kỳ Model/Repository/DataSource nào cho Comment.
+- **US-043 — Đổi người phụ trách Task:**
+  - Màn mới `TaskDetailScreen` (mở bằng cách bấm vào thẻ task trên Task Board của User Story). Ô "Người phụ trách" mở dialog `showAssigneePickerDialog` liệt kê **thành viên thực tế của project** (kèm role badge) + lựa chọn "Chưa phân công"; bấm "Lưu" mới ghi.
+  - `TaskDetailCubit.changeAssignee`: kiểm tra `Permission.assignTask`, chỉ nhận uid có trong danh sách thành viên project, rồi gọi `TaskRepository.updateTaskAssignee` — chỉ `update` 3 field `assigneeId`, `assigneeName`, `updatedAt` (không ghi đè field khác). Người được giao nhận thông báo qua `notifyTaskAssigned` sẵn có.
+- **US-044 — Deadline Task:**
+  - `TaskModel` thêm `deadline: DateTime?` (lưu **Timestamp** như `createdAt/updatedAt` của task; đọc được cả Timestamp lẫn ISO string; thiếu field/sai kiểu → `null`, không crash).
+  - Ô "Deadline" trong Task Detail: hiện `dd/MM/yyyy` hoặc "Chưa đặt", bấm để mở DatePicker, nút x để xoá deadline; quá hạn (chưa Done) hiện màu đỏ. Thẻ task trên board cũng hiện deadline.
+  - `TaskDetailCubit.setDeadline`: kiểm tra `Permission.setTaskDeadline`, chỉ lưu phần ngày, từ chối ngày trong quá khứ; `TaskRepository.updateTaskDeadline` chỉ `update` `deadline` + `updatedAt`.
+- **US-045 / US-046 — Bình luận (dùng chung 1 bộ code):**
+  - `CommentModel` + `CommentTarget` (`.story(projectId, storyId)` / `.task(projectId, taskId)`), `CommentDataSource`, `CommentRepository` + `CommentRepositoryImpl`, `CommentsCubit`, widget dùng chung `CommentsSection` / `CommentItem` / `CommentInput` (`lib/presentation/comments/`).
+  - Gắn `CommentsSection` vào cuối `UserStoryDetailScreen` (US-045) và `TaskDetailScreen` (US-046). Có loading / empty / error (kèm "Thử lại") / đang gửi; real-time qua Firestore stream; gửi thành công thì xoá ô nhập; hiện tên người viết + thời gian tương đối ("5 phút trước").
+  - Validate: không rỗng / không toàn khoảng trắng / tối đa 1000 ký tự (`CommentValidator`, kiểm tra ở cả Cubit, Repository và Rules). `CommentRepositoryImpl` kiểm tra đăng nhập + là thành viên project (`Permission.comment`) trước khi ghi; `authorId` luôn là uid đang đăng nhập.
+- **Firestore structure (không migrate dữ liệu cũ):**
+  - Comment User Story: `projects/{projectId}/userStories/{storyId}/comments/{commentId}`.
+  - Comment Task: `tasks/{taskId}/comments/{commentId}`.
+  - Field comment: `projectId`, `storyId` **hoặc** `taskId`, `authorId`, `authorName`, `content`, `createdAt` (server timestamp).
+  - Task: thêm `deadline` (Timestamp|null) và `projectId` (string). Task mới tạo từ Task Board có sẵn `projectId`; **task cũ** được gắn `projectId` tự động lần đầu mở Task Detail (`TaskRepository.attachProject`, chỉ update đúng 1 field) — cần cho rule bình luận task.
+- **Phân quyền (RBAC):** thêm `Permission.assignTask`, `Permission.setTaskDeadline`, `Permission.comment` cho cả **PO / SM / MEMBER** (actor của 4 US là "thành viên nhóm"). Không đổi mapping của các permission cũ.
+- **Firestore Security Rules (`firestore.rules`):**
+  - Thêm rule `comments` cho story và task: chỉ thành viên project đọc/tạo; `authorId == request.auth.uid`; `projectId`/`storyId`/`taskId` phải khớp path; nội dung 1–1000 ký tự; `createdAt == request.time`; không sửa/xoá.
+  - Task: `projectId` (nếu có) phải là project mà người gọi là thành viên và không đổi được sau khi gắn; task đã gắn project thì chỉ thành viên project sửa được; assignee mới phải là thành viên project (chỉ kiểm tra khi assignee thay đổi → kéo thả trạng thái không bị ảnh hưởng); `deadline` phải là null/Timestamp. Task cũ chưa có `projectId` giữ nguyên luật cũ.
+  - Thêm block `standups` (mọi user đã đăng nhập đọc/ghi) vì file trong repo trước đó **thiếu rule này** dù tính năng Stand-up đang dùng collection `standups`.
+  - ⚠️ **Rules đang chạy trên Firebase KHÁC file trong repo:** bản trên server (cập nhật 06/10/2026) là bản "mở" (`allow read, write: if isSignedIn()` cho mọi collection, có cả `standups`). Để không ảnh hưởng tính năng của các thành viên khác, phiên này **KHÔNG deploy `firestore.rules` trong repo**, mà deploy lên `scrumflow-c835d` bản **"rules đang chạy + chỉ thêm 2 block `comments`"** (cùng nội dung với block `comments` trong repo). Đã đọc lại rules trên server sau khi deploy để xác nhận.
+- **File mới:** `lib/data/models/comment_model.dart`, `lib/data/datasources/comment_datasource.dart`, `lib/data/repositories/comment_repository.dart`, `lib/data/repositories/comment_repository_impl.dart`, `lib/app/utils/comment_validator.dart`, `lib/presentation/comments/bloc/{comments_cubit,comments_state}.dart`, `lib/presentation/comments/widgets/{comments_section,comment_item,comment_input}.dart`, `lib/presentation/tasks/bloc/{task_detail_cubit,task_detail_state}.dart`, `lib/presentation/tasks/screens/task_detail_screen.dart`, `lib/presentation/tasks/widgets/assignee_picker_dialog.dart`, và 5 file test mới.
+- **File sửa:** `task_model.dart` (+`deadline`, `projectId`, `copyWith` có `clearAssignee`/`clearDeadline`), `task_repository.dart` (+`streamTask`, `updateTaskAssignee`, `updateTaskDeadline`, `attachProject`; `createTask` nhận thêm `projectId`/`deadline`), `task_event.dart` + `task_bloc.dart` (`TaskCreated.projectId`), `tasks/screens/task_board_screen.dart` (thêm tham số bắt buộc `projectId`, bấm thẻ mở Task Detail, hiện deadline), `user_story_detail_screen.dart` (truyền `projectId`, thêm card Bình luận), `permission.dart`, `role_permissions.dart`, `date_formatter.dart` (+`formatRelativeTimeVi`), `main.dart` (đăng ký `CommentRepository`), `firestore.rules`, `test/data/repositories/backlog_repository_impl_test.dart` (truyền mock `NotificationRepository`).
+- **Kiểm thử:**
+  - `flutter test`: **131/131 PASS**. Trước phiên này là 60 pass / **11 fail**: toàn bộ `backlog_repository_impl_test.dart` hỏng từ khi `BacklogRepositoryImpl` tự tạo `NotificationRepository()` thật (cần `Firebase.initializeApp()`); đã sửa bằng cách truyền mock trong test, không đổi code sản phẩm. Test mới: parse deadline null/Timestamp/string, đổi assignee theo từng role PO/SM/MEMBER, không chọn được người ngoài project, đặt/đổi/xoá deadline, từ chối ngày quá khứ, load/gửi comment, từ chối comment rỗng, author đúng, comment task không lẫn sang story, map lỗi Firebase.
+  - `flutter analyze`: **0 error**, 43 issue (info/warning) — bằng đúng số lượng trước khi sửa, không thêm issue mới.
+  - Firestore rules: chạy trên Firestore Emulator (cục bộ, không đụng dữ liệu thật) cho PO/SM/MEMBER/người ngoài project/chưa đăng nhập — **30/30** với `firestore.rules` trong repo (gồm cả kiểm tra các thao tác Task cũ của teammate vẫn chạy) và **15/15** với bản đã deploy lên server.
+  - Chrome: `flutter run -d web-server` build và phục vụ thành công tại `http://localhost:5000`. **Kịch bản thao tác tay** (đổi assignee, đặt deadline, gửi comment, refresh, đăng nhập user khác) **chưa được xác nhận trong phiên này**.
+- **Việc còn lại / lưu ý:**
+  - Rules trên server hiện vẫn là bản "mở" cho Task/User Story/Project (chỉ riêng `comments` được kiểm tra thành viên project). Việc kiểm tra assignee phải là thành viên project, deadline đúng kiểu... mới chỉ được chặn ở tầng app; phần rule tương ứng nằm sẵn trong `firestore.rules` của repo nhưng **chưa có hiệu lực** cho tới khi nhóm thống nhất deploy bản chặt.
+  - Nếu ai deploy lại rules từ Firebase Console/CLI thì phải giữ 2 block `comments`, nếu không bình luận sẽ báo lỗi không có quyền.
+  - `TaskBoardScreen` (theo story) giờ bắt buộc truyền `projectId` — nhánh nào còn gọi kiểu cũ cần thêm tham số này.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -275,7 +313,7 @@
 ---
 
 ### 📋 SPRINT 3: Task Board, Cộng Tác & Trợ Lý Gợi Ý Phân Công AI
-*Tiến độ thực tế: **8 / 17 User Stories hoàn thành***
+*Tiến độ thực tế: **12 / 17 User Stories hoàn thành***
 
 - [x] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt.  
   *(Đã hoàn thành: Tích hợp checkbox lựa chọn trên từng hàng/thẻ, thanh thao tác hàng loạt "Di chuyển vào Sprint" qua `MoveToSprintDialog` và "Xóa hàng loạt" qua `deleteUserStories`).*
@@ -289,10 +327,14 @@
 - [x] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Đã hoàn thành: Thiết kế màn hình DailyStandupFormScreen, tích hợp vào Project Detail).*
 - [x] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Đã hoàn thành: Thiết kế màn hình StandupHistoryScreen, tích hợp vào Project Detail, xem lọc theo ngày).*
 - [ ] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái. *(Chưa hoàn thành)*
-- [ ] **US-043** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn thay đổi người phụ trách task khi cần phân công lại. *(Chưa hoàn thành)*
-- [ ] **US-044** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn đặt deadline cho task để quản lý tiến độ. *(Chưa hoàn thành)*
-- [ ] **US-045** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận (comment) trong User Story. *(Chưa hoàn thành)*
-- [ ] **US-046** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận trong Task để trao đổi quá trình thực hiện. *(Chưa hoàn thành)*
+- [x] **US-043** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn thay đổi người phụ trách task khi cần phân công lại.  
+  *(Đã hoàn thành: `TaskDetailScreen` + dialog chọn thành viên thực tế của project, `TaskDetailCubit.changeAssignee`, chỉ update field assignee trên Firestore.)*
+- [x] **US-044** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn đặt deadline cho task để quản lý tiến độ.  
+  *(Đã hoàn thành: field `deadline` (Timestamp, nullable) trong `TaskModel`, DatePicker đặt/đổi/xoá trong Task Detail, hiện deadline trên thẻ task.)*
+- [x] **US-045** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận (comment) trong User Story.  
+  *(Đã hoàn thành code + test: card Bình luận trong `UserStoryDetailScreen`, lưu ở `userStories/{storyId}/comments`, rule `comments` đã deploy.)*
+- [x] **US-046** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận trong Task để trao đổi quá trình thực hiện.  
+  *(Đã hoàn thành code + test: card Bình luận trong `TaskDetailScreen`, lưu ở `tasks/{taskId}/comments`, dùng chung `CommentsSection` với US-045, rule `comments` đã deploy.)*
 - [ ] **US-047** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tải lên file/attachment cho User Story hoặc Task. *(Chưa hoàn thành)*
 - [ ] **US-057** [Ưu tiên: CAO]: Là PO/SM, tôi muốn hệ thống gợi ý (AI) thành viên phù hợp nhất để giao task mới dựa trên tỷ lệ đúng hạn và khối lượng task hiện tại. *(Chưa hoàn thành)*
 - [ ] **US-058** [Ưu tiên: CAO]: Là hệ thống, tôi muốn tự động tính điểm hiệu suất (performance score) của từng thành viên làm đầu vào cho thuật toán gợi ý ở US-057:  

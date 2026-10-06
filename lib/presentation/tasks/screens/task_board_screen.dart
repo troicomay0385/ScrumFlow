@@ -5,18 +5,25 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/repositories/task_repository.dart';
 import '../../../app/constants/app_colors.dart';
+import '../../../app/utils/date_formatter.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
+import 'task_detail_screen.dart';
 
 class TaskBoardScreen extends StatelessWidget {
   final String storyId;
   final String storyTitle;
 
+  /// Project chứa User Story — dùng để lấy danh sách thành viên khi đổi
+  /// người phụ trách và để gắn task/bình luận vào đúng project.
+  final String projectId;
+
   const TaskBoardScreen({
     super.key,
     required this.storyId,
     required this.storyTitle,
+    required this.projectId,
   });
 
   @override
@@ -62,7 +69,7 @@ class TaskBoardScreen extends StatelessWidget {
             ),
           ),
         ),
-        body: _TaskBoardView(storyId: storyId),
+        body: _TaskBoardView(storyId: storyId, projectId: projectId),
       ),
     );
   }
@@ -120,6 +127,7 @@ class TaskBoardScreen extends StatelessWidget {
                     storyId: storyId,
                     title: title,
                     description: descController.text.trim(),
+                    projectId: projectId,
                   ));
                   Navigator.pop(dialogContext);
                 }
@@ -135,7 +143,8 @@ class TaskBoardScreen extends StatelessWidget {
 
 class _TaskBoardView extends StatelessWidget {
   final String storyId;
-  const _TaskBoardView({required this.storyId});
+  final String projectId;
+  const _TaskBoardView({required this.storyId, required this.projectId});
 
   @override
   Widget build(BuildContext context) {
@@ -163,11 +172,11 @@ class _TaskBoardView extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _TaskColumn(title: 'To Do', status: 'To Do', tasks: todoTasks)),
+                  Expanded(child: _TaskColumn(title: 'To Do', status: 'To Do', tasks: todoTasks, projectId: projectId)),
                   const SizedBox(width: 10),
-                  Expanded(child: _TaskColumn(title: 'In Progress', status: 'In Progress', tasks: inProgressTasks)),
+                  Expanded(child: _TaskColumn(title: 'In Progress', status: 'In Progress', tasks: inProgressTasks, projectId: projectId)),
                   const SizedBox(width: 10),
-                  Expanded(child: _TaskColumn(title: 'Done', status: 'Done', tasks: doneTasks)),
+                  Expanded(child: _TaskColumn(title: 'Done', status: 'Done', tasks: doneTasks, projectId: projectId)),
                 ],
               ),
             ),
@@ -184,11 +193,13 @@ class _TaskColumn extends StatelessWidget {
   final String title;
   final String status;
   final List<TaskModel> tasks;
+  final String projectId;
 
   const _TaskColumn({
     required this.title,
     required this.status,
     required this.tasks,
+    required this.projectId,
   });
 
   @override
@@ -258,7 +269,19 @@ class _TaskColumn extends StatelessWidget {
                         opacity: 0.3,
                         child: _TaskCard(task: task),
                       ),
-                      child: _TaskCard(task: task),
+                      // Bấm vào thẻ → Task Detail (assignee, deadline, bình luận).
+                      child: GestureDetector(
+                        key: Key('task_card_${task.id}'),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TaskDetailScreen(
+                              task: task,
+                              projectId: projectId,
+                            ),
+                          ),
+                        ),
+                        child: _TaskCard(task: task),
+                      ),
                     );
                   },
                 ),
@@ -277,6 +300,11 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final deadline = task.deadline;
+    final isOverdue = deadline != null &&
+        task.status != 'Done' &&
+        deadline.isBefore(DateUtils.dateOnly(DateTime.now()));
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -316,7 +344,29 @@ class _TaskCard extends StatelessWidget {
                 ),
               ],
             ),
-          ]
+          ],
+          if (deadline != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.event_rounded,
+                  size: 14,
+                  color: isOverdue ? AppColors.error : AppColors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  formatDateVi(deadline),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: isOverdue
+                        ? AppColors.error
+                        : AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -72,6 +72,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         description: event.description,
         assigneeId: event.assigneeId,
         assigneeName: event.assigneeName,
+        projectId: event.projectId,
       );
       // Không cần emit gì — stream listener sẽ tự push TaskLoaded mới
     } catch (e) {

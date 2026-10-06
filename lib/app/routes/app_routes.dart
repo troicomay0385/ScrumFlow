@@ -62,6 +62,17 @@ class AppRoutes {
 
   /// Hàm tạo route cho ứng dụng.
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    // Route cần projectId nhưng bị mở thiếu `arguments` (vd. gõ thẳng URL
+    // trên Web) → quay về Login thay vì crash khi ép kiểu null.
+    final needsProjectId =
+        settings.name == projectDetail || settings.name == projectMembers;
+    if (needsProjectId && settings.arguments is! String) {
+      return buildRoute(
+        settings: const RouteSettings(name: login),
+        page: const LoginScreen(),
+      );
+    }
+
     switch (settings.name) {
       // '/' được Flutter tự động resolve thêm vào ĐÁY navigation stack khi
       // initialRoute là named-route (vd. '/login'), kể cả khi app không bao

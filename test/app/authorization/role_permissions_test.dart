@@ -39,6 +39,20 @@ void main() {
       }
     });
 
+    test('US-043 → US-046: mọi thành viên nhóm (PO/SM/MEMBER) được đổi assignee, đặt deadline, bình luận', () {
+      for (final permission in [
+        Permission.assignTask,
+        Permission.setTaskDeadline,
+        Permission.comment,
+      ]) {
+        for (final role in ProjectRole.values) {
+          expect(hasPermission(role, permission), isTrue,
+              reason: '$role phải có $permission');
+        }
+        expect(hasPermission(null, permission), isFalse);
+      }
+    });
+
     test('SM và MEMBER không có quyền quản lý thành viên và quản lý project', () {
       for (final role in [ProjectRole.sm, ProjectRole.member]) {
         expect(hasPermission(role, Permission.manageMembers), isFalse);

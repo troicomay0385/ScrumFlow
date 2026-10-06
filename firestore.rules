@@ -9,6 +9,11 @@ rules_version = '2';
 //   3. projects/{projectId}/userStories    — Subcollection User Stories trong Backlog
 //   4. projects/{projectId}/sprints        — Subcollection Sprints trong Dự án
 //   5. projectMembers/{projectId_userId}   — Thành viên & Vai trò (PO / SM / MEMBER)
+//   6. tasks/{taskId}                      — Task của User Story
+//   7. .../userStories/{storyId}/comments  — Bình luận trong User Story
+//   8. tasks/{taskId}/comments             — Bình luận trong Task
+//   9. standups/{standupId}                — Daily Stand-up
+//  10. notifications/{notificationId}      — Thông báo
 // ═══════════════════════════════════════════════════════════════════
 
 service cloud.firestore {
@@ -71,6 +76,18 @@ service cloud.firestore {
       return role in ['PO', 'SM', 'MEMBER'];
     }
 
+    // Bình luận hợp lệ (US-045, US-046): người viết phải là chính user đang
+    // đăng nhập, nội dung 1–1000 ký tự, thời gian do server gán.
+    function isValidComment(data, projectId) {
+      return data.authorId == request.auth.uid
+        && data.projectId == projectId
+        && data.authorName is string
+        && data.content is string
+        && data.content.size() > 0
+        && data.content.size() <= 1000
+        && data.createdAt == request.time;
+    }
+
     // ── 2. USERS COLLECTION ─────────────────────────────────────────
     match /users/{userId} {
       // Cho phép mọi người dùng đã đăng nhập đọc hồ sơ công khai của nhau
@@ -126,6 +143,20 @@ service cloud.firestore {
 
         // PO và SM có quyền xóa User Story
         allow delete: if canManageBacklog(projectId);
+
+        // ── Subcollection: comments (US-045) ────────────────────────
+        match /comments/{commentId} {
+          // Chỉ thành viên project đọc được bình luận
+          allow read: if isProjectMember(projectId);
+
+          // Mọi thành viên project (PO/SM/MEMBER) đều được bình luận
+          allow create: if isProjectMember(projectId)
+            && isValidComment(request.resource.data, projectId)
+            && request.resource.data.storyId == storyId
+            && !('taskId' in request.resource.data);
+
+          allow update, delete: if false;
+        }
       }
 
       // ── Subcollection: sprints (Sprint Management) ────────────────
@@ -191,7 +222,32 @@ service cloud.firestore {
     // Để xác định quyền, ta tìm ngược projectId qua storyId.
     // Để đơn giản và nhanh gọn, mọi user đã đăng nhập đều có thể
     // đọc/ghi tasks (kiểm soát mịn hơn ở tầng app logic).
+    //
+    // Task mới có thêm `projectId` (US-043). Task đã gắn project thì chỉ
+    // thành viên project đó mới sửa được; task cũ chưa có `projectId` giữ
+    // nguyên luật cũ cho tới khi được gắn project.
     match /tasks/{taskId} {
+      // projectId (nếu có) phải là project mà người gọi là thành viên
+      function hasValidProject(data) {
+        return !('projectId' in data)
+          || (data.projectId is string && isProjectMember(data.projectId));
+      }
+
+      // Người phụ trách (US-043): chỉ kiểm tra khi assignee thay đổi —
+      // phải là thành viên của project chứa task.
+      function hasValidAssignee(data, oldAssigneeId) {
+        return data.get('assigneeId', null) == oldAssigneeId
+          || data.get('assigneeId', null) == null
+          || (data.assigneeId is string
+            && (!('projectId' in data)
+              || exists(membershipDoc(data.projectId, data.assigneeId))));
+      }
+
+      // Deadline (US-044): không có, null, hoặc Timestamp
+      function hasValidDeadline(data) {
+        return data.get('deadline', null) == null || data.deadline is timestamp;
+      }
+
       // Mọi user đã đăng nhập đều đọc được task
       allow read: if isSignedIn();
 
@@ -200,18 +256,53 @@ service cloud.firestore {
         && request.resource.data.storyId is string
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
-        && request.resource.data.status in ['To Do', 'In Progress', 'Done'];
+        && request.resource.data.status in ['To Do', 'In Progress', 'Done']
+        && hasValidProject(request.resource.data)
+        && hasValidAssignee(request.resource.data, null)
+        && hasValidDeadline(request.resource.data);
 
       // Mọi user đã đăng nhập đều cập nhật được task (kéo thả trạng thái)
       allow update: if isSignedIn()
         && request.resource.data.storyId == resource.data.storyId
-        && request.resource.data.status in ['To Do', 'In Progress', 'Done'];
+        && request.resource.data.status in ['To Do', 'In Progress', 'Done']
+        && (!('projectId' in resource.data)
+          || request.resource.data.get('projectId', null) == resource.data.projectId)
+        && hasValidProject(request.resource.data)
+        && hasValidAssignee(request.resource.data, resource.data.get('assigneeId', null))
+        && hasValidDeadline(request.resource.data);
 
       // Chỉ người tạo task mới được xóa (kiểm tra createdBy nếu có)
       allow delete: if isSignedIn();
+
+      // ── Subcollection: comments (US-046) ──────────────────────────
+      match /comments/{commentId} {
+        // Project chứa task — lấy từ chính document task
+        function taskProjectId() {
+          return get(/databases/$(database)/documents/tasks/$(taskId)).data.projectId;
+        }
+
+        // Chỉ thành viên project chứa task đọc được bình luận
+        allow read: if isSignedIn() && isProjectMember(taskProjectId());
+
+        // Mọi thành viên project (PO/SM/MEMBER) đều được bình luận
+        allow create: if isSignedIn()
+          && isProjectMember(taskProjectId())
+          && isValidComment(request.resource.data, taskProjectId())
+          && request.resource.data.taskId == taskId
+          && !('storyId' in request.resource.data);
+
+        allow update, delete: if false;
+      }
     }
 
-    // ── 6. NOTIFICATIONS COLLECTION ─────────────────────────────────
+    // ── 6. STANDUPS COLLECTION (Daily Stand-up) ─────────────────────
+    // Giữ đúng luật đang chạy trên Firebase: mọi user đã đăng nhập đọc/ghi.
+    // Thiếu block này thì deploy file rules sẽ chặn toàn bộ tính năng Stand-up.
+    match /standups/{standupId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── 7. NOTIFICATIONS COLLECTION ─────────────────────────────────
     match /notifications/{notificationId} {
       // User đọc được thông báo gửi cho chính mình
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
