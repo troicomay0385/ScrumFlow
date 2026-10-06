@@ -25,10 +25,15 @@ import 'data/repositories/sprint_repository.dart';
 import 'data/repositories/sprint_repository_impl.dart';
 import 'data/repositories/task_repository.dart';
 import 'data/repositories/standup_repository.dart';
+import 'data/repositories/notification_repository.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/standup/bloc/standup_bloc.dart';
 import 'app/services/connectivity_service.dart';
+import 'app/services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'presentation/notifications/bloc/notification_bloc.dart';
+import 'presentation/notifications/bloc/notification_event.dart';
 
 import 'firebase_options.dart';
 
@@ -37,6 +42,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Khởi tạo Firebase Messaging Background Handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Khởi tạo các DataSources
   final firebaseAuth = FirebaseAuth.instance;
@@ -53,6 +61,8 @@ void main() async {
   final projectDataSource = ProjectDataSource(firestore: firestore);
   final projectMemberDataSource = ProjectMemberDataSource(firestore: firestore);
 
+  final notificationRepository = NotificationRepository(firestore: firestore);
+
   // Khởi tạo Repository
   final authRepository = AuthRepositoryImpl(
     authDataSource: firebaseAuthDataSource,
@@ -64,6 +74,7 @@ void main() async {
     projectDataSource: projectDataSource,
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
+    notificationRepository: notificationRepository,
   );
   final ProjectMemberRepository projectMemberRepository = ProjectMemberRepositoryImpl(
     memberDataSource: projectMemberDataSource,
@@ -74,6 +85,7 @@ void main() async {
     dataSource: BacklogDataSource(firestore: firestore),
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
+    notificationRepository: notificationRepository,
   );
   final SprintRepository sprintRepository = SprintRepositoryImpl(
     dataSource: SprintDataSource(firestore: firestore),
@@ -89,8 +101,14 @@ void main() async {
         ),
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
-        RepositoryProvider<TaskRepository>(create: (_) => TaskRepository(firestore: firestore)),
+        RepositoryProvider<TaskRepository>(
+          create: (_) => TaskRepository(
+            firestore: firestore,
+            notificationRepository: notificationRepository,
+          ),
+        ),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),
+        RepositoryProvider<NotificationRepository>.value(value: notificationRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -100,6 +118,11 @@ void main() async {
           ),
           BlocProvider<StandupBloc>(
             create: (context) => StandupBloc(repository: standupRepository),
+          ),
+          BlocProvider<NotificationBloc>(
+            create: (context) => NotificationBloc(
+              notificationRepository: notificationRepository,
+            ),
           ),
         ],
         child: const ScrumFlowApp(),

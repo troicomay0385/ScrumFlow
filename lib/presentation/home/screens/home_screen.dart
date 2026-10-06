@@ -12,6 +12,10 @@ import '../../projects/bloc/project_list_event.dart';
 import '../../projects/bloc/project_list_state.dart';
 import '../../projects/widgets/project_list_tile.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
+import '../../../app/services/notification_service.dart';
+import '../../notifications/bloc/notification_bloc.dart';
+import '../../notifications/bloc/notification_event.dart';
+import '../../notifications/widgets/notification_bell_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -20,27 +24,32 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            AppRoutes.login,
-            (route) => false,
-          );
-        } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      },
-      child: BlocProvider(
-        create: (context) => ProjectListBloc(context.read<ProjectRepository>())
-          ..add(ProjectListRequested()),
-        child: Builder(builder: (context) {
-          final authState = context.watch<AuthBloc>().state;
-          final userName =
-              authState is AuthAuthenticated ? authState.user.fullName : '';
+          if (state is AuthUnauthenticated) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.login,
+              (route) => false,
+            );
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          } else if (state is AuthAuthenticated) {
+            context.read<NotificationBloc>().add(LoadNotifications(state.user.id));
+          }
+        },
+        child: BlocProvider(
+          create: (context) => ProjectListBloc(context.read<ProjectRepository>())
+            ..add(ProjectListRequested()),
+          child: Builder(builder: (context) {
+            final authState = context.watch<AuthBloc>().state;
+            String userName = '';
+            if (authState is AuthAuthenticated) {
+              userName = authState.user.fullName;
+              NotificationService().initialize(authState.user.id);
+            }
 
           return Scaffold(
             backgroundColor: AppColors.background,
@@ -72,6 +81,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               actions: [
+                const NotificationBellWidget(),
                 Padding(
                   padding: const EdgeInsets.only(right: 16.0),
                   child: Tooltip(

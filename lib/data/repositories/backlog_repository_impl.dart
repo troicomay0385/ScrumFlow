@@ -10,6 +10,7 @@ import '../datasources/firebase_auth_datasource.dart';
 import '../datasources/project_member_datasource.dart';
 import '../models/user_story_model.dart';
 import 'backlog_repository.dart';
+import 'notification_repository.dart';
 
 /// Implementation của [BacklogRepository].
 ///
@@ -21,16 +22,19 @@ class BacklogRepositoryImpl implements BacklogRepository {
   final ProjectMemberDataSource _memberDataSource;
   final FirebaseAuthDataSource _authDataSource;
   final DateTime Function() _now;
+  final NotificationRepository? _notificationRepository;
 
   BacklogRepositoryImpl({
     BacklogDataSource? dataSource,
     ProjectMemberDataSource? memberDataSource,
     FirebaseAuthDataSource? authDataSource,
     DateTime Function()? now,
+    NotificationRepository? notificationRepository,
   })  : _dataSource = dataSource ?? BacklogDataSource(),
         _memberDataSource = memberDataSource ?? ProjectMemberDataSource(),
         _authDataSource = authDataSource ?? FirebaseAuthDataSource(),
-        _now = now ?? DateTime.now;
+        _now = now ?? DateTime.now,
+        _notificationRepository = notificationRepository ?? NotificationRepository();
 
   @override
   Stream<List<UserStoryModel>> streamUserStories(String projectId) {
@@ -85,6 +89,10 @@ class BacklogRepositoryImpl implements BacklogRepository {
     DateTime? deadline,
   }) {
     return _guard(() async {
+      if (projectId.trim().isEmpty) {
+        throw Exception('projectId không hợp lệ (bị rỗng).');
+      }
+
       final uid = await _requireManageBacklog(projectId);
       final existing = await _dataSource.getUserStories(projectId);
       final now = _now();
@@ -104,7 +112,30 @@ class BacklogRepositoryImpl implements BacklogRepository {
         createdAt: now,
         updatedAt: now,
       );
-      return _dataSource.createUserStory(projectId, story);
+      final created = await _dataSource.createUserStory(projectId, story);
+      
+      if (_notificationRepository != null) {
+        try {
+          final members = await _memberDataSource.getMembers(projectId);
+          final memberIds = members.map((m) => m.userId).toSet();
+          // BỎ ĐI điều kiện lọc receiverId != currentUserId:
+          // Đảm bảo ngay cả người tạo User Story (uid) vẫn nhận được thông báo để test 1 tài khoản
+          if (uid.isNotEmpty) {
+            memberIds.add(uid);
+          }
+          if (memberIds.isNotEmpty) {
+            await _notificationRepository.notifyNewStory(
+              memberIds: memberIds.toList(),
+              storyTitle: title.trim(),
+              projectId: projectId,
+            );
+          }
+        } catch (e) {
+          print('[NOTIFICATION ERROR] Lỗi gửi thông báo User Story: $e');
+        }
+      }
+
+      return created;
     });
   }
 
