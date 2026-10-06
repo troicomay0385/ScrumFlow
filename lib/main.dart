@@ -24,8 +24,10 @@ import 'data/datasources/sprint_datasource.dart';
 import 'data/repositories/sprint_repository.dart';
 import 'data/repositories/sprint_repository_impl.dart';
 import 'data/repositories/task_repository.dart';
+import 'data/repositories/standup_repository.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
+import 'presentation/standup/bloc/standup_bloc.dart';
 import 'app/services/connectivity_service.dart';
 
 import 'firebase_options.dart';
@@ -76,6 +78,7 @@ void main() async {
   final SprintRepository sprintRepository = SprintRepositoryImpl(
     dataSource: SprintDataSource(firestore: firestore),
   );
+  final StandupRepository standupRepository = StandupRepository(firestore: firestore);
 
   runApp(
     MultiRepositoryProvider(
@@ -87,12 +90,16 @@ void main() async {
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
         RepositoryProvider<TaskRepository>(create: (_) => TaskRepository(firestore: firestore)),
+        RepositoryProvider<StandupRepository>.value(value: standupRepository),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthBloc>(
             create: (context) =>
                 AuthBloc(authRepository)..add(AuthCheckRequested()),
+          ),
+          BlocProvider<StandupBloc>(
+            create: (context) => StandupBloc(repository: standupRepository),
           ),
         ],
         child: const ScrumFlowApp(),
