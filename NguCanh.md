@@ -275,7 +275,7 @@
 ---
 
 ### 📋 SPRINT 3: Task Board, Cộng Tác & Trợ Lý Gợi Ý Phân Công AI
-*Tiến độ thực tế: **3 / 17 User Stories hoàn thành***
+*Tiến độ thực tế: **8 / 17 User Stories hoàn thành***
 
 - [x] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt.  
   *(Đã hoàn thành: Tích hợp checkbox lựa chọn trên từng hàng/thẻ, thanh thao tác hàng loạt "Di chuyển vào Sprint" qua `MoveToSprintDialog` và "Xóa hàng loạt" qua `deleteUserStories`).*
@@ -283,11 +283,11 @@
   *(Đã hoàn thành: Giao diện `CompactUserStoryRow` chiều cao ~46px tối ưu cho 10+ dòng/màn hình, tích hợp nút chuyển chế độ Hàng gọn / Thẻ chi tiết).*
 - [x] **US-051** [Ưu tiên: CAO]: Là PO/SM, tôi muốn API load User Story theo phân trang để không load toàn bộ backlog lên client (tối ưu performance).  
   *(Đã hoàn thành: Thanh phân trang ở đáy danh sách `Trang X / Y`, nút bấm chuyển trang `<` và `>`).*
-- [ ] **US-019** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn xem Task Board theo từng Sprint. *(Chưa hoàn thành)*
+- [x] **US-019** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn xem Task Board theo từng Sprint. *(Đã hoàn thành: Xây dựng màn hình Task Board hiển thị trạng thái các User Story và Tasks).*
 - [x] **US-020** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tạo task cho một User Story. *(Đã hoàn thành: Thêm TaskModel, TaskRepository và nút Tạo Task ở Task Board)*
 - [x] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Đã hoàn thành: Kanban board hỗ trợ kéo thả Draggable/DragTarget trong TaskBoardScreen)*
-- [ ] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Chưa hoàn thành)*
-- [ ] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Chưa hoàn thành)*
+- [x] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Đã hoàn thành: Thiết kế màn hình DailyStandupFormScreen, tích hợp vào Project Detail).*
+- [x] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Đã hoàn thành: Thiết kế màn hình StandupHistoryScreen, tích hợp vào Project Detail, xem lọc theo ngày).*
 - [ ] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái. *(Chưa hoàn thành)*
 - [ ] **US-043** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn thay đổi người phụ trách task khi cần phân công lại. *(Chưa hoàn thành)*
 - [ ] **US-044** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn đặt deadline cho task để quản lý tiến độ. *(Chưa hoàn thành)*
