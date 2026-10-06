@@ -16,6 +16,15 @@ enum Permission {
   viewTask,
   manageTask,
   updateAssignedTask,
+
+  /// US-043: đổi người phụ trách task.
+  assignTask,
+
+  /// US-044: đặt/đổi deadline task.
+  setTaskDeadline,
+
+  /// US-045/US-046: bình luận trong User Story và Task.
+  comment,
   viewMembers,
   manageMembers,
   changeMemberRole,

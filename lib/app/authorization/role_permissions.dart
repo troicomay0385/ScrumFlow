@@ -16,6 +16,10 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.viewSprint,
     Permission.manageSprint,
     Permission.viewTask,
+    // Sprint 3 (US-043 → US-046): actor là "thành viên nhóm" → mọi role.
+    Permission.assignTask,
+    Permission.setTaskDeadline,
+    Permission.comment,
     Permission.viewMembers,
     Permission.manageMembers,
     Permission.changeMemberRole,
@@ -30,6 +34,10 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.manageSprint,
     Permission.viewTask,
     Permission.manageTask,
+    // Sprint 3 (US-043 → US-046): actor là "thành viên nhóm" → mọi role.
+    Permission.assignTask,
+    Permission.setTaskDeadline,
+    Permission.comment,
   },
   ProjectRole.member: {
     Permission.viewProject,
@@ -37,6 +45,10 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.viewSprint,
     Permission.viewTask,
     Permission.updateAssignedTask,
+    // Sprint 3 (US-043 → US-046): actor là "thành viên nhóm" → mọi role.
+    Permission.assignTask,
+    Permission.setTaskDeadline,
+    Permission.comment,
   },
 };
 

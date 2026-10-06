@@ -39,14 +39,19 @@ class TaskCreated extends TaskEvent {
   final String? assigneeId;
   final String? assigneeName;
 
+  /// Project chứa task — để Security Rules kiểm tra thành viên project.
+  final String? projectId;
+
   const TaskCreated({
     required this.storyId,
     required this.title,
     this.description = '',
     this.assigneeId,
     this.assigneeName,
+    this.projectId,
   });
 
   @override
-  List<Object?> get props => [storyId, title, description, assigneeId, assigneeName];
+  List<Object?> get props =>
+      [storyId, title, description, assigneeId, assigneeName, projectId];
 }

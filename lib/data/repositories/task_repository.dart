@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../app/constants/firebase_error_mapper.dart';
 import '../models/task_model.dart';
 import 'notification_repository.dart';
 
@@ -32,6 +35,15 @@ class TaskRepository {
             }).toList());
   }
 
+  /// Stream realtime 1 task (màn Task Detail). Emit `null` nếu task đã bị xoá.
+  Stream<TaskModel?> streamTask(String taskId) {
+    return _tasksRef.doc(taskId).snapshots().map((doc) {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (!doc.exists || data == null) return null;
+      return TaskModel.fromMap(data, doc.id);
+    });
+  }
+
   // ── Write Operations ───────────────────────────────────────────────────────
 
   /// Tạo Task mới và lưu lên Firestore.
@@ -41,6 +53,8 @@ class TaskRepository {
     String description = '',
     String? assigneeId,
     String? assigneeName,
+    String? projectId,
+    DateTime? deadline,
   }) async {
     final now = DateTime.now();
     final docRef = _tasksRef.doc(); // auto-generate ID
@@ -48,11 +62,13 @@ class TaskRepository {
     final newTask = TaskModel(
       id: docRef.id,
       storyId: storyId,
+      projectId: projectId,
       title: title,
       description: description,
       status: 'To Do',
       assigneeId: assigneeId,
       assigneeName: assigneeName,
+      deadline: deadline,
       createdAt: now,
       updatedAt: now,
     );
@@ -61,11 +77,13 @@ class TaskRepository {
     await docRef.set({
       'id': newTask.id,
       'storyId': newTask.storyId,
+      'projectId': ?projectId,
       'title': newTask.title,
       'description': newTask.description,
       'status': newTask.status,
       'assigneeId': newTask.assigneeId,
       'assigneeName': newTask.assigneeName,
+      'deadline': deadline != null ? Timestamp.fromDate(deadline) : null,
       'createdAt': Timestamp.fromDate(now),
       'updatedAt': Timestamp.fromDate(now),
     });
@@ -200,6 +218,84 @@ class TaskRepository {
     } catch (e) {
       print('[NOTIFICATION ERROR] Lỗi updateTask trên Firestore: $e');
       rethrow;
+    }
+  }
+
+  /// Đổi người phụ trách task (US-043). `assigneeId == null` = bỏ phân công.
+  ///
+  /// Chỉ update field assignee + `updatedAt` → không ghi đè các field khác.
+  Future<void> updateTaskAssignee({
+    required String taskId,
+    required String taskTitle,
+    String? assigneeId,
+    String? assigneeName,
+  }) {
+    return _guard(() async {
+      await _tasksRef.doc(taskId).update({
+        'assigneeId': assigneeId,
+        'assigneeName': assigneeName,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      }).timeout(_writeTimeout);
+
+      // Cùng hành vi với updateTask: báo cho người vừa được giao task.
+      if (_notificationRepository != null &&
+          assigneeId != null &&
+          assigneeId.isNotEmpty) {
+        try {
+          await _notificationRepository.notifyTaskAssigned(
+            assigneeId: assigneeId,
+            taskTitle: taskTitle,
+            taskId: taskId,
+          );
+        } catch (_) {
+          // Gửi thông báo thất bại không được làm hỏng việc đổi assignee.
+        }
+      }
+    });
+  }
+
+  /// Đặt / đổi / xoá (`null`) deadline của task (US-044).
+  ///
+  /// Chỉ update field `deadline` + `updatedAt`, lưu dạng Timestamp như các
+  /// field ngày khác của task.
+  Future<void> updateTaskDeadline({
+    required String taskId,
+    DateTime? deadline,
+  }) {
+    return _guard(() async {
+      await _tasksRef.doc(taskId).update({
+        'deadline': deadline != null ? Timestamp.fromDate(deadline) : null,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      }).timeout(_writeTimeout);
+    });
+  }
+
+  /// Gắn `projectId` cho task cũ chưa có field này (task tạo trước US-043).
+  ///
+  /// Security Rules dựa vào `projectId` của task để kiểm tra thành viên
+  /// project khi đổi assignee/deadline và khi bình luận.
+  Future<void> attachProject({
+    required String taskId,
+    required String projectId,
+  }) {
+    return _guard(() async {
+      await _tasksRef
+          .doc(taskId)
+          .update({'projectId': projectId}).timeout(_writeTimeout);
+    });
+  }
+
+  static const Duration _writeTimeout = Duration(seconds: 15);
+
+  /// Chuyển lỗi Firebase/timeout sang thông báo tiếng Việt qua
+  /// [FirebaseErrorMapper] (cùng cách làm với `BacklogRepositoryImpl`).
+  Future<T> _guard<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on FirebaseException catch (e) {
+      throw Exception(FirebaseErrorMapper.mapErrorCode(e.code));
+    } on TimeoutException {
+      throw Exception(FirebaseErrorMapper.mapErrorCode('deadline-exceeded'));
     }
   }
 

@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../app/utils/date_formatter.dart';
+import '../../../data/models/comment_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
+import '../../comments/widgets/comments_section.dart';
 import '../../tasks/screens/task_board_screen.dart';
 import '../bloc/story_tags_cubit.dart';
 import '../widgets/edit_user_story_dialog.dart';
@@ -253,6 +255,7 @@ class UserStoryDetailScreen extends StatelessWidget {
                       builder: (_) => TaskBoardScreen(
                         storyId: story.id,
                         storyTitle: story.title,
+                        projectId: story.projectId,
                       ),
                     ),
                   );
@@ -552,6 +555,15 @@ class UserStoryDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Comments Bento Card (US-045) ────────────────────────────────
+              CommentsSection(
+                target: CommentTarget.story(
+                  projectId: story.projectId,
+                  storyId: story.id,
                 ),
               ),
             ],
