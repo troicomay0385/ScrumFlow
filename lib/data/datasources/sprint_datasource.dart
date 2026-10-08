@@ -94,6 +94,111 @@ class SprintDataSource {
     }
   }
 
+  /// US-049: Chuyển Sprint sang Active (kiểm tra 1 active/project).
+  Future<void> startSprint({
+    required String projectId,
+    required String sprintId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final now = DateTime.now();
+    await _sprintsCollection(projectId).doc(sprintId).update({
+      'status': 'Active',
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    }).timeout(const Duration(seconds: 15));
+
+    // Cập nhật local cache
+    final sprints = List<SprintModel>.from(_localCache[projectId] ?? const []);
+    final index = sprints.indexWhere((s) => s.id == sprintId);
+    if (index >= 0) {
+      sprints[index] = sprints[index].copyWith(
+        status: 'Active',
+        startDate: startDate,
+        endDate: endDate,
+        updatedAt: now,
+      );
+      _publish(projectId, sprints);
+    }
+  }
+
+  /// US-050: Đóng Sprint với WriteBatch atomic.
+  /// - Sprint: status → 'Completed'
+  /// - Stories chưa xong: sprintId trong sprint cũ bị gỡ, thêm vào targetSprint (nếu có)
+  Future<void> closeSprint({
+    required String projectId,
+    required String sprintId,
+    String? targetSprintId,
+    required List<String> incompleteStoryIds,
+  }) async {
+    final batch = _firestore.batch();
+    final now = DateTime.now();
+
+    // 1. Đóng sprint hiện tại
+    final sprintRef = _sprintsCollection(projectId).doc(sprintId);
+    batch.update(sprintRef, {
+      'status': 'Completed',
+      'updatedAt': now.toIso8601String(),
+    });
+
+    // 2. Gỡ story chưa xong ra khỏi sprint bị đóng
+    if (incompleteStoryIds.isNotEmpty) {
+      batch.update(sprintRef, {
+        'storyIds': FieldValue.arrayRemove(incompleteStoryIds),
+      });
+
+      // 3. Chuyển story sang sprint tiếp theo (hoặc về backlog = không cần update storyIds ở sprint nào)
+      if (targetSprintId != null && targetSprintId.isNotEmpty) {
+        final targetRef = _sprintsCollection(projectId).doc(targetSprintId);
+        batch.update(targetRef, {
+          'storyIds': FieldValue.arrayUnion(incompleteStoryIds),
+          'updatedAt': now.toIso8601String(),
+        });
+      }
+      // Nếu về backlog: update userStories/{storyId}.sprintId = null ở Firestore
+      else {
+        for (final storyId in incompleteStoryIds) {
+          final storyRef = _firestore
+              .collection('projects')
+              .doc(projectId)
+              .collection('userStories')
+              .doc(storyId);
+          batch.update(storyRef, {'sprintId': null});
+        }
+      }
+    }
+
+    await batch.commit().timeout(const Duration(seconds: 20));
+
+    // Cập nhật local cache
+    final sprints = List<SprintModel>.from(_localCache[projectId] ?? const []);
+    final idx = sprints.indexWhere((s) => s.id == sprintId);
+    if (idx >= 0) {
+      final remaining = sprints[idx]
+          .storyIds
+          .where((id) => !incompleteStoryIds.contains(id))
+          .toList();
+      sprints[idx] = sprints[idx].copyWith(
+        status: 'Completed',
+        storyIds: remaining,
+        updatedAt: now,
+      );
+      // Cập nhật target sprint nếu có
+      if (targetSprintId != null && targetSprintId.isNotEmpty) {
+        final targetIdx = sprints.indexWhere((s) => s.id == targetSprintId);
+        if (targetIdx >= 0) {
+          final merged = {...sprints[targetIdx].storyIds, ...incompleteStoryIds}.toList();
+          sprints[targetIdx] = sprints[targetIdx].copyWith(
+            storyIds: merged,
+            updatedAt: now,
+          );
+        }
+      }
+      _publish(projectId, sprints);
+    }
+  }
+
   void _publish(String projectId, List<SprintModel> sprints) {
     _localCache[projectId] = sprints;
     final controller = _getController(projectId);
@@ -148,3 +253,4 @@ class SprintDataSource {
     // Chức năng tự sinh mẫu đã bị loại bỏ theo yêu cầu người dùng
   }
 }
+

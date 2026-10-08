@@ -18,7 +18,9 @@ import '../bloc/sprint_bloc.dart';
 import '../bloc/sprint_event.dart';
 import '../bloc/sprint_state.dart';
 import '../widgets/burndown_chart_widget.dart';
+import '../widgets/close_sprint_dialog.dart';
 import '../widgets/sprint_review_dialog.dart';
+import '../widgets/start_sprint_dialog.dart';
 import 'sprint_retro_screen.dart';
 
 class SprintDetailScreen extends StatelessWidget {
@@ -75,6 +77,54 @@ class SprintDetailScreen extends StatelessWidget {
 			  appBar: AppBar(
 				title: Text(sprint.name),
 				actions: [
+				  // ── US-049: Nút Bắt đầu Sprint (chỉ hiện khi Planned & canManage) ──
+				  if (canManage && sprint.status.toLowerCase() == 'planned')
+					FilledButton.icon(
+					  key: const Key('sprintDetail_startSprint'),
+					  onPressed: () => showStartSprintDialog(
+						context: context,
+						sprint: sprint,
+						projectId: projectId,
+					  ),
+					  style: FilledButton.styleFrom(
+						backgroundColor: AppColors.primary,
+						shape: RoundedRectangleBorder(
+						  borderRadius: BorderRadius.circular(10),
+						),
+						padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+					  ),
+					  icon: const Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
+					  label: Text(
+						'Bắt đầu',
+						style: GoogleFonts.plusJakartaSans(
+						  fontSize: 13,
+						  fontWeight: FontWeight.w700,
+						  color: Colors.white,
+						),
+					  ),
+					),
+				  // ── US-050: Nút Đóng Sprint (chỉ hiện khi Active & canManage) ──
+				  if (canManage && sprint.status.toLowerCase() == 'active')
+					FilledButton.icon(
+					  key: const Key('sprintDetail_closeSprint'),
+					  onPressed: () => _showCloseSprintDialog(context, sprint, sprints),
+					  style: FilledButton.styleFrom(
+						backgroundColor: const Color(0xFFDC2626),
+						shape: RoundedRectangleBorder(
+						  borderRadius: BorderRadius.circular(10),
+						),
+						padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+					  ),
+					  icon: const Icon(Icons.flag_rounded, size: 16, color: Colors.white),
+					  label: Text(
+						'Đóng Sprint',
+						style: GoogleFonts.plusJakartaSans(
+						  fontSize: 13,
+						  fontWeight: FontWeight.w700,
+						  color: Colors.white,
+						),
+					  ),
+					),
 				  // Nút mở Sprint Board theo Sprint (US-055)
 				  IconButton(
 					key: const Key('sprintDetail_openTaskBoard'),
@@ -396,6 +446,30 @@ class SprintDetailScreen extends StatelessWidget {
 		);
 	  },
 	);
+  }
+
+  /// US-050: Mở CloseSprintDialog — load stories rồi hiện dialog
+  Future<void> _showCloseSprintDialog(
+    BuildContext context,
+    SprintModel sprint,
+    List<SprintModel> allSprints,
+  ) async {
+    final backlogRepo = context.read<BacklogRepository>();
+    final stories = await backlogRepo.getStoriesByIds(projectId, sprint.storyIds);
+    if (!context.mounted) return;
+
+    // Chỉ lấy sprint Planned còn lại (không phải sprint đang đóng)
+    final plannedSprints = allSprints
+        .where((s) => s.id != sprint.id && s.status.toLowerCase() == 'planned')
+        .toList();
+
+    await showCloseSprintDialog(
+      context: context,
+      sprint: sprint,
+      projectId: projectId,
+      allStories: stories,
+      otherPlannedSprints: plannedSprints,
+    );
   }
 
   Future<void> _showBacklogPicker(BuildContext context, SprintModel sprint) async {

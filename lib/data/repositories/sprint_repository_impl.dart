@@ -116,6 +116,78 @@ class SprintRepositoryImpl implements SprintRepository {
     }
   }
 
+  /// US-049: Chuyển Sprint từ Planned → Active.
+  @override
+  Future<void> startSprint({
+    required String projectId,
+    required String sprintId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    await _requireManageSprint(projectId);
+
+    // Lấy toàn bộ sprints trong project để kiểm tra ràng buộc
+    final allSprints = await _dataSource.streamSprints(projectId).first;
+
+    final target = allSprints.firstWhere(
+      (s) => s.id == sprintId,
+      orElse: () => throw Exception('Sprint không tồn tại.'),
+    );
+
+    // Ràng buộc 1: Sprint phải ở trạng thái Planned
+    if (target.status.toLowerCase() != 'planned') {
+      throw Exception('Chỉ Sprint ở trạng thái "Planned" mới có thể được bắt đầu.');
+    }
+
+    // Ràng buộc 2: Chỉ 1 Sprint Active trong project
+    final hasActive = allSprints.any(
+      (s) => s.id != sprintId && s.status.toLowerCase() == 'active',
+    );
+    if (hasActive) {
+      throw Exception('Dự án đã có 1 Sprint đang hoạt động (Active). Hãy đóng Sprint đó trước khi bắt đầu Sprint mới.');
+    }
+
+    // Ràng buộc 3: Sprint phải có ít nhất 1 User Story
+    if (target.storyIds.isEmpty) {
+      throw Exception('Sprint phải có ít nhất 1 User Story trước khi bắt đầu.');
+    }
+
+    await _dataSource.startSprint(
+      projectId: projectId,
+      sprintId: sprintId,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  /// US-050: Đóng Sprint Active → Completed.
+  @override
+  Future<void> closeSprint({
+    required String projectId,
+    required String sprintId,
+    String? targetSprintId,
+    required List<String> incompleteStoryIds,
+  }) async {
+    await _requireManageSprint(projectId);
+
+    // Kiểm tra sprint đang Active
+    final allSprints = await _dataSource.streamSprints(projectId).first;
+    final target = allSprints.firstWhere(
+      (s) => s.id == sprintId,
+      orElse: () => throw Exception('Sprint không tồn tại.'),
+    );
+    if (target.status.toLowerCase() != 'active') {
+      throw Exception('Chỉ Sprint đang "Active" mới có thể được đóng.');
+    }
+
+    await _dataSource.closeSprint(
+      projectId: projectId,
+      sprintId: sprintId,
+      targetSprintId: targetSprintId,
+      incompleteStoryIds: incompleteStoryIds,
+    );
+  }
+
   Future<String> _requireManageSprint(String projectId) async {
     final uid = _authDataSource.currentUser?.uid;
     if (uid == null) throw Exception('Bạn cần đăng nhập để thực hiện thao tác này.');
@@ -161,3 +233,4 @@ class SprintRepositoryImpl implements SprintRepository {
     ));
   }
 }
+
