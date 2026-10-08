@@ -59,6 +59,10 @@ abstract class BacklogRepository {
     required String priority,
     required int storyPoints,
     DateTime? deadline,
+    String? assigneeId,
+    String? assigneeName,
+    String? assigneeEmail,
+    bool clearAssignee = false,
   });
 
   /// Thay toàn bộ danh sách tag của 1 User Story (US-014) — chỉ cập nhật
@@ -79,6 +83,15 @@ abstract class BacklogRepository {
   Future<void> deleteUserStories({
     required String projectId,
     required List<String> storyIds,
+  });
+
+  /// Cập nhật trạng thái User Story (US-048).
+  ///
+  /// Chỉ PO hoặc SM mới được phép thực hiện.
+  Future<void> updateStoryStatus({
+    required String projectId,
+    required String storyId,
+    required String newStatus,
   });
 
   /// Tạo dữ liệu User Story mẫu với các User ảo.

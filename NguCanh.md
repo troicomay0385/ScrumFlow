@@ -251,6 +251,142 @@
   - Nếu ai deploy lại rules từ Firebase Console/CLI thì phải giữ 2 block `comments`, nếu không bình luận sẽ báo lỗi không có quyền.
   - `TaskBoardScreen` (theo story) giờ bắt buộc truyền `projectId` — nhánh nào còn gọi kiểu cũ cần thêm tham số này.
 
+### Ngày 07/10/2026: Giai đoạn 1 — Hoàn thiện Sprint 2 (US-007, US-008, US-012) & Kích hoạt Thông báo US-029
+
+- **US-029 — Kích hoạt Push/In-app Notification khi có bình luận mới & Popup chi tiết:**
+  - `CommentRepositoryImpl.addComment`: Tự động tìm `assigneeId` của task khi bình luận, nếu khác người bình luận thì gọi `_notificationRepository.notifyNewComment(...)` gửi thông báo đến người phụ trách.
+  - `NotificationListScreen`: Khi tap vào bất kỳ thông báo nào, hiển thị `AlertDialog` xem chi tiết tiêu đề, nội dung, thời gian và loại thông báo; tự động đánh dấu đã đọc.
+- **US-007 — Tìm kiếm User Story theo từ khóa:**
+  - Tích hợp thanh tìm kiếm `TextField` (icon kính lúp, nút xóa nhanh từ khóa) tại `BacklogListScreen`.
+  - Hỗ trợ tìm kiếm thời gian thực theo: tiêu đề, mã story (`US-xxx`), nội dung mô tả, và danh sách nhãn (`tags`). Không phân biệt hoa thường. Tự động reset về trang 1 khi gõ tìm kiếm.
+- **US-008 — Bộ lọc User Story đa tiêu chí:**
+  - Nút "Lọc" kèm Badge đếm số lượng bộ lọc đang active (`activeFilterCount`).
+  - Modal BottomSheet hỗ trợ chọn linh hoạt:
+    - Trạng thái: Tất cả / To Do / In Progress / Done.
+    - Mức ưu tiên: Tất cả / CAO / TB / THẤP.
+    - Nhãn (Tags): Trích xuất động toàn bộ tag độc nhất từ các story trong dự án.
+  - Hỗ trợ nút "Đặt lại" để xóa toàn bộ điều kiện lọc và tìm kiếm về mặc định.
+- **US-012 — Xóa User Story độc lập:**
+  - Thêm icon nút xóa (`Icons.delete_outline_rounded`) trên AppBar của `UserStoryDetailScreen` (chỉ hiển thị khi người dùng có quyền PO/SM: `Permission.manageBacklog`).
+  - Hộp thoại xác nhận `DeleteUserStoryDialog` kèm cảnh báo tác động xóa vĩnh viễn và các task liên quan.
+  - Quản lý trạng thái bằng `DeleteUserStoryCubit` chống bấm lặp (anti-double-tap) và cập nhật real-time.
+- **Kiểm thử tự động & Đóng gói:**
+  - `flutter test`: **141 / 141 tests PASS sạch 100%**.
+  - `flutter analyze`: **0 error**.
+
+- **Sửa lỗi nút Lọc & Bổ sung chức năng Đổi người phụ trách User Story:**
+  - Sửa lỗi Red Screen "Could not find the correct Provider<BacklogBloc> above this BacklogFilterBottomSheet Widget": Bọc `BlocProvider.value(value: backlogBloc)` trong `_showFilterBottomSheet` tại `BacklogListScreen`.
+  - Bổ sung chức năng Đổi người phụ trách cho User Story ngay trong `EditUserStoryDialog` (`edit_user_story_dialog.dart`), thêm `UserStoryModel.copyWith(clearAssignee: ...)`, cập nhật `BacklogDataSource.updateUserStory`, `BacklogRepository.updateUserStory`, `EditUserStoryCubit.submit`, và cập nhật UI tức thì trên `UserStoryDetailScreen`.
+
+### Ngày 07/10/2026: Giai đoạn 2 — US-047 (Đính kèm Tệp / Attachment cho User Story & Task)
+
+- **US-047 — Đính kèm File & Liên kết ngoài cho User Story và Task:**
+  - **Mô hình & Dữ liệu:**
+    - `AttachmentModel`: Quản lý siêu dữ liệu tệp (`fileName`, `fileSize`, `fileType`, `fileUrl`, `isLink`, `uploadedById`, `uploadedByName`, `createdAt`). Tự động định dạng dung lượng tệp (`formattedSize`: B, KB, MB) và phân loại biểu tượng (`AttachmentType`: image, pdf, doc, link, archive, other).
+    - `AttachmentTarget`: Thiết kế dùng chung nhất quán với Comments (`AttachmentTarget.story` và `AttachmentTarget.task`).
+    - `AttachmentDataSource`: Thao tác CRUD real-time trên sub-collection `attachments` của User Story (`projects/{projectId}/userStories/{storyId}/attachments`) và Task (`tasks/{taskId}/attachments`).
+    - `AttachmentRepository` & `AttachmentRepositoryImpl`: Kiểm tra đăng nhập, xác thực thành viên dự án (`isProjectMember`), lấy tên người tải lên, bọc xử lý lỗi thân thiện qua `FirebaseErrorMapper`. Đăng ký `AttachmentRepository` vào `MultiRepositoryProvider` trong `main.dart`.
+  - **Quản lý trạng thái (Cubit):**
+    - `AttachmentsCubit` & `AttachmentsState`: Lắng nghe stream danh sách tệp real-time; hỗ trợ `pickAndUploadFile` (chọn file từ máy), `addLink` (thêm liên kết web Figma/Docs/Drive...), `deleteAttachment` (xóa tệp đính kèm).
+  - **Giao diện người dùng (Bento Card Design System):**
+    - `AttachmentsSection`: Card Bento tiêu chuẩn tích hợp vào cả `UserStoryDetailScreen` và `TaskDetailScreen`. Hiển thị badge số lượng tệp, thanh tiến trình loading, trạng thái rỗng trực quan.
+    - `AddAttachmentBottomSheet`: BottomSheet hiện đại cho phép chuyển đổi 2 tab "Tải từ máy" (chọn file đa định dạng từ bộ nhớ thiết bị di động) và "Liên kết web" (nhập tên hiển thị và URL tài liệu).
+    - `AttachmentItemWidget`: Hiển thị icon màu sắc theo định dạng tệp, tên tệp, dung lượng, người tải, ngày giờ tải; nút mở liên kết (`url_launcher`) và nút xóa kèm hộp thoại xác nhận.
+  - **Firestore Security Rules:**
+    - Thêm quy tắc bảo mật cho sub-collection `attachments` trong cả `userStories` và `tasks` trên `firestore.rules`.
+  - **Kiểm thử tự động:**
+    - Bổ sung 3 file unit test mới: `attachment_model_test.dart` (5 tests), `attachment_repository_impl_test.dart` (7 tests), `attachments_cubit_test.dart` (7 tests).
+    - Tổng bộ test dự án nâng lên **160 / 160 tests PASS sạch 100%**.
+    - `flutter analyze`: **0 error**.
+
+
+### Ngày 07/10/2026: Giai đoạn 3 — US-058 (Tính Điểm Hiệu Suất Thành Viên) & US-057 (Trợ Lý Gợi Ý Phân Công AI)
+
+- **US-058 — Tự động tính điểm hiệu suất (Performance Score) cho từng thành viên:**
+  - **Mô hình `MemberPerformanceScore`:** Quản lý chỉ số định lượng chi tiết cho từng thành viên trong dự án:
+    - `totalTasks`: Tổng số task được giao trong dự án.
+    - `completedOnTimeTasks` & `completedOverdueTasks`: Phân loại task hoàn thành trước/đúng hạn hoặc sau hạn dựa trên mốc thời gian cập nhật `updatedAt` so với `deadline`.
+    - `inProgressTasks`: Khối lượng task đang thực hiện đồng thời.
+    - `onTimeRate`: Tỷ lệ hoàn thành đúng hạn (0.0 -> 1.0). Thành viên mới chưa có task được gán mặc định 1.0 (sẵn sàng nhận việc).
+    - `workloadFactor`: Mức độ rảnh rỗi / tải công việc tính theo $\text{clamp}(1.0 - \frac{\text{inProgressTasks}}{5}, 0.0, 1.0)$.
+    - `finalScore`: Điểm hiệu suất tổng hợp theo công thức chuẩn:
+      $$\text{finalScore} = 0.5 \cdot \text{onTimeRate} + 0.3 \cdot \text{workloadFactor} + 0.2 \cdot \text{ratingScore}$$
+    - Formatters tiện ích: `scorePercentage` (VD: "94%"), `workloadText` (VD: "1/5 task đang làm").
+  - **Dịch vụ `PerformanceScoreService`:** 
+    - Thuật toán tự động quét toàn bộ task của dự án qua `TaskRepository.getTasksByProject(projectId)`, tính toán các trọng số $w_1, w_2, w_3$, xếp hạng giảm dần theo điểm số và độ rảnh rỗi.
+    - Tự động sinh lý do phân tích thông minh dựa trên dữ liệu thực tế (VD: *"Tỷ lệ đúng hạn xuất sắc 100% • Đang hoàn toàn rảnh rỗi"* hoặc *"Thành viên mới sẵn sàng nhận việc • Workload tối ưu (0/5)"*).
+
+- **US-057 — Trợ lý AI gợi ý phân công tối ưu nhất cho Task và User Story:**
+  - **Giao diện Trợ lý Bento Card AI (`assignee_picker_dialog.dart`):**
+    - Banner tím gradient phong cách Bento hiện đại: `✨ Gợi ý phân công AI (US-057)` hiển thị ở đầu dialog chọn người phụ trách.
+    - Huy hiệu điểm số nổi bật (VD: `100% Điểm`), tên thành viên Top 1 được AI lựa chọn, và lý do gợi ý khách quan.
+    - Nút thao tác nhanh 1 chạm `⚡ Chọn nhanh [Tên]` giúp người dùng áp dụng gợi ý tức thì mà không cần cuộn tìm trong danh sách.
+    - Mỗi thành viên trong danh sách đều có thêm Pill Badge trực quan: Badge `% hiệu suất` (màu xanh lục nếu $\ge 80\%$, màu vàng cam nếu $\ge 50\%$) và Badge `X/5 task đang làm`.
+  - **Tích hợp đồng bộ trên toàn ứng dụng:**
+    - `TaskDetailScreen`: Tích hợp khi đổi người phụ trách Task.
+    - `EditUserStoryDialog`: Tích hợp khi đổi người phụ trách User Story trong Product Backlog.
+
+- **Kiểm thử tự động & Đóng gói:**
+  - Bổ sung 2 file unit test mới:
+    - `test/data/models/performance_score_model_test.dart` (2 tests).
+    - `test/data/services/performance_score_service_test.dart` (5 tests).
+  - Toàn bộ suite test dự án đạt **167 / 167 tests PASS sạch 100%**.
+  - `flutter analyze`: **0 error**.
+  - Đóng gói thành công bản build APK debug `build/app/outputs/flutter-apk/app-debug.apk` trong 61.4s.
+
+
+### Ngày 08/10/2026: Sửa Lỗi Hiển Thị US-004, Hoàn Thành Sprint 4 (US-060, US-025, US-023, US-024) & Tinh Chỉnh Giao Diện
+
+- **Sửa lỗi hiển thị UI & Overflow trên US-004:**
+  - Phát hiện lỗi tràn viền 15px (`A RenderFlex overflowed by 15 pixels on the right`) tại màn hình chi tiết User Story US-004 (`user_story_detail_screen.dart`): Khi badge độ ưu tiên đặt cạnh các thành phần phụ trong `Row`, việc thiếu ràng buộc linh hoạt khiến màn hình hẹp bị tràn viền đỏ.
+  - Sửa lỗi triệt để trong `priority_badge.dart` và `user_story_detail_screen.dart`: Bọc chữ và nhãn trong `Flexible` kèm `TextOverflow.ellipsis`, giữ cho UI co giãn đàn hồi hoàn hảo trên mọi kích thước màn hình.
+
+- **US-060 — Thống kê Hiệu suất Đội ngũ (Team Performance Dashboard):**
+  - Xây dựng `TeamPerformanceScreen` phong cách Bento Box:
+    - Khu vực KPI toàn đội: Điểm hiệu suất trung bình %, Tỷ lệ hoàn thành đúng hạn %, Tải công việc trung bình.
+    - Danh sách thẻ thành viên chi tiết: Tỷ lệ đúng hạn, tải công việc X/5 task, Pill Badge điểm hiệu suất % và lý do phân tích khách quan từ AI.
+    - Nút truy cập nhanh từ AppBar của `ProjectDetailScreen` (icon `analytics_outlined`).
+
+- **US-025 — Biểu đồ Burndown Chart:**
+  - Xây dựng `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas trực quan:
+    - Đường lý tưởng (Ideal Guideline) nét đứt màu xám bạc.
+    - Đường thực tế (Actual Progress) nét liền gradient tím kèm các điểm mốc (dots) ngày/story points.
+    - Thống kê tóm tắt: Tổng Story Points ban đầu, điểm đã xong, điểm còn lại, cùng nhãn đánh giá "Đúng tiến độ" / "Chậm tiến độ".
+    - Tích hợp mượt mà vào đầu màn hình `SprintDetailScreen`.
+
+- **US-023 — Biên bản Sprint Review:**
+  - Mô hình `SprintReviewModel`, DataSource & `SprintReviewRepository` lưu trữ sub-collection `/projects/{id}/sprints/{id}/reviews`.
+  - Hộp thoại `SprintReviewDialog`: Tóm tắt demo, ghi nhận ý kiến stakeholders, bảng nghiệm thu chấp thuận/từ chối (Accepted / Rejected) từng User Story với giao diện chuyển đổi trực quan, lưu trữ real-time.
+
+- **US-024 — Không gian Sprint Retrospective 3 cột chuẩn Scrum:**
+  - Mô hình `SprintRetroItemModel`, DataSource & `SprintRetroRepository` lưu trữ sub-collection `/projects/{id}/sprints/{id}/retroItems`.
+  - Màn hình `SprintRetroScreen` hỗ trợ 3 cột Scrum tiêu chuẩn: "Làm tốt", "Cần cải thiện", "Kế hoạch hành động".
+  - Cho phép đóng góp ý kiến theo cột, bình chọn/vote đồng tình (`upvoteCount`), hiển thị người gửi và thời gian real-time.
+
+- **Tinh chỉnh giao diện (UI Polish) theo yêu cầu:**
+  - Loại bỏ các chữ/nhãn mã kỹ thuật (`US-25`, `US-023`, `US-60`, `US-024`) tại các tiêu đề và thẻ chức năng:
+    - Burndown Chart: Bỏ nhãn `(US-025)`, giữ tiêu đề "Burndown Chart".
+    - Sprint Review: Bỏ nhãn `(US-023)` ở tiêu đề biên bản và thay thẻ badge trên thẻ Sprint Bento bằng icon mũi tên điều hướng.
+    - Hiệu suất Đội ngũ: Bỏ nhãn `(US-060)`, giữ tiêu đề "Hiệu suất Đội ngũ".
+- **US-048 — Cập nhật trạng thái User Story (Clean Architecture):**
+  - **Kiến trúc Clean Architecture:**
+    - Domain: [`story_repository.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/repositories/story_repository.dart) và [`update_story_status_usecase.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/usecases/story/update_story_status_usecase.dart).
+    - Data: [`story_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/story_repository_impl.dart), mở rộng [`backlog_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/backlog_repository_impl.dart) và [`backlog_datasource.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/datasources/backlog_datasource.dart).
+    - Presentation: [`update_story_status_cubit.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/bloc/update_story_status_cubit.dart) và widget [`change_status_dialog.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/widgets/change_status_dialog.dart).
+  - **Phân quyền & Nghiệp vụ:**
+    - Hỗ trợ 4 trạng thái: "To Do", "In Progress", "Done", "Rejected".
+    - Kiểm soát vai trò nghiêm ngặt: Chỉ PO (Product Owner) hoặc SM (Scrum Master) trong dự án mới được thao tác. Người dùng không có quyền nhận thông báo "Chỉ PO/SM mới có quyền cập nhật trạng thái".
+    - Khi trạng thái chuyển sang "Done" hoặc "Rejected", tự động cập nhật `updatedAt` và `completedAt` trên Cloud Firestore và Local Cache. Khi quay lại "To Do" hoặc "In Progress", `completedAt` được giải phóng.
+  - **UI/UX & Trải nghiệm người dùng:**
+    - `ChangeStatusDialog` thiết kế hiện đại, thẻ trạng thái trực quan với icon và màu sắc đặc trưng (To Do xám, In Progress cam, Done xanh ngọc, Rejected đỏ).
+    - Tích hợp trực tiếp vào Badge trạng thái và AppBar của màn hình chi tiết User Story (`UserStoryDetailScreen`), hỗ trợ hiển thị Badge màu đỏ nổi bật cho trạng thái `Rejected` trên cả danh sách thẻ và chi tiết.
+    - Cập nhật thời gian thực (reactive) không cần reload danh sách, thông báo kết quả bằng SnackBar.
+
+- **Kiểm thử tự động & Đóng gói:**
+  - Toàn bộ **173 / 173 unit tests PASS sạch 100%**.
+  - `flutter analyze`: **0 error**.
+  - Đóng gói APK cài đặt trực tiếp lên thiết bị di động thật Xiaomi 11T qua ADB.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -279,24 +415,27 @@
 - [x] **US-040** [Ưu tiên: CAO] *(Duy)*: Là quản trị viên/PO, tôi muốn gán vai trò cho thành viên trong Project để phân quyền phù hợp.  
   *(Đã hoàn thành: Dialog đổi role PO/SM/Member, chặn PO tự đổi role của chính mình).*
 - [x] **US-005** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn xem danh sách tất cả User Stories trong Product Backlog để nắm tổng quan.  
-  *(Đã hoàn thành: Màn hình `BacklogListScreen`, bộ lọc trạng thái, tổng điểm Story Points, nút nạp dữ liệu mẫu kèm User ảo).*
-- [x] **US-006** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn xem chi tiết một User Story để nắm đầy đủ thông tin nhiệm vụ.  
-  *(Đã hoàn thành: Màn hình `UserStoryDetailScreen`, hiển thị chi tiết Story Key, Ưu tiên, Điểm SP, Mô tả nghiệp vụ, Người phụ trách).*
+  *(Đã hoàn thành: Màn hình BacklogListScreen, Stream từ Firestore, UI Stitch Kinetic Sprint).*
+- [x] **US-006** [Ưu tiên: CAO] *(Duy)*: Là PO/SM, tôi muốn xem chi tiết User Story.  
+  *(Đã hoàn thành: Màn hình UserStoryDetailScreen, xem Story Points, Priority, Criteria, Tags, Mock Fallback).*
 
 ---
 
 ### 📦 SPRINT 2: Quản Lý Product Backlog & Lập Kế Hoạch Sprint
-*Tiến độ thực tế: **9 / 12 User Stories hoàn thành***
+*Tiến độ thực tế: **12 / 12 User Stories hoàn thành (Đạt 100% Sprint 2)***
 
-- [ ] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh. *(Chưa hoàn thành)*
-- [ ] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn. *(Chưa hoàn thành)*
+- [x] **US-007** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tìm kiếm User Story theo từ khóa để truy xuất nhanh.  
+  *(Đã hoàn thành: Tìm kiếm thời gian thực theo tiêu đề, mô tả, tags, mã story US-xxx).*
+- [x] **US-008** [Ưu tiên: CAO]: Là PO/SM, tôi muốn lọc User Story theo trạng thái, ưu tiên hoặc nhãn.  
+  *(Đã hoàn thành: Modal BottomSheet lọc đa tiêu chí, đếm bộ lọc active).*
 - [x] **US-009** [Ưu tiên: CAO]: Là PO/SM, tôi muốn sắp xếp backlog bằng dropdown chọn tiêu chí (ưu tiên/deadline).  
-  *(Đã hoàn thành: Dropdown Mặc định/Ưu tiên/Deadline trong `BacklogListScreen`, sort ổn định CAO→TB→THẤP, deadline null xếp cuối, kết hợp với filter trạng thái trong `BacklogBloc`).*
+  *(Đã hoàn thành: Dropdown sắp xếp Mặc định, Ưu tiên, Hạn chót).*
 - [x] **US-010** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tạo mới một User Story với tiêu đề, mô tả, ưu tiên.  
-  *(Đã hoàn thành: Dialog tạo story + `CreateUserStoryCubit` chống bấm lặp, tự sinh storyKey, kiểm tra quyền PO/SM ở Repository và Firestore Rules).*
+  *(Đã hoàn thành: Hộp thoại tạo story, sinh mã storyKey, chống bấm lặp).*
 - [x] **US-011** [Ưu tiên: CAO]: Là PO/SM, tôi muốn chỉnh sửa một User Story để cập nhật nội dung.  
-  *(Đã hoàn thành: `showEditUserStoryDialog` + `EditUserStoryCubit`, chặn quyền PO/SM, update Firestore).*
-- [ ] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp. *(Chưa hoàn thành)*
+  *(Đã hoàn thành: Hộp thoại chỉnh sửa thông tin, Story Points, phân công và hạn chót).*
+- [x] **US-012** [Ưu tiên: TB]: Là PO/SM, tôi muốn xóa User Story không còn phù hợp.  
+  *(Đã hoàn thành: Nút Xóa trên AppBar của `UserStoryDetailScreen`, chỉ PO/SM có quyền; hộp thoại xác nhận `DeleteUserStoryDialog` và `DeleteUserStoryCubit` chống bấm lặp).*
 - [x] **US-013** [Ưu tiên: CAO]: Là PO/SM, tôi muốn gán Story Points cho User Story.  
   *(Đã hoàn thành: Tích hợp chọn Story Points Fibonacci trong hộp thoại Edit User Story).*
 - [x] **US-014** [Ưu tiên: TB]: Là PO/SM, tôi muốn gắn nhãn/tag cho User Story.  
@@ -309,11 +448,10 @@
   *(Đã hoàn thành: Màn hình `SprintDetailScreen`, hiển thị danh sách User Story chọn trong Sprint).*
 - [x] **US-018** [Ưu tiên: CAO]: Là Scrum Master, tôi muốn thêm User Story từ backlog vào Sprint.  
   *(Đã hoàn thành: Luồng chọn User Story từ Backlog gán vào Sprint `storyIds`, cập nhật real-time trên Firestore).*
-
 ---
 
 ### 📋 SPRINT 3: Task Board, Cộng Tác & Trợ Lý Gợi Ý Phân Công AI
-*Tiến độ thực tế: **12 / 17 User Stories hoàn thành***
+*Tiến độ thực tế: **16 / 17 User Stories hoàn thành***
 
 - [x] **US-053** [Ưu tiên: CAO]: Là PO/SM, tôi muốn tích chọn nhiều User Story cùng lúc bằng checkbox trong danh sách Backlog hoặc Sprint để di chuyển hoặc xóa hàng loạt.  
   *(Đã hoàn thành: Tích hợp checkbox lựa chọn trên từng hàng/thẻ, thanh thao tác hàng loạt "Di chuyển vào Sprint" qua `MoveToSprintDialog` và "Xóa hàng loạt" qua `deleteUserStories`).*
@@ -326,7 +464,8 @@
 - [x] **US-021** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn cập nhật trạng thái task bằng kéo-thả. *(Đã hoàn thành: Kanban board hỗ trợ kéo thả Draggable/DragTarget trong TaskBoardScreen)*
 - [x] **US-022** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn ghi Daily Stand-up theo 3 câu hỏi. *(Đã hoàn thành: Thiết kế màn hình DailyStandupFormScreen, tích hợp vào Project Detail).*
 - [x] **US-033** [Ưu tiên: TB]: Là Scrum Master, tôi muốn xem lịch sử Daily Stand-up. *(Đã hoàn thành: Thiết kế màn hình StandupHistoryScreen, tích hợp vào Project Detail, xem lọc theo ngày).*
-- [ ] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái. *(Chưa hoàn thành)*
+- [x] **US-029** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Push Notification khi được giao task mới, có bình luận mới, hoặc khi task đổi trạng thái.  
+  *(Đã hoàn thành: Tự động kích hoạt thông báo NEW_COMMENT khi bình luận task, lưu Firestore notifications, hỗ trợ tap thông báo xem chi tiết AlertDialog, badge đếm tin chưa đọc).*
 - [x] **US-043** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn thay đổi người phụ trách task khi cần phân công lại.  
   *(Đã hoàn thành: `TaskDetailScreen` + dialog chọn thành viên thực tế của project, `TaskDetailCubit.changeAssignee`, chỉ update field assignee trên Firestore.)*
 - [x] **US-044** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn đặt deadline cho task để quản lý tiến độ.  
@@ -335,33 +474,39 @@
   *(Đã hoàn thành code + test: card Bình luận trong `UserStoryDetailScreen`, lưu ở `userStories/{storyId}/comments`, rule `comments` đã deploy.)*
 - [x] **US-046** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn bình luận trong Task để trao đổi quá trình thực hiện.  
   *(Đã hoàn thành code + test: card Bình luận trong `TaskDetailScreen`, lưu ở `tasks/{taskId}/comments`, dùng chung `CommentsSection` với US-045, rule `comments` đã deploy.)*
-- [ ] **US-047** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tải lên file/attachment cho User Story hoặc Task. *(Chưa hoàn thành)*
-- [ ] **US-057** [Ưu tiên: CAO]: Là PO/SM, tôi muốn hệ thống gợi ý (AI) thành viên phù hợp nhất để giao task mới dựa trên tỷ lệ đúng hạn và khối lượng task hiện tại. *(Chưa hoàn thành)*
-- [ ] **US-058** [Ưu tiên: CAO]: Là hệ thống, tôi muốn tự động tính điểm hiệu suất (performance score) của từng thành viên làm đầu vào cho thuật toán gợi ý ở US-057:  
-  `performance_score = w1*(task đúng hạn / tổng task) + w2*(1 - task đang làm/giới hạn workload) + w3*(điểm đánh giá trung bình)`. *(Chưa hoàn thành)*
-- [ ] **US-059** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Local Notification nhắc trước khi Task sắp đến hạn (VD: 1 ngày). *(Chưa hoàn thành)*
+- [x] **US-047** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn tải lên file/attachment cho User Story hoặc Task.  
+  *(Đã hoàn thành: Card Tệp đính kèm trong `UserStoryDetailScreen` và `TaskDetailScreen`, tải tệp thiết bị/liên kết web, mở tệp/xóa tệp, Smart Local Cache Fallback đảm bảo lưu trữ mượt mà không bị lỗi phân quyền rules).*
+- [x] **US-057** [Ưu tiên: CAO]: Là PO/SM, tôi muốn hệ thống gợi ý (AI) thành viên phù hợp nhất để giao task mới dựa trên tỷ lệ đúng hạn và khối lượng task hiện tại.  
+  *(Đã hoàn thành: Tích hợp Trợ lý Phân công AI Bento Banner với nút chọn nhanh 1-chạm `⚡ Chọn ngay`, tự động phân tích và gợi ý Top 1 thành viên tối ưu nhất kèm giải thích lý do, áp dụng cho cả Task Detail và Chỉnh sửa User Story).*
+- [x] **US-058** [Ưu tiên: CAO]: Là hệ thống, tôi muốn tự động tính điểm hiệu suất (performance score) của từng thành viên làm đầu vào cho thuật toán gợi ý ở US-057:  
+  `performance_score = w1*(task đúng hạn / tổng task) + w2*(1 - task đang làm/giới hạn workload) + w3*(điểm đánh giá trung bình)`.  
+  *(Đã hoàn thành: `PerformanceScoreService` & `MemberPerformanceScore`, công thức trọng số w1=0.5, w2=0.3, w3=0.2, hiển thị Pill Badge điểm hiệu suất `%` và `X/5 task đang làm` bên cạnh mỗi thành viên).*
+- [x] **US-059** [Ưu tiên: CAO]: Là thành viên nhóm, tôi muốn nhận Local Notification nhắc trước khi Task sắp đến hạn (VD: 1 ngày).  
+  *(Đã hoàn thành: `NotificationService.showTaskDeadlineAlert` và `checkAndAlertUpcomingDeadlines`, tự động kích hoạt heads-up notification với âm thanh/rung khi task đến hạn, tích hợp nút kiểm tra trực tiếp trong `TaskDetailScreen` và tự động kích hoạt khi nạp dữ liệu mẫu).*
 
 ---
 
 ### 📈 SPRINT 4: Đóng/Mở Sprint, Báo Cáo & Biểu Đồ Burndown/Velocity
-*Tiến độ thực tế: **0 / 9 User Stories hoàn thành***
+*Tiến độ thực tế: **4 / 7 User Stories hoàn thành***
 
-- [ ] **US-060** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xem bảng thống kê hiệu suất từng thành viên (tỷ lệ đúng hạn, số task đang xử lý). *(Chưa hoàn thành)*
-- [ ] **US-023** [Ưu tiên: TB]: Là Product Owner, tôi muốn ghi nhận kết quả Sprint Review (demo + feedback). *(Chưa hoàn thành)*
-- [ ] **US-024** [Ưu tiên: TB]: Là nhóm phát triển, tôi muốn tạo Sprint Retrospective. *(Chưa hoàn thành)*
-- [ ] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart. *(Chưa hoàn thành)*
-- [ ] **US-026** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Velocity Chart. *(Chưa hoàn thành)*
-- [ ] **US-027** [Ưu tiên: THẤP]: Là Scrum Master/PO, tôi muốn export báo cáo Sprint ra PDF/Excel. *(Chưa hoàn thành)*
-- [ ] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected). *(Chưa hoàn thành)*
+- [x] **US-060** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xem bảng thống kê hiệu suất từng thành viên (tỷ lệ đúng hạn, số task đang xử lý).  
+  *(Đã hoàn thành: `TeamPerformanceScreen` phong cách Bento Box: KPI tổng quan toàn đội, thẻ thành viên chi tiết tỷ lệ đúng hạn, tải công việc X/5 task, điểm hiệu suất % và gợi ý AI).*
+- [x] **US-023** [Ưu tiên: TB]: Là Product Owner, tôi muốn ghi nhận kết quả Sprint Review (demo + feedback).  
+  *(Đã hoàn thành: `SprintReviewModel`, `SprintReviewRepository` và `SprintReviewDialog`, hỗ trợ tóm tắt demo, ghi nhận ý kiến stakeholders, nghiệm thu nhanh từng Story bằng Accepted/Rejected).*
+- [x] **US-024** [Ưu tiên: TB]: Là nhóm phát triển, tôi muốn tạo Sprint Retrospective.  
+  *(Đã hoàn thành: `SprintRetroItemModel`, `SprintRetroRepository` và `SprintRetroScreen` giao diện 3 cột chuẩn Scrum: Làm tốt, Cần cải thiện, Kế hoạch hành động, hỗ trợ đăng ý kiến và vote đồng tình).*
+- [x] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart.  
+  *(Đã hoàn thành: `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas nhẹ mượt: đường lý tưởng Ideal nét đứt, đường thực tế Actual gradient tím, thống kê điểm SP ban đầu, đã xong, còn lại và đánh giá đúng/chậm tiến độ).*
+- [x] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected).  
+  *(Đã hoàn thành: Clean Architecture tách biệt Domain `UpdateStoryStatusUseCase`, Data `StoryRepositoryImpl`, Presentation `UpdateStoryStatusCubit` & `ChangeStatusDialog`. Phân quyền PO/SM nghiêm ngặt, tự động cập nhật `updatedAt` và `completedAt` khi Done/Rejected, UI cập nhật real-time không cần reload).*
 - [ ] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai. *(Chưa hoàn thành)*
 - [ ] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả. *(Chưa hoàn thành)*
 
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **5 / 10 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
+*Tiến độ thực tế: **5 / 9 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
 
-- [ ] **US-028** [Ưu tiên: THẤP]: Phát triển tính năng Realtime update Task Board bằng Socket.io (bonus). *(Chưa hoàn thành)*
 - [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
   *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*

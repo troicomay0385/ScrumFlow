@@ -21,6 +21,9 @@ import 'data/repositories/comment_repository.dart';
 import 'data/repositories/comment_repository_impl.dart';
 import 'data/repositories/project_member_repository.dart';
 import 'data/repositories/project_member_repository_impl.dart';
+import 'data/datasources/attachment_datasource.dart';
+import 'data/repositories/attachment_repository.dart';
+import 'data/repositories/attachment_repository_impl.dart';
 import 'data/repositories/project_repository.dart';
 import 'data/repositories/project_repository_impl.dart';
 import 'data/datasources/sprint_datasource.dart';
@@ -29,6 +32,8 @@ import 'data/repositories/sprint_repository_impl.dart';
 import 'data/repositories/task_repository.dart';
 import 'data/repositories/standup_repository.dart';
 import 'data/repositories/notification_repository.dart';
+import 'domain/repositories/story_repository.dart';
+import 'data/repositories/story_repository_impl.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/standup/bloc/standup_bloc.dart';
@@ -36,7 +41,6 @@ import 'app/services/connectivity_service.dart';
 import 'app/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
-import 'presentation/notifications/bloc/notification_event.dart';
 
 import 'firebase_options.dart';
 
@@ -99,6 +103,19 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     userDataSource: firestoreDataSource,
     authDataSource: firebaseAuthDataSource,
+    notificationRepository: notificationRepository,
+    firestore: firestore,
+  );
+  final AttachmentRepository attachmentRepository = AttachmentRepositoryImpl(
+    dataSource: AttachmentDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    userDataSource: firestoreDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
+  final StoryRepository storyRepository = StoryRepositoryImpl(
+    dataSource: BacklogDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    authDataSource: firebaseAuthDataSource,
   );
 
   runApp(
@@ -109,6 +126,7 @@ void main() async {
           value: projectMemberRepository,
         ),
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
+        RepositoryProvider<StoryRepository>.value(value: storyRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
         RepositoryProvider<TaskRepository>(
           create: (_) => TaskRepository(
@@ -118,6 +136,9 @@ void main() async {
         ),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),
         RepositoryProvider<CommentRepository>.value(value: commentRepository),
+        RepositoryProvider<AttachmentRepository>.value(
+          value: attachmentRepository,
+        ),
         RepositoryProvider<NotificationRepository>.value(value: notificationRepository),
       ],
       child: MultiBlocProvider(

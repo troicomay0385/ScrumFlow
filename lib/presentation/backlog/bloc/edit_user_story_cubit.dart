@@ -24,6 +24,10 @@ class EditUserStoryCubit extends Cubit<EditUserStoryState> {
     required String? priority,
     required int storyPoints,
     DateTime? deadline,
+    String? assigneeId,
+    String? assigneeName,
+    String? assigneeEmail,
+    bool clearAssignee = false,
   }) async {
     // Chống bấm lặp: đang gửi hoặc đã sửa xong thì bỏ qua.
     if (state is EditUserStorySubmitting || state is EditUserStorySuccess) {
@@ -54,6 +58,10 @@ class EditUserStoryCubit extends Cubit<EditUserStoryState> {
         priority: priority!,
         storyPoints: storyPoints,
         deadline: deadline,
+        assigneeId: assigneeId,
+        assigneeName: assigneeName,
+        assigneeEmail: assigneeEmail,
+        clearAssignee: clearAssignee,
       );
       emit(EditUserStorySuccess(updated));
     } catch (e) {

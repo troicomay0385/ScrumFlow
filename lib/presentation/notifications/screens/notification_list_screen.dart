@@ -22,10 +22,57 @@ class NotificationListScreen extends StatelessWidget {
       context.read<NotificationBloc>().add(MarkAsRead(notification.id));
     }
 
-    // Điều hướng (Navigation) dựa vào type và targetId
-    // TODO: Bổ sung logic điều hướng tuỳ thuộc vào NotificationType
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã bấm vào: ${notification.title}')),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.notifications_active_rounded,
+                  color: Colors.blue, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                notification.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(notification.body,
+                style: const TextStyle(fontSize: 14, height: 1.4)),
+            const SizedBox(height: 16),
+            Text(
+              'Thời gian: ${_formatTime(notification.createdAt)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            if (notification.type.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Loại thông báo: ${notification.type}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
     );
   }
 

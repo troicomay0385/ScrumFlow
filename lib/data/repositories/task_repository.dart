@@ -44,6 +44,38 @@ class TaskRepository {
     });
   }
 
+  /// Stream realtime tất cả tasks của 1 Project (dùng cho bảng thống kê hiệu suất US-060).
+  Stream<List<TaskModel>> streamTasksByProject(String projectId) {
+    return _tasksRef
+        .where('projectId', isEqualTo: projectId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              return TaskModel.fromMap(
+                doc.data() as Map<String, dynamic>,
+                doc.id,
+              );
+            }).toList());
+  }
+
+  /// Lấy toàn bộ danh sách Tasks của 1 project (dùng cho tính điểm hiệu suất US-058 & gợi ý AI US-057).
+  Future<List<TaskModel>> getTasksByProject(String projectId) async {
+    try {
+      final snapshot = await _tasksRef
+          .where('projectId', isEqualTo: projectId)
+          .get()
+          .timeout(_writeTimeout);
+
+      return snapshot.docs.map((doc) {
+        return TaskModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   // ── Write Operations ───────────────────────────────────────────────────────
 
   /// Tạo Task mới và lưu lên Firestore.

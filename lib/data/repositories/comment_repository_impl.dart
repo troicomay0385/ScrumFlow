@@ -12,6 +12,7 @@ import '../datasources/firestore_datasource.dart';
 import '../datasources/project_member_datasource.dart';
 import '../models/comment_model.dart';
 import 'comment_repository.dart';
+import 'notification_repository.dart';
 
 /// Implementation của [CommentRepository].
 ///
@@ -23,6 +24,8 @@ class CommentRepositoryImpl implements CommentRepository {
   final ProjectMemberDataSource _memberDataSource;
   final FirestoreDataSource _userDataSource;
   final FirebaseAuthDataSource _authDataSource;
+  final NotificationRepository? _notificationRepository;
+  final fs.FirebaseFirestore? _firestore;
   final DateTime Function() _now;
 
   CommentRepositoryImpl({
@@ -30,11 +33,15 @@ class CommentRepositoryImpl implements CommentRepository {
     ProjectMemberDataSource? memberDataSource,
     FirestoreDataSource? userDataSource,
     FirebaseAuthDataSource? authDataSource,
+    NotificationRepository? notificationRepository,
+    fs.FirebaseFirestore? firestore,
     DateTime Function()? now,
   })  : _dataSource = dataSource ?? CommentDataSource(),
         _memberDataSource = memberDataSource ?? ProjectMemberDataSource(),
         _userDataSource = userDataSource ?? FirestoreDataSource(),
         _authDataSource = authDataSource ?? FirebaseAuthDataSource(),
+        _notificationRepository = notificationRepository,
+        _firestore = firestore,
         _now = now ?? DateTime.now;
 
   @override
@@ -70,6 +77,7 @@ class CommentRepositoryImpl implements CommentRepository {
         throw Exception('Chỉ thành viên của project mới được bình luận.');
       }
 
+      final author = await _authorName(user.uid);
       await _dataSource.addComment(
         target,
         CommentModel(
@@ -78,11 +86,41 @@ class CommentRepositoryImpl implements CommentRepository {
           storyId: target.storyId,
           taskId: target.taskId,
           authorId: user.uid,
-          authorName: await _authorName(user.uid),
+          authorName: author,
           content: content.trim(),
           createdAt: _now(),
         ),
       );
+
+      // Kích hoạt thông báo khi có bình luận mới (US-029)
+      final notifRepo = _notificationRepository;
+      if (notifRepo != null) {
+        try {
+          if (target.taskId != null) {
+            final taskDoc = await (_firestore ?? fs.FirebaseFirestore.instance)
+                .collection('tasks')
+                .doc(target.taskId)
+                .get();
+            if (taskDoc.exists) {
+              final taskData = taskDoc.data();
+              final assigneeId = taskData?['assigneeId'] as String?;
+              final taskTitle = (taskData?['title'] as String?) ?? 'Task';
+              if (assigneeId != null &&
+                  assigneeId.isNotEmpty &&
+                  assigneeId != user.uid) {
+                await notifRepo.notifyNewComment(
+                  receiverId: assigneeId,
+                  taskTitle: taskTitle,
+                  commenterName: author,
+                  taskId: target.taskId!,
+                );
+              }
+            }
+          }
+        } catch (_) {
+          // Lỗi bắn thông báo không làm ảnh hưởng đến lưu bình luận
+        }
+      }
     });
   }
 

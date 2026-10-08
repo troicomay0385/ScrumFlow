@@ -324,6 +324,8 @@ class _TaskCard extends StatelessWidget {
         children: [
           Text(
             task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -335,11 +337,15 @@ class _TaskCard extends StatelessWidget {
               children: [
                 const Icon(Icons.person_outline, size: 14, color: AppColors.primary),
                 const SizedBox(width: 4),
-                Text(
-                  task.assigneeName!,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: AppColors.primary,
+                Expanded(
+                  child: Text(
+                    task.assigneeName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ],
@@ -355,13 +361,17 @@ class _TaskCard extends StatelessWidget {
                   color: isOverdue ? AppColors.error : AppColors.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  formatDateVi(deadline),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: isOverdue
-                        ? AppColors.error
-                        : AppColors.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    formatDateVi(deadline),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: isOverdue
+                          ? AppColors.error
+                          : AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],

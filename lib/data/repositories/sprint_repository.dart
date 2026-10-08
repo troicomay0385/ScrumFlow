@@ -31,4 +31,13 @@ abstract class SprintRepository {
     required List<String> storyIds,
   });
   Future<void> seedMockSprints(String projectId);
+  Future<SprintModel> seedSprint({
+    required String projectId,
+    required String name,
+    required String goal,
+    required DateTime startDate,
+    required DateTime endDate,
+    String status = 'Active',
+    List<String> storyIds = const [],
+  });
 }

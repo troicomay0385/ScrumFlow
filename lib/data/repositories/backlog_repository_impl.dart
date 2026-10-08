@@ -148,6 +148,10 @@ class BacklogRepositoryImpl implements BacklogRepository {
     required String priority,
     required int storyPoints,
     DateTime? deadline,
+    String? assigneeId,
+    String? assigneeName,
+    String? assigneeEmail,
+    bool clearAssignee = false,
   }) {
     return _guard(() async {
       await _requireManageBacklog(projectId);
@@ -162,6 +166,10 @@ class BacklogRepositoryImpl implements BacklogRepository {
         priority: priority,
         storyPoints: storyPoints,
         deadline: deadline,
+        assigneeId: assigneeId,
+        assigneeName: assigneeName,
+        assigneeEmail: assigneeEmail,
+        clearAssignee: clearAssignee,
         updatedAt: _now(),
       );
 
@@ -198,6 +206,45 @@ class BacklogRepositoryImpl implements BacklogRepository {
     return _guard(() async {
       await _requireManageBacklog(projectId);
       await _dataSource.deleteUserStories(projectId, storyIds);
+    });
+  }
+
+  @override
+  Future<void> updateStoryStatus({
+    required String projectId,
+    required String storyId,
+    required String newStatus,
+  }) {
+    return _guard(() async {
+      final validStatuses = ['To Do', 'In Progress', 'Done', 'Rejected'];
+      if (!validStatuses.contains(newStatus)) {
+        throw Exception('Trạng thái không hợp lệ: $newStatus');
+      }
+
+      final uid = _authDataSource.currentUser?.uid;
+      if (uid == null) {
+        throw Exception('Bạn cần đăng nhập để thực hiện thao tác này.');
+      }
+      final membership = await _memberDataSource.getMembership(
+        projectId: projectId,
+        userId: uid,
+      );
+      if (membership == null ||
+          !hasPermission(membership.role, Permission.manageBacklog)) {
+        throw Exception('Chỉ PO/SM mới có quyền cập nhật trạng thái');
+      }
+
+      final now = _now();
+      final isCompleted = newStatus == 'Done' || newStatus == 'Rejected';
+
+      await _dataSource.updateStoryStatus(
+        projectId: projectId,
+        storyId: storyId,
+        status: newStatus,
+        updatedAt: now,
+        completedAt: isCompleted ? now : null,
+        clearCompletedAt: !isCompleted,
+      );
     });
   }
 

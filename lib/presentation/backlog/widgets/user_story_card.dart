@@ -92,6 +92,11 @@ class UserStoryCard extends StatelessWidget {
         bgColor = const Color(0xFFFEF3C7);
         borderColor = const Color(0xFFFDE68A);
         break;
+      case 'rejected':
+        textColor = const Color(0xFFB91C1C);
+        bgColor = const Color(0xFFFEE2E2);
+        borderColor = const Color(0xFFFECACA);
+        break;
       default: // To Do
         textColor = const Color(0xFF475569);
         bgColor = const Color(0xFFF1F5F9);

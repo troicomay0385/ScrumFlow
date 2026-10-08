@@ -133,4 +133,31 @@ class SprintRepositoryImpl implements SprintRepository {
   Future<void> seedMockSprints(String projectId) {
     return _dataSource.seedMockSprints(projectId);
   }
+
+  @override
+  Future<SprintModel> seedSprint({
+    required String projectId,
+    required String name,
+    required String goal,
+    required DateTime startDate,
+    required DateTime endDate,
+    String status = 'Active',
+    List<String> storyIds = const [],
+  }) async {
+    final uid = _authDataSource.currentUser?.uid;
+    final now = DateTime.now();
+    return _dataSource.createSprint(SprintModel(
+      id: '',
+      projectId: projectId,
+      name: name.trim(),
+      goal: goal.trim(),
+      startDate: startDate,
+      endDate: endDate,
+      status: status,
+      storyIds: storyIds,
+      createdBy: uid,
+      createdAt: now,
+      updatedAt: now,
+    ));
+  }
 }
