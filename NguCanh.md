@@ -389,6 +389,50 @@
 
 ---
 
+### Ngày 08/10/2026: US-049 (Start Sprint) & US-050 (Close Sprint)
+
+- **US-049 — Bắt đầu Sprint (Start Sprint):**
+  - **Domain Layer:** Tạo mới `lib/domain/usecases/sprint/start_sprint_usecase.dart` — UseCase validate input (projectId, sprintId, ngày hợp lệ) trước khi delegate xuống Repository.
+  - **Data Layer:**
+    - Bổ sung abstract method `startSprint()` vào `SprintRepository`.
+    - Implement `startSprint()` trong `SprintRepositoryImpl` với **3 ràng buộc nghiệp vụ nghiêm ngặt**:
+      1. Chỉ PO/SM mới được thực hiện (kiểm tra `Permission.manageSprint`).
+      2. Sprint phải ở trạng thái "Planned".
+      3. Chỉ được có 1 Sprint "Active" trong 1 project tại 1 thời điểm — báo lỗi nếu đã có sprint khác Active.
+      4. Sprint phải có ≥ 1 User Story.
+    - Bổ sung `startSprint()` vào `SprintDataSource` — cập nhật Firestore document và local cache.
+  - **Presentation Layer:**
+    - Thêm event `SprintStartRequested` vào `sprint_event.dart`.
+    - Thêm handler `_onStartRequested` vào `SprintBloc`.
+    - Tạo `lib/presentation/sprints/widgets/start_sprint_dialog.dart` — Dialog xác nhận bắt đầu Sprint hiển thị tên sprint, số stories, ngày bắt đầu hôm nay (cố định), ngày kết thúc (có thể chỉnh), thời lượng tự tính. Thiết kế Kinetic Sprint với gradient header và animation loading.
+    - Tích hợp nút **"Bắt đầu"** (`FilledButton.icon + rocket_launch`) vào AppBar của `SprintDetailScreen` — chỉ hiện khi sprint Planned & canManage.
+
+- **US-050 — Đóng Sprint (Close Sprint):**
+  - **Domain Layer:** Tạo mới `lib/domain/usecases/sprint/close_sprint_usecase.dart` — UseCase validate rồi delegate xuống Repository.
+  - **Data Layer:**
+    - Bổ sung abstract method `closeSprint()` vào `SprintRepository`.
+    - Implement `closeSprint()` trong `SprintRepositoryImpl` — kiểm tra sprint đang Active trước khi đóng.
+    - Bổ sung `closeSprint()` vào `SprintDataSource` với **Firestore `WriteBatch` atomic**:
+      - Cập nhật `status = 'Completed'` cho Sprint trong 1 write.
+      - Gỡ incomplete stories khỏi `storyIds` của sprint cũ.
+      - Nếu chuyển sang sprint tiếp theo: `arrayUnion` vào sprint đó.
+      - Nếu về backlog: `update({sprintId: null})` trên từng story document.
+      - Toàn bộ trong 1 `batch.commit()` — atomic, không partial update.
+  - **Presentation Layer:**
+    - Thêm event `SprintCloseRequested` vào `sprint_event.dart`.
+    - Thêm handler `_onCloseRequested` vào `SprintBloc`.
+    - Tạo `lib/presentation/sprints/widgets/close_sprint_dialog.dart` — Dialog đóng Sprint với:
+      - Thống kê trực quan: LinearProgressBar Done%, chip "X Hoàn thành" + "Y Chưa xong".
+      - Radio options để chọn đích chuyển story: **Product Backlog** hoặc bất kỳ **Sprint Planned** còn lại.
+      - Nếu tất cả story Done: hiện banner chúc mừng 🎉.
+    - Tích hợp nút **"Đóng Sprint"** (màu đỏ `DC2626 + flag_rounded`) vào AppBar của `SprintDetailScreen` — chỉ hiện khi sprint Active & canManage.
+    - Phương thức `_showCloseSprintDialog()` trong `SprintDetailScreen` load stories trước khi mở dialog.
+
+- **File mới:** `lib/domain/usecases/sprint/start_sprint_usecase.dart`, `lib/domain/usecases/sprint/close_sprint_usecase.dart`, `lib/presentation/sprints/widgets/start_sprint_dialog.dart`, `lib/presentation/sprints/widgets/close_sprint_dialog.dart`
+- **File sửa:** `sprint_repository.dart` (+`startSprint`, `closeSprint`), `sprint_repository_impl.dart` (+impl 2 method), `sprint_datasource.dart` (+impl + WriteBatch), `sprint_event.dart` (+2 events), `sprint_bloc.dart` (+2 handlers), `sprint_detail_screen.dart` (+imports, +2 nút AppBar, +`_showCloseSprintDialog`), `NguCanh.md` (đánh dấu US-049, US-050 ✅).
+
+---
+
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
 
 > *Dữ liệu đối chiếu từ file kế hoạch `Sprint Backlog LTTTBDD.xlsx` với tiến độ mã nguồn thực tế của dự án.*
@@ -499,8 +543,10 @@
   *(Đã hoàn thành: `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas nhẹ mượt: đường lý tưởng Ideal nét đứt, đường thực tế Actual gradient tím, thống kê điểm SP ban đầu, đã xong, còn lại và đánh giá đúng/chậm tiến độ).*
 - [x] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected).  
   *(Đã hoàn thành: Clean Architecture tách biệt Domain `UpdateStoryStatusUseCase`, Data `StoryRepositoryImpl`, Presentation `UpdateStoryStatusCubit` & `ChangeStatusDialog`. Phân quyền PO/SM nghiêm ngặt, tự động cập nhật `updatedAt` và `completedAt` khi Done/Rejected, UI cập nhật real-time không cần reload).*
-- [ ] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai. *(Chưa hoàn thành)*
-- [ ] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả. *(Chưa hoàn thành)*
+- [x] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai.  
+  *(Đã hoàn thành: Domain `StartSprintUseCase`, Repository method `startSprint` với 3 ràng buộc nghiệp vụ (chỉ PO/SM, chỉ 1 sprint active/project, sprint ≥ 1 story), DataSource ghi Firestore, BLoC event `SprintStartRequested` + handler, UI `StartSprintDialog` hiển thị tên/ngày bắt đầu hôm nay/ngày kết thúc điều chỉnh được. Báo lỗi khi MEMBER cố bắt đầu Sprint).*
+- [x] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả.  
+  *(Đã hoàn thành: Domain `CloseSprintUseCase`, Repository method `closeSprint` với kiểm tra Active, DataSource dùng Firestore `WriteBatch` atomic cập nhật Sprint status + Story sprintIds trong 1 giao dịch, BLoC event `SprintCloseRequested` + handler, UI `CloseSprintDialog` thống kê Done/chưa xong với progress bar, cho chọn chuyển story về Product Backlog hoặc Sprint Planned tiếp theo).*
 
 ---
 

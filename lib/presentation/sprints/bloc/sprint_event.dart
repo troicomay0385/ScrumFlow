@@ -73,3 +73,41 @@ class SprintSeedMockRequested extends SprintEvent {
   @override
   List<Object?> get props => [projectId];
 }
+
+/// US-049: Yêu cầu bắt đầu Sprint (Planned → Active).
+class SprintStartRequested extends SprintEvent {
+  final String projectId;
+  final String sprintId;
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const SprintStartRequested({
+    required this.projectId,
+    required this.sprintId,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  @override
+  List<Object?> get props => [projectId, sprintId, startDate, endDate];
+}
+
+/// US-050: Yêu cầu đóng Sprint (Active → Completed).
+class SprintCloseRequested extends SprintEvent {
+  final String projectId;
+  final String sprintId;
+
+  /// null → chuyển về Product Backlog; non-null → chuyển sang Sprint tiếp theo
+  final String? targetSprintId;
+  final List<String> incompleteStoryIds;
+
+  const SprintCloseRequested({
+    required this.projectId,
+    required this.sprintId,
+    this.targetSprintId,
+    required this.incompleteStoryIds,
+  });
+
+  @override
+  List<Object?> get props => [projectId, sprintId, targetSprintId, incompleteStoryIds];
+}

@@ -16,6 +16,8 @@ class SprintBloc extends Bloc<SprintEvent, SprintState> {
     on<SprintCreateRequested>(_onCreateRequested);
     on<SprintStoryAddRequested>(_onStoryAddRequested);
     on<SprintStoriesAddRequested>(_onStoriesAddRequested);
+    on<SprintStartRequested>(_onStartRequested);
+    on<SprintCloseRequested>(_onCloseRequested);
   }
 
   Future<void> _onCreateRequested(
@@ -94,6 +96,45 @@ class SprintBloc extends Bloc<SprintEvent, SprintState> {
         'Không thể tạo dữ liệu mẫu: $e',
         sprints: state is SprintLoaded ? (state as SprintLoaded).sprints : const [],
       ));
+    }
+  }
+
+  /// US-049: Bắt đầu Sprint
+  Future<void> _onStartRequested(
+    SprintStartRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.startSprint(
+        projectId: event.projectId,
+        sprintId: event.sprintId,
+        startDate: event.startDate,
+        endDate: event.endDate,
+      );
+      emit(const SprintActionCompleted('Sprint đã được bắt đầu thành công! 🚀'));
+    } catch (e) {
+      emit(SprintError(e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  /// US-050: Đóng Sprint
+  Future<void> _onCloseRequested(
+    SprintCloseRequested event,
+    Emitter<SprintState> emit,
+  ) async {
+    try {
+      await _repository.closeSprint(
+        projectId: event.projectId,
+        sprintId: event.sprintId,
+        targetSprintId: event.targetSprintId,
+        incompleteStoryIds: event.incompleteStoryIds,
+      );
+      final msg = event.incompleteStoryIds.isEmpty
+          ? 'Sprint đã được đóng thành công! ✅'
+          : 'Sprint đã đóng. ${event.incompleteStoryIds.length} User Story chưa hoàn thành đã được chuyển đi.';
+      emit(SprintActionCompleted(msg));
+    } catch (e) {
+      emit(SprintError(e.toString().replaceFirst('Exception: ', '')));
     }
   }
 
