@@ -18,6 +18,7 @@ class UserStoryModel extends Equatable {
   final String? createdBy; // uid người tạo (US-010); null với dữ liệu cũ/dữ liệu mẫu
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? completedAt; // US-048: thời điểm hoàn thành hoặc từ chối
 
   const UserStoryModel({
     required this.id,
@@ -36,6 +37,7 @@ class UserStoryModel extends Equatable {
     this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    this.completedAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -58,6 +60,7 @@ class UserStoryModel extends Equatable {
       if (createdBy != null) 'createdBy': createdBy,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      if (completedAt != null) 'completedAt': completedAt?.toIso8601String(),
     };
   }
 
@@ -100,6 +103,7 @@ class UserStoryModel extends Equatable {
       createdBy: map['createdBy'] as String?,
       createdAt: parseDate(map['createdAt']),
       updatedAt: parseDate(map['updatedAt']),
+      completedAt: parseOptionalDate(map['completedAt']),
     );
   }
 
@@ -117,6 +121,8 @@ class UserStoryModel extends Equatable {
     List<String>? tags,
     DateTime? deadline,
     DateTime? updatedAt,
+    DateTime? completedAt,
+    bool clearCompletedAt = false,
   }) {
     return UserStoryModel(
       id: id ?? this.id,
@@ -136,6 +142,7 @@ class UserStoryModel extends Equatable {
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
     );
   }
 
@@ -157,5 +164,6 @@ class UserStoryModel extends Equatable {
         createdBy,
         createdAt,
         updatedAt,
+        completedAt,
       ];
 }

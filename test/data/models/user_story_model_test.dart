@@ -135,5 +135,30 @@ void main() {
       expect(updated.deadline, story.deadline);
       expect(updated.createdBy, story.createdBy);
     });
+
+    test('US-048: completedAt toMap, fromMap và copyWith hoạt động chuẩn xác', () {
+      final completedTime = DateTime(2026, 10, 8, 12, 0, 0);
+      final story = UserStoryModel(
+        id: 's1',
+        projectId: 'p1',
+        storyKey: 'US-048',
+        title: 'Cập nhật trạng thái story',
+        description: 'Mô tả',
+        status: 'Done',
+        createdAt: DateTime(2026, 10, 8, 8, 0, 0),
+        updatedAt: DateTime(2026, 10, 8, 12, 0, 0),
+        completedAt: completedTime,
+      );
+
+      final map = story.toMap();
+      expect(map['completedAt'], completedTime.toIso8601String());
+
+      final parsed = UserStoryModel.fromMap(map, 's1');
+      expect(parsed.completedAt, completedTime);
+
+      final cleared = parsed.copyWith(clearCompletedAt: true, status: 'To Do');
+      expect(cleared.completedAt, isNull);
+      expect(cleared.status, 'To Do');
+    });
   });
 }

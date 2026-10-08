@@ -209,6 +209,43 @@ class BacklogDataSource {
     }
   }
 
+  /// Cập nhật RIÊNG field `status` (+ `updatedAt`, `completedAt`) của 1 User Story (US-048).
+  Future<void> updateStoryStatus({
+    required String projectId,
+    required String storyId,
+    required String status,
+    required DateTime updatedAt,
+    DateTime? completedAt,
+    bool clearCompletedAt = false,
+  }) async {
+    final updateData = <String, dynamic>{
+      'status': status,
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+    if (completedAt != null) {
+      updateData['completedAt'] = completedAt.toIso8601String();
+    } else if (clearCompletedAt) {
+      updateData['completedAt'] = null;
+    }
+
+    await _storiesCollection(projectId).doc(storyId).update(updateData).timeout(_writeTimeout);
+
+    final cached = _localCache[projectId];
+    if (cached == null) return;
+    final index = cached.indexWhere((s) => s.id == storyId);
+    if (index >= 0) {
+      _upsertLocal(
+        projectId,
+        cached[index].copyWith(
+          status: status,
+          updatedAt: updatedAt,
+          completedAt: completedAt,
+          clearCompletedAt: clearCompletedAt,
+        ),
+      );
+    }
+  }
+
   /// Xóa 1 User Story khỏi Firestore và local cache.
   Future<void> deleteUserStory(String projectId, String storyId) async {
     await deleteUserStories(projectId, [storyId]);

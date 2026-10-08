@@ -368,7 +368,19 @@
     - Burndown Chart: Bỏ nhãn `(US-025)`, giữ tiêu đề "Burndown Chart".
     - Sprint Review: Bỏ nhãn `(US-023)` ở tiêu đề biên bản và thay thẻ badge trên thẻ Sprint Bento bằng icon mũi tên điều hướng.
     - Hiệu suất Đội ngũ: Bỏ nhãn `(US-060)`, giữ tiêu đề "Hiệu suất Đội ngũ".
-    - Retrospective: Bỏ nhãn `(US-024)` ở tiêu đề màn hình và thay thẻ badge trên thẻ Sprint Bento bằng icon mũi tên điều hướng.
+- **US-048 — Cập nhật trạng thái User Story (Clean Architecture):**
+  - **Kiến trúc Clean Architecture:**
+    - Domain: [`story_repository.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/repositories/story_repository.dart) và [`update_story_status_usecase.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/usecases/story/update_story_status_usecase.dart).
+    - Data: [`story_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/story_repository_impl.dart), mở rộng [`backlog_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/backlog_repository_impl.dart) và [`backlog_datasource.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/datasources/backlog_datasource.dart).
+    - Presentation: [`update_story_status_cubit.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/bloc/update_story_status_cubit.dart) và widget [`change_status_dialog.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/widgets/change_status_dialog.dart).
+  - **Phân quyền & Nghiệp vụ:**
+    - Hỗ trợ 4 trạng thái: "To Do", "In Progress", "Done", "Rejected".
+    - Kiểm soát vai trò nghiêm ngặt: Chỉ PO (Product Owner) hoặc SM (Scrum Master) trong dự án mới được thao tác. Người dùng không có quyền nhận thông báo "Chỉ PO/SM mới có quyền cập nhật trạng thái".
+    - Khi trạng thái chuyển sang "Done" hoặc "Rejected", tự động cập nhật `updatedAt` và `completedAt` trên Cloud Firestore và Local Cache. Khi quay lại "To Do" hoặc "In Progress", `completedAt` được giải phóng.
+  - **UI/UX & Trải nghiệm người dùng:**
+    - `ChangeStatusDialog` thiết kế hiện đại, thẻ trạng thái trực quan với icon và màu sắc đặc trưng (To Do xám, In Progress cam, Done xanh ngọc, Rejected đỏ).
+    - Tích hợp trực tiếp vào Badge trạng thái và AppBar của màn hình chi tiết User Story (`UserStoryDetailScreen`), hỗ trợ hiển thị Badge màu đỏ nổi bật cho trạng thái `Rejected` trên cả danh sách thẻ và chi tiết.
+    - Cập nhật thời gian thực (reactive) không cần reload danh sách, thông báo kết quả bằng SnackBar.
 
 - **Kiểm thử tự động & Đóng gói:**
   - Toàn bộ **173 / 173 unit tests PASS sạch 100%**.
@@ -485,7 +497,8 @@
   *(Đã hoàn thành: `SprintRetroItemModel`, `SprintRetroRepository` và `SprintRetroScreen` giao diện 3 cột chuẩn Scrum: Làm tốt, Cần cải thiện, Kế hoạch hành động, hỗ trợ đăng ý kiến và vote đồng tình).*
 - [x] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart.  
   *(Đã hoàn thành: `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas nhẹ mượt: đường lý tưởng Ideal nét đứt, đường thực tế Actual gradient tím, thống kê điểm SP ban đầu, đã xong, còn lại và đánh giá đúng/chậm tiến độ).*
-- [ ] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected). *(Chưa hoàn thành)*
+- [x] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected).  
+  *(Đã hoàn thành: Clean Architecture tách biệt Domain `UpdateStoryStatusUseCase`, Data `StoryRepositoryImpl`, Presentation `UpdateStoryStatusCubit` & `ChangeStatusDialog`. Phân quyền PO/SM nghiêm ngặt, tự động cập nhật `updatedAt` và `completedAt` khi Done/Rejected, UI cập nhật real-time không cần reload).*
 - [ ] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai. *(Chưa hoàn thành)*
 - [ ] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả. *(Chưa hoàn thành)*
 

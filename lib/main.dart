@@ -32,6 +32,8 @@ import 'data/repositories/sprint_repository_impl.dart';
 import 'data/repositories/task_repository.dart';
 import 'data/repositories/standup_repository.dart';
 import 'data/repositories/notification_repository.dart';
+import 'domain/repositories/story_repository.dart';
+import 'data/repositories/story_repository_impl.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/standup/bloc/standup_bloc.dart';
@@ -110,6 +112,11 @@ void main() async {
     userDataSource: firestoreDataSource,
     authDataSource: firebaseAuthDataSource,
   );
+  final StoryRepository storyRepository = StoryRepositoryImpl(
+    dataSource: BacklogDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
 
   runApp(
     MultiRepositoryProvider(
@@ -119,6 +126,7 @@ void main() async {
           value: projectMemberRepository,
         ),
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
+        RepositoryProvider<StoryRepository>.value(value: storyRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
         RepositoryProvider<TaskRepository>(
           create: (_) => TaskRepository(

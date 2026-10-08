@@ -15,6 +15,7 @@ import '../bloc/story_tags_cubit.dart';
 import '../widgets/delete_user_story_dialog.dart';
 import '../widgets/edit_user_story_dialog.dart';
 import '../widgets/story_tags_card.dart';
+import '../../story/widgets/change_status_dialog.dart';
 
 class UserStoryDetailScreen extends StatefulWidget {
   final UserStoryModel story;
@@ -96,6 +97,26 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
     );
   }
 
+  Future<void> _openChangeStatusDialog() async {
+    final newStatus = await showChangeStatusDialog(
+      context: context,
+      projectId: _story.projectId,
+      storyId: _story.id,
+      currentStatus: _story.status,
+    );
+    if (newStatus != null && mounted) {
+      setState(() {
+        final isCompleted = newStatus == 'Done' || newStatus == 'Rejected';
+        _story = _story.copyWith(
+          status: newStatus,
+          updatedAt: DateTime.now(),
+          completedAt: isCompleted ? DateTime.now() : null,
+          clearCompletedAt: !isCompleted,
+        );
+      });
+    }
+  }
+
   Widget _buildStatusBadge(String status) {
     Color textColor;
     Color bgColor;
@@ -112,26 +133,49 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
         bgColor = const Color(0xFFFEF3C7);
         borderColor = const Color(0xFFFDE68A);
         break;
+      case 'rejected':
+        textColor = const Color(0xFFB91C1C);
+        bgColor = const Color(0xFFFEE2E2);
+        borderColor = const Color(0xFFFECACA);
+        break;
       default: // To Do
         textColor = const Color(0xFF475569);
         bgColor = const Color(0xFFF1F5F9);
         borderColor = const Color(0xFFE2E8F0);
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: GoogleFonts.plusJakartaSans(
-          color: textColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-          letterSpacing: 0.4,
+    return InkWell(
+      onTap: _openChangeStatusDialog,
+      borderRadius: BorderRadius.circular(20),
+      child: Tooltip(
+        message: 'Bấm để đổi trạng thái',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                status.toUpperCase(),
+                style: GoogleFonts.plusJakartaSans(
+                  color: textColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 16,
+                color: textColor,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -161,6 +205,11 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
           ),
           actions: [
             if (canManageBacklog) ...[
+              IconButton(
+                icon: const Icon(Icons.published_with_changes_rounded),
+                tooltip: 'Đổi trạng thái',
+                onPressed: _openChangeStatusDialog,
+              ),
               IconButton(
                 icon: const Icon(Icons.edit_note_rounded),
                 tooltip: 'Sửa User Story',

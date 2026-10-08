@@ -210,6 +210,45 @@ class BacklogRepositoryImpl implements BacklogRepository {
   }
 
   @override
+  Future<void> updateStoryStatus({
+    required String projectId,
+    required String storyId,
+    required String newStatus,
+  }) {
+    return _guard(() async {
+      final validStatuses = ['To Do', 'In Progress', 'Done', 'Rejected'];
+      if (!validStatuses.contains(newStatus)) {
+        throw Exception('Trạng thái không hợp lệ: $newStatus');
+      }
+
+      final uid = _authDataSource.currentUser?.uid;
+      if (uid == null) {
+        throw Exception('Bạn cần đăng nhập để thực hiện thao tác này.');
+      }
+      final membership = await _memberDataSource.getMembership(
+        projectId: projectId,
+        userId: uid,
+      );
+      if (membership == null ||
+          !hasPermission(membership.role, Permission.manageBacklog)) {
+        throw Exception('Chỉ PO/SM mới có quyền cập nhật trạng thái');
+      }
+
+      final now = _now();
+      final isCompleted = newStatus == 'Done' || newStatus == 'Rejected';
+
+      await _dataSource.updateStoryStatus(
+        projectId: projectId,
+        storyId: storyId,
+        status: newStatus,
+        updatedAt: now,
+        completedAt: isCompleted ? now : null,
+        clearCompletedAt: !isCompleted,
+      );
+    });
+  }
+
+  @override
   Future<void> seedMockStories(String projectId) {
     return _dataSource.seedMockStories(projectId);
   }
