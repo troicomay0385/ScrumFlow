@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
+import '../../../app/utils/responsive_layout.dart';
 import '../../../data/models/sprint_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/sprint_repository.dart';
+
 
 /// Sprint Board hiển thị các User Stories theo từng Sprint dưới dạng bảng Kanban
 /// với 3 cột: To Do, In Progress, Done (US-055).
@@ -119,8 +121,9 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -129,14 +132,14 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: AppColors.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             Text(
               widget.projectName,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
-                color: AppColors.onSurfaceVariant,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -209,19 +212,20 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
 
   /// Dropdown chọn Sprint ở thanh trên.
   Widget _buildSprintSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: AppColors.surface,
+      color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
       child: Row(
         children: [
-          const Icon(Icons.flag_rounded, size: 18, color: AppColors.primary),
+          const Icon(Icons.flag_rounded, size: 18, color: AppColors.primaryContainer),
           const SizedBox(width: 8),
           Text(
             'Sprint:',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(width: 10),
@@ -230,10 +234,10 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
               height: 38,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: AppColors.canvas,
+                color: isDark ? AppColors.darkSurfaceContainerLow : AppColors.canvas,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.2),
+                  color: Theme.of(context).dividerTheme.color ?? AppColors.outline.withValues(alpha: 0.2),
                 ),
               ),
               child: DropdownButtonHideUnderline(
@@ -243,11 +247,11 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
                   isExpanded: true,
                   borderRadius: BorderRadius.circular(12),
                   icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.primary),
+                      color: AppColors.primaryContainer),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   items: _sprints.map((sprint) {
                     return DropdownMenuItem(
@@ -383,147 +387,212 @@ class _TaskBoardScreenState extends State<TaskBoardScreen> {
     final inProgress = _stories.where((s) => s.status == 'In Progress').toList();
     final done = _stories.where((s) => s.status == 'Done').toList();
 
+    return ResponsiveLayout(
+      mobileBuilder: (context, constraints) => _buildMobileKanban(toDo, inProgress, done),
+      tabletBuilder: (context, constraints) => _buildTabletKanban(toDo, inProgress, done),
+    );
+  }
+
+  Widget _buildMobileKanban(
+    List<UserStoryModel> toDo,
+    List<UserStoryModel> inProgress,
+    List<UserStoryModel> done,
+  ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildColumn(
-            title: 'To Do',
-            stories: toDo,
-            color: const Color(0xFF6366F1),
-            bgColor: const Color(0xFFEEF2FF),
-            icon: Icons.radio_button_unchecked_rounded,
+          SizedBox(
+            width: 290,
+            child: _buildColumnContent(
+              title: 'To Do',
+              stories: toDo,
+              color: const Color(0xFF6366F1),
+              bgColor: const Color(0xFFEEF2FF),
+              icon: Icons.radio_button_unchecked_rounded,
+            ),
           ),
           const SizedBox(width: 12),
-          _buildColumn(
-            title: 'In Progress',
-            stories: inProgress,
-            color: const Color(0xFFF59E0B),
-            bgColor: const Color(0xFFFEF3C7),
-            icon: Icons.timelapse_rounded,
+          SizedBox(
+            width: 290,
+            child: _buildColumnContent(
+              title: 'In Progress',
+              stories: inProgress,
+              color: const Color(0xFFF59E0B),
+              bgColor: const Color(0xFFFEF3C7),
+              icon: Icons.timelapse_rounded,
+            ),
           ),
           const SizedBox(width: 12),
-          _buildColumn(
-            title: 'Done',
-            stories: done,
-            color: const Color(0xFF10B981),
-            bgColor: const Color(0xFFD1FAE5),
-            icon: Icons.check_circle_outline_rounded,
+          SizedBox(
+            width: 290,
+            child: _buildColumnContent(
+              title: 'Done',
+              stories: done,
+              color: const Color(0xFF10B981),
+              bgColor: const Color(0xFFD1FAE5),
+              icon: Icons.check_circle_outline_rounded,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildColumn({
+  Widget _buildTabletKanban(
+    List<UserStoryModel> toDo,
+    List<UserStoryModel> inProgress,
+    List<UserStoryModel> done,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _buildColumnContent(
+              title: 'To Do',
+              stories: toDo,
+              color: const Color(0xFF6366F1),
+              bgColor: const Color(0xFFEEF2FF),
+              icon: Icons.radio_button_unchecked_rounded,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildColumnContent(
+              title: 'In Progress',
+              stories: inProgress,
+              color: const Color(0xFFF59E0B),
+              bgColor: const Color(0xFFFEF3C7),
+              icon: Icons.timelapse_rounded,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildColumnContent(
+              title: 'Done',
+              stories: done,
+              color: const Color(0xFF10B981),
+              bgColor: const Color(0xFFD1FAE5),
+              icon: Icons.check_circle_outline_rounded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColumnContent({
     required String title,
     required List<UserStoryModel> stories,
     required Color color,
     required Color bgColor,
     required IconData icon,
   }) {
-    // Chiều rộng cột: tối thiểu 280px, responsive theo màn hình
-    final columnWidth = (MediaQuery.sizeOf(context).width - 48) / 3;
-    final effectiveWidth = columnWidth < 280 ? 280.0 : columnWidth;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerBg = isDark ? color.withValues(alpha: 0.18) : bgColor;
+    final columnBg = isDark
+        ? AppColors.darkSurfaceContainerLow
+        : AppColors.surface;
 
-    return SizedBox(
-      width: effectiveWidth,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header cột
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              border: Border.all(color: color.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: color,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${stories.length}',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header cột
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: headerBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
           ),
-          // Danh sách card
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
-                border: Border.all(
-                  color: AppColors.outline.withValues(alpha: 0.1),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: color,
+                  ),
                 ),
               ),
-              child: stories.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Trống',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
-                            fontStyle: FontStyle.italic,
-                          ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${stories.length}',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Danh sách card
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: columnBg,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+              border: Border.all(
+                color: Theme.of(context).dividerTheme.color ?? AppColors.outline.withValues(alpha: 0.1),
+              ),
+            ),
+            child: stories.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Trống',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: stories.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        return _buildStoryCard(stories[index], color);
-                      },
                     ),
-            ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: stories.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      return _buildStoryCard(stories[index], color);
+                    },
+                  ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+
   Widget _buildStoryCard(UserStoryModel story, Color accentColor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.canvas,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: AppColors.outline.withValues(alpha: 0.08),
+          color: Theme.of(context).dividerTheme.color ?? AppColors.outline.withValues(alpha: 0.08),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.03),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),

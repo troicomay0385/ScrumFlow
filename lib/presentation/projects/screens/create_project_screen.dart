@@ -50,7 +50,7 @@ class _CreateProjectViewState extends State<_CreateProjectView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Tạo dự án mới',
@@ -82,7 +82,7 @@ class _CreateProjectViewState extends State<_CreateProjectView> {
               // ── Bento Form Card ──────────────────────────────────────────
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: AppColors.outline.withValues(alpha: 0.12),
@@ -241,4 +241,5 @@ class _CreateProjectViewState extends State<_CreateProjectView> {
     );
   }
 }
+
 

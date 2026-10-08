@@ -87,4 +87,36 @@ class AppColors {
   static const Color overlay = Color(0x660F172A);
   static const Color googleButtonBackground = Color(0xFFFFFFFF);
   static const Color googleButtonText = Color(0xFF334155);
+
+  // ── Dark Mode Tokens (US-030) ────────────────────────────────
+  static const Color darkBackground = Color(0xFF0F111A);
+  static const Color darkCanvas = Color(0xFF0F111A);
+  static const Color darkSurface = Color(0xFF181B2A);
+  static const Color darkSurfaceVariant = Color(0xFF22273D);
+  static const Color darkSurfaceContainerLowest = Color(0xFF121422);
+  static const Color darkSurfaceContainerLow = Color(0xFF1C2033);
+  static const Color darkSurfaceContainer = Color(0xFF232840);
+  static const Color darkSurfaceContainerHigh = Color(0xFF2A304D);
+  static const Color darkSurfaceContainerHighest = Color(0xFF353D60);
+
+  static const Color darkOnSurface = Color(0xFFF1F5F9);
+  static const Color darkOnSurfaceVariant = Color(0xFF94A3B8);
+  static const Color darkOutline = Color(0xFF64748B);
+  static const Color darkOutlineVariant = Color(0xFF333A4D);
+
+  static const Color darkPrimary = Color(0xFF818CF8);
+  static const Color darkPrimaryContainer = Color(0xFF6366F1);
+  static const Color darkOnPrimary = Color(0xFF0F111A);
+  static const Color darkOnPrimaryContainer = Color(0xFFE0E7FF);
+
+  static const Color darkSecondary = Color(0xFF38BDF8);
+  static const Color darkSecondaryContainer = Color(0xFF0284C7);
+  static const Color darkOnSecondary = Color(0xFF0F111A);
+  static const Color darkOnSecondaryContainer = Color(0xFFBAE6FD);
+
+  static const Color darkCardBackground = Color(0xFF181B2A);
+  static const Color darkInputBorder = Color(0xFF2E354F);
+  static const Color darkInputFill = Color(0xFF131524);
+  static const Color darkDivider = Color(0xFF252B42);
 }
+

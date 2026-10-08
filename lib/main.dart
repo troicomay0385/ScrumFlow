@@ -28,6 +28,8 @@ import 'data/repositories/standup_repository.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/standup/bloc/standup_bloc.dart';
+import 'presentation/settings/cubit/theme_cubit.dart';
+import 'presentation/settings/cubit/theme_state.dart';
 import 'app/services/connectivity_service.dart';
 
 import 'firebase_options.dart';
@@ -94,6 +96,9 @@ void main() async {
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider<ThemeCubit>(
+            create: (_) => ThemeCubit(),
+          ),
           BlocProvider<AuthBloc>(
             create: (context) =>
                 AuthBloc(authRepository)..add(AuthCheckRequested()),
@@ -113,12 +118,19 @@ class ScrumFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ScrumFlow',
-      theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.login,
-      onGenerateRoute: AppRoutes.generateRoute,
-      debugShowCheckedModeBanner: false,
+    return BlocBuilder<ThemeCubit, ThemeState>(
+      builder: (context, themeState) {
+        return MaterialApp(
+          title: 'ScrumFlow',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeState.themeMode,
+          initialRoute: AppRoutes.login,
+          onGenerateRoute: AppRoutes.generateRoute,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
+

@@ -57,7 +57,7 @@ class _DailyStandupFormScreenState extends State<DailyStandupFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Ghi Daily Stand-up',
@@ -212,7 +212,7 @@ class _DailyStandupFormScreenState extends State<DailyStandupFormScreen> {
           fontSize: 14,
         ),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
         contentPadding: const EdgeInsets.all(16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -230,3 +230,4 @@ class _DailyStandupFormScreenState extends State<DailyStandupFormScreen> {
     );
   }
 }
+

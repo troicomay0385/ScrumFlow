@@ -5,12 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/services/biometric_service.dart';
+import '../../../app/utils/responsive_layout.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import '../widgets/google_sign_in_button.dart';
 import '../widgets/loading_overlay.dart';
 import '../widgets/saved_account_tile.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -161,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
@@ -205,12 +207,34 @@ class _LoginScreenState extends State<LoginScreen> {
           return LoadingOverlay(
             isLoading: state is AuthLoading,
             child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 12),
+              child: ResponsiveLayout(
+                mobileBuilder: (context, constraints) => SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                  child: _buildLoginForm(context, recentAccounts, isLargeScreen: false),
+                ),
+                tabletBuilder: (context, constraints) => _buildTabletLoginView(
+                  context,
+                  recentAccounts,
+                  constraints,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoginForm(
+    BuildContext context,
+    List<String> recentAccounts, {
+    bool isLargeScreen = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+
 
                     // Top Bar Brand Indicator
                     Row(
@@ -289,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.onSurface,
+                        color: Theme.of(context).colorScheme.onSurface,
                         letterSpacing: -0.5,
                       ),
                       textAlign: TextAlign.center,
@@ -299,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Đăng nhập vào không gian làm việc Agile của bạn',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -338,12 +362,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color: Theme.of(context).dividerTheme.color ?? const Color(0xFFE2E8F0),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.black26
+                                : const Color(0xFF0F172A).withValues(alpha: 0.04),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
@@ -634,12 +662,140 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
+                );
+  }
+
+  // ── Tablet / Desktop View (>= 600px) ─────────────────────────
+  Widget _buildTabletLoginView(
+    BuildContext context,
+    List<String> recentAccounts,
+    BoxConstraints constraints,
+  ) {
+    if (constraints.maxWidth >= 900) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1050),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: _buildBrandingHeroPanel(context),
                 ),
-              ),
+                const SizedBox(width: 48),
+                Expanded(
+                  flex: 5,
+                  child: SingleChildScrollView(
+                    child: _buildLoginForm(context, recentAccounts, isLargeScreen: true),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+          child: _buildLoginForm(context, recentAccounts, isLargeScreen: true),
+        ),
       ),
     );
   }
+
+  Widget _buildBrandingHeroPanel(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(36),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryContainer,
+            AppColors.primary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.splitscreen_rounded, color: Colors.white, size: 36),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'ScrumFlow Agile',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Nền tảng quản lý dự án Scrum & Sprint toàn diện cho các nhóm phát triển hiện đại.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.85),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 32),
+          _buildHeroFeatureItem(Icons.view_kanban_rounded, 'Bảng Kanban trực quan thời gian thực'),
+          const SizedBox(height: 14),
+          _buildHeroFeatureItem(Icons.speed_rounded, 'Theo dõi Burndown chart & Velocity tự động'),
+          const SizedBox(height: 14),
+          _buildHeroFeatureItem(Icons.security_rounded, 'Bảo mật sinh trắc học & Xác thực an toàn'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroFeatureItem(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
+

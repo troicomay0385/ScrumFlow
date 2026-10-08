@@ -213,7 +213,28 @@
   - **Loại bỏ tính năng tự động sinh mẫu Backlog & Sprint:** Xóa bỏ hoàn toàn nút "Nạp mẫu" và cơ chế tự nạp mảng `_buildSampleStories`/`_buildSampleSprints` trên `backlog_datasource.dart` & `sprint_datasource.dart`. Chuyển 100% sang luồng tạo mới và quản lý dữ liệu thủ công.
   - **Nâng cấp tính năng "Thêm từ backlog" vào Sprint (`sprint_detail_screen.dart`):** Bổ sung sự kiện batch `SprintStoriesAddRequested` trong `SprintBloc` giúp thêm danh sách User Story vào Sprint bằng 1 thao tác duy nhất (tránh xung đột ghi race condition). Thiết kế lại Modal Sheet chọn story với giao diện trực quan, hỗ trợ chọn tất cả, xem điểm Story Points và độ ưu tiên.
 
+### Ngày 08/10/2026: Triển khai US-049 (Start Sprint), US-050 (Close Sprint) & US-030 (Responsive UI & Dark Mode)
+
+- **US-049 — Start Sprint (Bắt đầu Sprint):**
+  - Xây dựng UseCase `StartSprintUseCase`, phân quyền chỉ cho PO/SM khởi chạy Sprint.
+  - Ràng buộc kiểm tra chặt chẽ: Chỉ 1 Sprint Active duy nhất trong project, Sprint phải có >= 1 User Story.
+  - Hộp thoại `StartSprintDialog` hiển thị ngày bắt đầu và dự kiến kết thúc, xác nhận kích hoạt Sprint.
+- **US-050 — Close Sprint (Đóng Sprint):**
+  - Xây dựng UseCase `CloseSprintUseCase` sử dụng Firestore `WriteBatch` để cập nhật atomic trạng thái Sprint thành Completed và chuyển User Story chưa xong về Product Backlog (`sprintId = null`) hoặc Sprint tiếp theo.
+  - Hộp thoại `CloseSprintDialog` thống kê Story Done vs chưa hoàn thành, cho phép PO/SM linh hoạt điều hướng Story tồn đọng.
+- **US-030 — Responsive UI & Dark Mode (Giao diện thích ứng & Chế độ tối):**
+  - Định nghĩa bảng màu Dark Mode hoàn chỉnh trong `lib/app/constants/app_colors.dart` và `lib/app/theme/app_theme.dart` (Light Theme & Kinetic Sprint Dark Theme theo chuẩn Material 3).
+  - Xây dựng `ThemeCubit` & `ThemeState` (`lib/presentation/settings/cubit/`) lưu trạng thái giao diện vào `shared_preferences` (`scrumflow_theme_mode`).
+  - Tích hợp nút chuyển đổi giao diện nhanh (Sun/Moon toggle) trên thanh AppBar của `HomeScreen` và Switch bật/tắt trong `SecuritySettingsDialog`.
+  - Khai báo `ThemeCubit` trong `main.dart` bọc `MaterialApp` để cập nhật `themeMode` reactive real-time.
+  - Xây dựng widget tiện ích thích ứng `ResponsiveLayout` (`lib/app/utils/responsive_layout.dart`) dùng `LayoutBuilder` với Breakpoint: Mobile < 600px, Tablet/Desktop >= 600px.
+  - Áp dụng `ResponsiveLayout` cho các màn hình chính:
+    - **LoginScreen:** Bố cục thích ứng với Bento Form trên Mobile; trên Tablet/Desktop (>= 600px) căn giữa hoặc hiển thị bố cục 2 cột với panel ScrumFlow Agile Hero Branding.
+    - **HomeScreen (Dashboard):** Hiển thị danh sách dự án dạng GridView 2-3 cột thích ứng và Bento stats dàn ngang tối ưu cho màn hình Tablet/Desktop.
+    - **TaskBoardScreen (Kanban Board):** Hiển thị 3 cột cuộn ngang trên Mobile; trên Tablet/Desktop các cột To Do, In Progress, Done tự động dàn đều side-by-side toàn màn hình.
+
 ---
+
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
 
@@ -311,16 +332,20 @@
 - [ ] **US-026** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Velocity Chart. *(Chưa hoàn thành)*
 - [ ] **US-027** [Ưu tiên: THẤP]: Là Scrum Master/PO, tôi muốn export báo cáo Sprint ra PDF/Excel. *(Chưa hoàn thành)*
 - [ ] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected). *(Chưa hoàn thành)*
-- [ ] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai. *(Chưa hoàn thành)*
-- [ ] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả. *(Chưa hoàn thành)*
+- [x] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai.  
+  *(Đã hoàn thành: StartSprintUseCase, StartSprintDialog, kiểm tra quyền PO/SM, ràng buộc 1 sprint active duy nhất & >= 1 story).*
+- [x] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả.  
+  *(Đã hoàn thành: CloseSprintUseCase với Firestore WriteBatch atomic, CloseSprintDialog thống kê story hoàn thành/chưa xong, di chuyển story chưa xong).*
 
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **5 / 10 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
+*Tiến độ thực tế: **6 / 10 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
 
 - [ ] **US-028** [Ưu tiên: THẤP]: Phát triển tính năng Realtime update Task Board bằng Socket.io (bonus). *(Chưa hoàn thành)*
-- [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
+- [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
+  *(Đã hoàn thành: AppTheme Light & Dark Material 3, ThemeCubit với shared_preferences, switch trong SecuritySettingsDialog & AppBar, ResponsiveLayout với breakpoint 600px trên Login, Dashboard, TaskBoard).*
+
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
   *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*
 - [ ] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  

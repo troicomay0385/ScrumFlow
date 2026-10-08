@@ -14,16 +14,19 @@ class ProjectListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final project = summary.project;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: Theme.of(context).dividerTheme.color ?? const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            color: isDark ? Colors.black26 : const Color(0xFF0F172A).withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -76,7 +79,7 @@ class ProjectListTile extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
+                    color: Theme.of(context).colorScheme.onSurface,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -89,12 +92,13 @@ class ProjectListTile extends StatelessWidget {
                       : project.description,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    color: AppColors.onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.35,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+
                 const SizedBox(height: 14),
 
                 // Progress Bar (Sprint Progress Placeholder)
@@ -136,8 +140,13 @@ class ProjectListTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Divider(height: 1, thickness: 0.8, color: Color(0xFFF1F5F9)),
+                Divider(
+                  height: 1,
+                  thickness: 0.8,
+                  color: Theme.of(context).dividerTheme.color ?? const Color(0xFFF1F5F9),
+                ),
                 const SizedBox(height: 10),
+
 
                 // Footer: Action link
                 Row(
