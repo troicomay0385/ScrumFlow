@@ -21,6 +21,9 @@ import 'data/repositories/comment_repository.dart';
 import 'data/repositories/comment_repository_impl.dart';
 import 'data/repositories/project_member_repository.dart';
 import 'data/repositories/project_member_repository_impl.dart';
+import 'data/datasources/attachment_datasource.dart';
+import 'data/repositories/attachment_repository.dart';
+import 'data/repositories/attachment_repository_impl.dart';
 import 'data/repositories/project_repository.dart';
 import 'data/repositories/project_repository_impl.dart';
 import 'data/datasources/sprint_datasource.dart';
@@ -36,7 +39,6 @@ import 'app/services/connectivity_service.dart';
 import 'app/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
-import 'presentation/notifications/bloc/notification_event.dart';
 
 import 'firebase_options.dart';
 
@@ -99,6 +101,14 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     userDataSource: firestoreDataSource,
     authDataSource: firebaseAuthDataSource,
+    notificationRepository: notificationRepository,
+    firestore: firestore,
+  );
+  final AttachmentRepository attachmentRepository = AttachmentRepositoryImpl(
+    dataSource: AttachmentDataSource(firestore: firestore),
+    memberDataSource: projectMemberDataSource,
+    userDataSource: firestoreDataSource,
+    authDataSource: firebaseAuthDataSource,
   );
 
   runApp(
@@ -118,6 +128,9 @@ void main() async {
         ),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),
         RepositoryProvider<CommentRepository>.value(value: commentRepository),
+        RepositoryProvider<AttachmentRepository>.value(
+          value: attachmentRepository,
+        ),
         RepositoryProvider<NotificationRepository>.value(value: notificationRepository),
       ],
       child: MultiBlocProvider(

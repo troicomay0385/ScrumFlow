@@ -148,6 +148,10 @@ class BacklogRepositoryImpl implements BacklogRepository {
     required String priority,
     required int storyPoints,
     DateTime? deadline,
+    String? assigneeId,
+    String? assigneeName,
+    String? assigneeEmail,
+    bool clearAssignee = false,
   }) {
     return _guard(() async {
       await _requireManageBacklog(projectId);
@@ -162,6 +166,10 @@ class BacklogRepositoryImpl implements BacklogRepository {
         priority: priority,
         storyPoints: storyPoints,
         deadline: deadline,
+        assigneeId: assigneeId,
+        assigneeName: assigneeName,
+        assigneeEmail: assigneeEmail,
+        clearAssignee: clearAssignee,
         updatedAt: _now(),
       );
 

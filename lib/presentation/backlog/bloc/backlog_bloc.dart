@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/backlog_repository_impl.dart';
+import '../utils/backlog_view.dart';
 import 'backlog_event.dart';
 import 'backlog_state.dart';
 
@@ -14,7 +15,11 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
         super(BacklogInitial()) {
     on<BacklogSubscriptionRequested>(_onSubscriptionRequested);
     on<BacklogSeedMockRequested>(_onSeedMockRequested);
+    on<BacklogSearchChanged>(_onSearchChanged);
     on<BacklogStatusFilterChanged>(_onStatusFilterChanged);
+    on<BacklogPriorityFilterChanged>(_onPriorityFilterChanged);
+    on<BacklogTagFilterChanged>(_onTagFilterChanged);
+    on<BacklogFilterResetRequested>(_onFilterResetRequested);
     on<BacklogSortChanged>(_onSortChanged);
     on<BacklogDeleteStoriesRequested>(_onDeleteStoriesRequested);
     on<BacklogPaginatedLoadRequested>(_onPaginatedLoadRequested);
@@ -105,6 +110,16 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     }
   }
 
+  void _onSearchChanged(
+    BacklogSearchChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(searchQuery: event.query));
+    }
+  }
+
   void _onStatusFilterChanged(
     BacklogStatusFilterChanged event,
     Emitter<BacklogState> emit,
@@ -112,6 +127,42 @@ class BacklogBloc extends Bloc<BacklogEvent, BacklogState> {
     final current = state;
     if (current is BacklogLoaded) {
       emit(current.copyWith(statusFilter: () => event.status));
+    }
+  }
+
+  void _onPriorityFilterChanged(
+    BacklogPriorityFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(priorityFilter: () => event.priority));
+    }
+  }
+
+  void _onTagFilterChanged(
+    BacklogTagFilterChanged event,
+    Emitter<BacklogState> emit,
+  ) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(tagFilter: () => event.tag));
+    }
+  }
+
+  void _onFilterResetRequested(
+    BacklogFilterResetRequested event,
+    Emitter<BacklogState> emit,
+  ) {
+    final current = state;
+    if (current is BacklogLoaded) {
+      emit(current.copyWith(
+        searchQuery: '',
+        statusFilter: () => null,
+        priorityFilter: () => null,
+        tagFilter: () => null,
+        sortOption: BacklogSortOption.defaultOrder,
+      ));
     }
   }
 

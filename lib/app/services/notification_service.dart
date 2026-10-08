@@ -138,4 +138,65 @@ class NotificationService {
     // TODO: Điều hướng tới Task Detail / Story Detail qua GlobalKey<NavigatorState>.
     debugPrint('Should navigate to targetId: $targetId');
   }
+
+  /// Hiển thị thông báo nhắc nhở hạn chót của Task trên thiết bị (US-059).
+  Future<void> showTaskDeadlineAlert({
+    required String taskTitle,
+    required DateTime deadline,
+    int? hoursRemaining,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'scrumflow_deadline_channel',
+      'Nhắc nhở Deadline Task',
+      channelDescription: 'Thông báo nhắc nhở khi Task sắp đến hạn chót (US-059)',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidDetails);
+
+    final String timeInfo = hoursRemaining != null && hoursRemaining > 0
+        ? 'còn khoảng $hoursRemaining giờ'
+        : 'hạn chót: ${deadline.day}/${deadline.month}/${deadline.year}';
+
+    await _localNotifications.show(
+      id: taskTitle.hashCode,
+      title: '⏰ Nhắc nhở hạn chót: Task sắp đến hạn!',
+      body: 'Task "$taskTitle" sắp đến hạn ($timeInfo). Hãy kiểm tra và cập nhật tiến độ!',
+      notificationDetails: notificationDetails,
+      payload: 'task_deadline',
+    );
+  }
+
+  /// Quét danh sách task và nhắc nhở các task sắp đến hạn trong vòng 24 - 48 giờ (US-059).
+  Future<int> checkAndAlertUpcomingDeadlines({
+    required List<dynamic> tasks,
+    required String currentUserId,
+    int warningHours = 48,
+  }) async {
+    int notifiedCount = 0;
+    final now = DateTime.now();
+
+    for (final task in tasks) {
+      if (task.assigneeId != currentUserId) continue;
+      if (task.status == 'Done') continue;
+      if (task.deadline == null) continue;
+
+      final diff = task.deadline!.difference(now);
+      // Nếu hạn chót trong khoảng từ 0 đến warningHours giờ tới
+      if (diff.inHours >= 0 && diff.inHours <= warningHours) {
+        await showTaskDeadlineAlert(
+          taskTitle: task.title,
+          deadline: task.deadline!,
+          hoursRemaining: diff.inHours,
+        );
+        notifiedCount++;
+      }
+    }
+    return notifiedCount;
+  }
 }

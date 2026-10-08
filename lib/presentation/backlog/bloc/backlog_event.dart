@@ -28,7 +28,17 @@ class BacklogSeedMockRequested extends BacklogEvent {
   List<Object?> get props => [projectId];
 }
 
-/// Đổi bộ lọc trạng thái; `null` = "Tất cả".
+/// US-007: Thay đổi từ khóa tìm kiếm
+class BacklogSearchChanged extends BacklogEvent {
+  final String query;
+
+  const BacklogSearchChanged(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
+/// Đổi bộ lọc trạng thái; `null` hoặc 'Tất cả' = "Tất cả".
 class BacklogStatusFilterChanged extends BacklogEvent {
   final String? status;
 
@@ -36,6 +46,31 @@ class BacklogStatusFilterChanged extends BacklogEvent {
 
   @override
   List<Object?> get props => [status];
+}
+
+/// US-008: Thay đổi bộ lọc Độ ưu tiên (Tất cả, CAO, TB, THẤP)
+class BacklogPriorityFilterChanged extends BacklogEvent {
+  final String? priority;
+
+  const BacklogPriorityFilterChanged(this.priority);
+
+  @override
+  List<Object?> get props => [priority];
+}
+
+/// US-008: Thay đổi bộ lọc Nhãn / Tag
+class BacklogTagFilterChanged extends BacklogEvent {
+  final String? tag;
+
+  const BacklogTagFilterChanged(this.tag);
+
+  @override
+  List<Object?> get props => [tag];
+}
+
+/// Đặt lại toàn bộ bộ lọc và từ khóa tìm kiếm về mặc định
+class BacklogFilterResetRequested extends BacklogEvent {
+  const BacklogFilterResetRequested();
 }
 
 /// Đổi tiêu chí sắp xếp hiển thị (US-009).

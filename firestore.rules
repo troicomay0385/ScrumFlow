@@ -157,6 +157,16 @@ service cloud.firestore {
 
           allow update, delete: if false;
         }
+
+        // ── Subcollection: attachments (US-047) ───────────────────────
+        match /attachments/{attachmentId} {
+          allow read: if isProjectMember(projectId);
+          allow create: if isProjectMember(projectId)
+            && request.resource.data.uploadedById == request.auth.uid
+            && request.resource.data.projectId == projectId;
+          allow delete: if isProjectMember(projectId);
+          allow update: if false;
+        }
       }
 
       // ── Subcollection: sprints (Sprint Management) ────────────────
@@ -292,6 +302,21 @@ service cloud.firestore {
           && !('storyId' in request.resource.data);
 
         allow update, delete: if false;
+      }
+
+      // ── Subcollection: attachments (US-047) ─────────────────────────
+      match /attachments/{attachmentId} {
+        function taskProjectId() {
+          return get(/databases/$(database)/documents/tasks/$(taskId)).data.projectId;
+        }
+
+        allow read: if isSignedIn() && isProjectMember(taskProjectId());
+        allow create: if isSignedIn()
+          && isProjectMember(taskProjectId())
+          && request.resource.data.uploadedById == request.auth.uid
+          && request.resource.data.projectId == taskProjectId();
+        allow delete: if isSignedIn() && isProjectMember(taskProjectId());
+        allow update: if false;
       }
     }
 

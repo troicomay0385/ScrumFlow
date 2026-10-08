@@ -8,10 +8,16 @@ import '../../../app/authorization/role_permissions.dart';
 import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../data/models/project_model.dart';
+import '../../../data/repositories/attachment_repository.dart';
+import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/project_repository.dart';
+import '../../../data/repositories/sprint_repository.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../../data/services/sample_data_seeder.dart';
 import '../../backlog/screens/backlog_list_screen.dart';
 import '../../sprints/screens/sprint_list_screen.dart';
+import '../../performance/screens/team_performance_screen.dart';
 import '../../project_members/widgets/role_badge.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../widgets/edit_project_dialog.dart';
@@ -443,7 +449,69 @@ class ProjectDetailScreen extends StatelessWidget {
                         arguments: projectId,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    _buildBentoActionCard(
+                      context: context,
+                      icon: Icons.insights_rounded,
+                      iconBgColor: const Color(0xFFEFF6FF),
+                      iconColor: const Color(0xFF2563EB),
+                      title: 'Hiệu suất Đội ngũ',
+                      subtitle:
+                          'Thống kê tỷ lệ đúng hạn, tải công việc & điểm KPI',
+                      tag: 'KPI',
+                      tagBgColor: const Color(0xFFDBEAFE),
+                      tagTextColor: const Color(0xFF1D4ED8),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TeamPerformanceScreen(
+                            projectId: projectId,
+                            projectName: project.name,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
+
+                  const SizedBox(height: 28),
+
+                  // ── Section Title: Phòng Thí Nghiệm & Dữ Liệu Kiểm Thử ─────
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0D9488),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Công cụ Kiểm thử Nhanh (Lab)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Bento Module: Nạp dữ liệu mẫu kiểm thử ──────────────
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.science_rounded,
+                    iconBgColor: const Color(0xFFCCFBF1),
+                    iconColor: const Color(0xFF0F766E),
+                    title: 'Nạp Dữ Liệu Mẫu Kiểm Thử',
+                    subtitle:
+                        'Tạo 1 Sprint, 4 Story, 4 Task & 4 Tệp đính kèm mẫu',
+                    tag: 'Seed Data',
+                    tagBgColor: const Color(0xFF99F6E4),
+                    tagTextColor: const Color(0xFF115E59),
+                    onTap: () => _confirmSeedSampleData(context, project.id),
+                  ),
                 ],
               ),
             );
@@ -504,12 +572,16 @@ class ProjectDetailScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.onSurface,
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -555,6 +627,178 @@ class ProjectDetailScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _confirmSeedSampleData(
+    BuildContext context,
+    String projectId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFCCFBF1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.science_rounded, color: Color(0xFF0F766E)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Nạp Dữ Liệu Mẫu',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hệ thống sẽ tự động tạo dữ liệu mẫu phong phú để bạn kiểm thử toàn diện:',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _seedInfoRow('🏁 1 Sprint Active & Kanban',
+                'Sprint 1 tự động gắn Stories vào 3 cột To Do, In Progress, Done'),
+            _seedInfoRow('📋 4 User Stories',
+                'To Do, In Progress, Done, mức ưu tiên & nhãn tags phong phú'),
+            _seedInfoRow('⚡ 4 Tasks Kanban',
+                'Có task đúng hạn, trễ hạn & task SẮP ĐẾN HẠN ngày mai'),
+            _seedInfoRow('📎 4 Tệp đính kèm',
+                'Figma, tài liệu Google Docs, ảnh mockup & PDF mẫu'),
+            _seedInfoRow('🔔 Local Notification',
+                'Tự động kích hoạt thông báo nhắc nhở hạn chót (US-059)'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F766E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Nạp ngay'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Đang nạp dữ liệu mẫu vào dự án...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      final authState = context.read<AuthBloc>().state;
+      String? currentUserId;
+      String? currentUserName;
+      if (authState is AuthAuthenticated) {
+        currentUserId = authState.user.id;
+        currentUserName = authState.user.fullName;
+      }
+
+      final memberRepo = context.read<ProjectMemberRepository>();
+      final members = await memberRepo.streamMembers(projectId).first;
+
+      final seeder = SampleDataSeeder(
+        backlogRepo: context.read<BacklogRepository>(),
+        taskRepo: context.read<TaskRepository>(),
+        attachmentRepo: context.read<AttachmentRepository>(),
+        sprintRepo: context.read<SprintRepository>(),
+      );
+
+      final result = await seeder.seedSampleData(
+        projectId: projectId,
+        members: members,
+        currentUserId: currentUserId,
+        currentUserName: currentUserName,
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text(
+              '🎉 Nạp thành công ${result.createdSprints} Sprint, ${result.createdStories} Stories, ${result.createdTasks} Tasks & ${result.createdAttachments} Tệp! Vào Sprint & Kanban Board để trải nghiệm ngay 🚀',
+            ),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  static Widget _seedInfoRow(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 16,
+            color: Color(0xFF0F766E),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.onSurface,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$title: ',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text: subtitle,
+                    style: const TextStyle(color: AppColors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

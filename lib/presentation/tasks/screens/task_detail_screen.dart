@@ -3,11 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
+import '../../../app/services/notification_service.dart';
 import '../../../app/utils/date_formatter.dart';
+import '../../../data/models/attachment_model.dart';
 import '../../../data/models/comment_model.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../attachments/widgets/attachments_section.dart';
 import '../../comments/widgets/comments_section.dart';
 import '../bloc/task_detail_cubit.dart';
 import '../bloc/task_detail_state.dart';
@@ -48,6 +51,8 @@ class _TaskDetailView extends StatelessWidget {
       context: context,
       members: state.members,
       currentAssigneeId: state.task?.assigneeId,
+      projectId: cubit.projectId,
+      taskRepository: context.read<TaskRepository>(),
     );
     if (selection != null) await cubit.changeAssignee(selection.userId);
   }
@@ -114,7 +119,15 @@ class _TaskDetailView extends StatelessWidget {
                       const SizedBox(height: 16),
                       _buildAssignment(context, state, task),
                       const SizedBox(height: 16),
-                      if (state.projectLinked)
+                      if (state.projectLinked) ...[
+                        AttachmentsSection(
+                          target: AttachmentTarget.task(
+                            projectId:
+                                context.read<TaskDetailCubit>().projectId,
+                            taskId: task.id,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         CommentsSection(
                           target: CommentTarget.task(
                             projectId:
@@ -122,6 +135,7 @@ class _TaskDetailView extends StatelessWidget {
                             taskId: task.id,
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -259,6 +273,64 @@ class _TaskDetailView extends StatelessWidget {
                 ? () => _pickDeadline(context, task)
                 : null,
           ),
+          if (deadline != null) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () async {
+                final diff = deadline.difference(DateTime.now());
+                await NotificationService().showTaskDeadlineAlert(
+                  taskTitle: task.title,
+                  deadline: deadline,
+                  hoursRemaining: diff.inHours > 0 ? diff.inHours : null,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🔔 Đã kích hoạt Local Notification nhắc hạn chót trên thiết bị! (US-059)'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.alarm_on_rounded,
+                      size: 16,
+                      color: Color(0xFF0284C7),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Nhắc nhở hạn chót (US-059): Chạm để nhận thông báo',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0284C7),
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.notifications_active_outlined,
+                      size: 16,
+                      color: Color(0xFF0284C7),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (busy) ...[
             const SizedBox(height: 12),
             const LinearProgressIndicator(minHeight: 2),

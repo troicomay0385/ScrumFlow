@@ -59,6 +59,10 @@ abstract class BacklogRepository {
     required String priority,
     required int storyPoints,
     DateTime? deadline,
+    String? assigneeId,
+    String? assigneeName,
+    String? assigneeEmail,
+    bool clearAssignee = false,
   });
 
   /// Thay toàn bộ danh sách tag của 1 User Story (US-014) — chỉ cập nhật

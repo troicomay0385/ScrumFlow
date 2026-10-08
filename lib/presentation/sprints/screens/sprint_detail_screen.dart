@@ -9,10 +9,17 @@ import '../../../data/models/sprint_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/project_member_repository.dart';
+import '../../../data/repositories/sprint_review_repository.dart';
+import '../../../data/repositories/sprint_retro_repository.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 import '../../task_board/screens/task_board_screen.dart';
 import '../bloc/sprint_bloc.dart';
 import '../bloc/sprint_event.dart';
 import '../bloc/sprint_state.dart';
+import '../widgets/burndown_chart_widget.dart';
+import '../widgets/sprint_review_dialog.dart';
+import 'sprint_retro_screen.dart';
 
 class SprintDetailScreen extends StatelessWidget {
   final String projectId;
@@ -173,12 +180,167 @@ class SprintDetailScreen extends StatelessWidget {
 					  ),
 					),
 				  ),
+				  const SizedBox(height: 12),
+
+				  // ── Bento Hàng đôi: Sprint Review (US-023) & Sprint Retrospective (US-024) ──
+				  Row(
+					children: [
+					  // 1. Sprint Review Bento Button
+					  Expanded(
+						child: Material(
+						  color: Colors.transparent,
+						  child: InkWell(
+							borderRadius: BorderRadius.circular(16),
+							onTap: () {
+							  final authState = context.read<AuthBloc>().state;
+							  String? uid;
+							  String? name;
+							  if (authState is AuthAuthenticated) {
+								uid = authState.user.id;
+								name = authState.user.fullName;
+							  }
+
+							  context.read<BacklogRepository>().getStoriesByIds(
+									projectId,
+									sprint.storyIds,
+								  ).then((stories) {
+								if (!context.mounted) return;
+								SprintReviewDialog.show(
+								  context: context,
+								  projectId: projectId,
+								  sprint: sprint,
+								  stories: stories,
+								  repository: SprintReviewRepository(),
+								  canEdit: canManage,
+								  currentUserId: uid,
+								  currentUserName: name,
+								);
+							  });
+							},
+							child: Container(
+							  padding: const EdgeInsets.all(14),
+							  decoration: BoxDecoration(
+								color: const Color(0xFFF0FDF4),
+								borderRadius: BorderRadius.circular(16),
+								border: Border.all(color: const Color(0xFFBBF7D0)),
+							  ),
+							  child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+								  Row(
+									children: [
+									  Container(
+										padding: const EdgeInsets.all(6),
+										decoration: BoxDecoration(
+										  color: const Color(0xFFDCFCE7),
+										  borderRadius: BorderRadius.circular(8),
+										),
+										child: const Icon(Icons.rate_review_rounded,
+											size: 16, color: Color(0xFF16A34A)),
+									  ),
+									  const Spacer(),
+									  const Icon(Icons.arrow_forward_rounded,
+										  size: 16, color: Color(0xFF16A34A)),
+									],
+								  ),
+								  const SizedBox(height: 8),
+								  Text(
+									'Sprint Review',
+									style: GoogleFonts.plusJakartaSans(
+									  fontWeight: FontWeight.w700,
+									  fontSize: 13,
+									  color: const Color(0xFF14532D),
+									),
+								  ),
+								  Text(
+									'Nghiệm thu demo & feedback',
+									style: GoogleFonts.inter(
+									  fontSize: 10,
+									  color: const Color(0xFF166534),
+									),
+									maxLines: 1,
+									overflow: TextOverflow.ellipsis,
+								  ),
+								],
+							  ),
+							),
+						  ),
+						),
+					  ),
+					  const SizedBox(width: 10),
+
+					  // 2. Sprint Retrospective Bento Button
+					  Expanded(
+						child: Material(
+						  color: Colors.transparent,
+						  child: InkWell(
+							borderRadius: BorderRadius.circular(16),
+							onTap: () {
+							  Navigator.of(context).push(
+								MaterialPageRoute(
+								  builder: (_) => SprintRetroScreen(
+									projectId: projectId,
+									sprint: sprint,
+									repository: SprintRetroRepository(),
+								  ),
+								),
+							  );
+							},
+							child: Container(
+							  padding: const EdgeInsets.all(14),
+							  decoration: BoxDecoration(
+								color: const Color(0xFFF5F3FF),
+								borderRadius: BorderRadius.circular(16),
+								border: Border.all(color: const Color(0xFFDDD6FE)),
+							  ),
+							  child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+								  Row(
+									children: [
+									  Container(
+										padding: const EdgeInsets.all(6),
+										decoration: BoxDecoration(
+										  color: const Color(0xFFEDE9FE),
+										  borderRadius: BorderRadius.circular(8),
+										),
+										child: const Icon(Icons.forum_rounded,
+											size: 16, color: Color(0xFF7C3AED)),
+									  ),
+									  const Spacer(),
+									  const Icon(Icons.arrow_forward_rounded,
+										  size: 16, color: Color(0xFF7C3AED)),
+									],
+								  ),
+								  const SizedBox(height: 8),
+								  Text(
+									'Retrospective',
+									style: GoogleFonts.plusJakartaSans(
+									  fontWeight: FontWeight.w700,
+									  fontSize: 13,
+									  color: const Color(0xFF4C1D95),
+									),
+								  ),
+								  Text(
+									'Họp cải tiến 3 cột Scrum',
+									style: GoogleFonts.inter(
+									  fontSize: 10,
+									  color: const Color(0xFF5B21B6),
+									),
+									maxLines: 1,
+									overflow: TextOverflow.ellipsis,
+								  ),
+								],
+							  ),
+							),
+						  ),
+						),
+					  ),
+					],
+				  ),
 				  const SizedBox(height: 16),
-				  Text('User Stories đã chọn (${sprint.storyIds.length})',
-					  style: Theme.of(context).textTheme.titleMedium),
-				  const SizedBox(height: 8),
-				  // Sử dụng getStoriesByIds thay vì getUserStories để chỉ load
-				  // các story thuộc Sprint, không load toàn bộ Backlog (US-054).
+
+				  // ── Burndown Chart (US-025) & Danh sách User Stories ───────
 				  FutureBuilder<List<UserStoryModel>>(
 					future: context.read<BacklogRepository>().getStoriesByIds(
 						  projectId,
@@ -192,21 +354,38 @@ class SprintDetailScreen extends StatelessWidget {
 						);
 					  }
 					  final selected = snapshot.data ?? const <UserStoryModel>[];
-					  if (selected.isEmpty) {
-						return const Card(
-						  child: ListTile(title: Text('Chưa có User Story nào trong Sprint.')),
-						);
-					  }
+
 					  return Column(
-						children: selected
-							.map((story) => Card(
-								  child: ListTile(
-									leading: const Icon(Icons.bookmark_border, color: AppColors.primary),
-									title: Text('${story.storyKey} · ${story.title}'),
-									subtitle: Text('${story.storyPoints} điểm · ${story.status}'),
-								  ),
-								))
-							.toList(),
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+						  // 1. Burndown Chart Widget (US-025)
+						  BurndownChartWidget(sprint: sprint, stories: selected),
+						  const SizedBox(height: 20),
+
+						  // 2. Danh sách User Stories đã chọn
+						  Text('User Stories đã chọn (${selected.length})',
+							  style: GoogleFonts.plusJakartaSans(
+								fontSize: 16,
+								fontWeight: FontWeight.w800,
+								color: AppColors.onSurface,
+							  )),
+						  const SizedBox(height: 8),
+
+						  if (selected.isEmpty)
+							const Card(
+							  child: ListTile(title: Text('Chưa có User Story nào trong Sprint.')),
+							)
+						  else
+							...selected.map(
+							  (story) => Card(
+								child: ListTile(
+								  leading: const Icon(Icons.bookmark_border, color: AppColors.primary),
+								  title: Text('${story.storyKey} · ${story.title}'),
+								  subtitle: Text('${story.storyPoints} điểm · ${story.status}'),
+								),
+							  ),
+							),
+						],
 					  );
 					},
 				  ),

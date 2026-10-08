@@ -4,16 +4,19 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/constants/app_colors.dart';
 import '../../../app/utils/date_formatter.dart';
+import '../../../data/models/attachment_model.dart';
 import '../../../data/models/comment_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
+import '../../attachments/widgets/attachments_section.dart';
 import '../../comments/widgets/comments_section.dart';
 import '../../tasks/screens/task_board_screen.dart';
 import '../bloc/story_tags_cubit.dart';
+import '../widgets/delete_user_story_dialog.dart';
 import '../widgets/edit_user_story_dialog.dart';
 import '../widgets/story_tags_card.dart';
 
-class UserStoryDetailScreen extends StatelessWidget {
+class UserStoryDetailScreen extends StatefulWidget {
   final UserStoryModel story;
 
   /// User hiện tại có `Permission.manageBacklog` (PO/SM) → được sửa tag.
@@ -24,6 +27,19 @@ class UserStoryDetailScreen extends StatelessWidget {
     required this.story,
     this.canManageBacklog = false,
   });
+
+  @override
+  State<UserStoryDetailScreen> createState() => _UserStoryDetailScreenState();
+}
+
+class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
+  late UserStoryModel _story;
+
+  @override
+  void initState() {
+    super.initState();
+    _story = widget.story;
+  }
 
   Widget _buildPriorityBadge(String priority) {
     Color textColor;
@@ -123,6 +139,9 @@ class UserStoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final story = _story;
+    final canManageBacklog = widget.canManageBacklog;
+
     return BlocProvider(
       create: (context) => StoryTagsCubit(
         context.read<BacklogRepository>(),
@@ -141,7 +160,7 @@ class UserStoryDetailScreen extends StatelessWidget {
             ),
           ),
           actions: [
-            if (canManageBacklog)
+            if (canManageBacklog) ...[
               IconButton(
                 icon: const Icon(Icons.edit_note_rounded),
                 tooltip: 'Sửa User Story',
@@ -151,17 +170,41 @@ class UserStoryDetailScreen extends StatelessWidget {
                     projectId: story.projectId,
                     story: story,
                   );
-                  if (updated != null && context.mounted) {
+                  if (updated != null && mounted) {
+                    setState(() {
+                      _story = updated;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Đã cập nhật User Story thành công'),
                         backgroundColor: AppColors.success,
                       ),
                     );
-                    Navigator.of(context).pop(); // Back to list to see changes
                   }
                 },
               ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.error),
+                tooltip: 'Xóa User Story',
+                onPressed: () async {
+                  final deleted = await showDeleteUserStoryDialog(
+                    context: context,
+                    projectId: story.projectId,
+                    story: story,
+                  );
+                  if (deleted == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Đã xóa ${story.storyKey} thành công'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                    Navigator.of(context).pop(); // Back to list
+                  }
+                },
+              ),
+            ],
             const SizedBox(width: 8),
           ],
         ),
@@ -543,11 +586,13 @@ class UserStoryDetailScreen extends StatelessWidget {
                               color: AppColors.onSurfaceVariant,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Chưa gán người phụ trách cho User Story này.',
-                              style: GoogleFonts.inter(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 13,
+                            Expanded(
+                              child: Text(
+                                'Chưa gán người phụ trách cho User Story này.',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ],
@@ -555,6 +600,15 @@ class UserStoryDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Attachments Bento Card (US-047) ────────────────────────────
+              AttachmentsSection(
+                target: AttachmentTarget.story(
+                  projectId: story.projectId,
+                  storyId: story.id,
                 ),
               ),
               const SizedBox(height: 16),

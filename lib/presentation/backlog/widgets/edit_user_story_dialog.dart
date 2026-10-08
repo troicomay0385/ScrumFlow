@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,8 +7,13 @@ import '../../../app/constants/app_colors.dart';
 import '../../../app/constants/user_story_priority.dart';
 import '../../../app/utils/date_formatter.dart';
 import '../../../app/utils/user_story_validator.dart';
+import '../../../data/models/project_member_display.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
+import '../../../data/repositories/project_member_repository.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../tasks/bloc/task_detail_cubit.dart' show memberDisplayName;
+import '../../tasks/widgets/assignee_picker_dialog.dart';
 import '../bloc/edit_user_story_cubit.dart';
 import '../bloc/edit_user_story_state.dart';
 
@@ -19,20 +25,31 @@ Future<UserStoryModel?> showEditUserStoryDialog({
   required UserStoryModel story,
 }) {
   final repository = context.read<BacklogRepository>();
+  final memberRepository = context.read<ProjectMemberRepository>();
   return showDialog<UserStoryModel>(
     context: context,
     barrierDismissible: false,
     builder: (_) => BlocProvider(
       create: (_) => EditUserStoryCubit(repository, projectId),
-      child: _EditUserStoryDialog(story: story),
+      child: _EditUserStoryDialog(
+        story: story,
+        projectId: projectId,
+        memberRepository: memberRepository,
+      ),
     ),
   );
 }
 
 class _EditUserStoryDialog extends StatefulWidget {
   final UserStoryModel story;
+  final String projectId;
+  final ProjectMemberRepository memberRepository;
 
-  const _EditUserStoryDialog({required this.story});
+  const _EditUserStoryDialog({
+    required this.story,
+    required this.projectId,
+    required this.memberRepository,
+  });
 
   @override
   State<_EditUserStoryDialog> createState() => _EditUserStoryDialogState();
@@ -45,6 +62,11 @@ class _EditUserStoryDialogState extends State<_EditUserStoryDialog> {
   late String? _priority;
   late int _storyPoints;
   late DateTime? _deadline;
+  String? _assigneeId;
+  String? _assigneeName;
+  String? _assigneeEmail;
+  List<ProjectMemberDisplay> _members = [];
+  StreamSubscription<List<ProjectMemberDisplay>>? _membersSub;
 
   /// Giá trị Story Points tiêu chuẩn Fibonacci cho Scrum.
   static const List<int> _fibonacciPoints = [1, 2, 3, 5, 8, 13, 21];
@@ -58,17 +80,68 @@ class _EditUserStoryDialogState extends State<_EditUserStoryDialog> {
     _priority = widget.story.priority;
     _storyPoints = widget.story.storyPoints;
     _deadline = widget.story.deadline;
+    _assigneeId = widget.story.assigneeId;
+    _assigneeName = widget.story.assigneeName;
+    _assigneeEmail = widget.story.assigneeEmail;
+
+    _membersSub = widget.memberRepository.streamMembers(widget.projectId).listen(
+      (members) {
+        if (mounted) setState(() => _members = members);
+      },
+      onError: (_) {},
+    );
   }
 
   @override
   void dispose() {
+    _membersSub?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
+  Future<void> _pickAssignee() async {
+    TaskRepository? taskRepo;
+    try {
+      taskRepo = context.read<TaskRepository>();
+    } catch (_) {
+      taskRepo = null;
+    }
+
+    final picked = await showAssigneePickerDialog(
+      context: context,
+      members: _members,
+      currentAssigneeId: _assigneeId,
+      projectId: widget.projectId,
+      taskRepository: taskRepo,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        if (picked.userId == null) {
+          _assigneeId = null;
+          _assigneeName = null;
+          _assigneeEmail = null;
+        } else {
+          final matches = _members.where((m) => m.userId == picked.userId);
+          if (matches.isNotEmpty) {
+            final match = matches.first;
+            _assigneeId = match.userId;
+            _assigneeName = memberDisplayName(match);
+            _assigneeEmail = match.user?.email.trim();
+          } else {
+            _assigneeId = picked.userId;
+            _assigneeName = picked.userId;
+            _assigneeEmail = null;
+          }
+        }
+      });
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState?.validate() != true) return;
+    final bool clearAssignee =
+        _assigneeId == null && widget.story.assigneeId != null;
     context.read<EditUserStoryCubit>().submit(
           original: widget.story,
           title: _titleController.text,
@@ -76,6 +149,10 @@ class _EditUserStoryDialogState extends State<_EditUserStoryDialog> {
           priority: _priority,
           storyPoints: _storyPoints,
           deadline: _deadline,
+          assigneeId: _assigneeId,
+          assigneeName: _assigneeName,
+          assigneeEmail: _assigneeEmail,
+          clearAssignee: clearAssignee,
         );
   }
 
@@ -289,6 +366,89 @@ class _EditUserStoryDialogState extends State<_EditUserStoryDialog> {
                               : (_) => setState(() => _storyPoints = sp),
                         );
                       }).toList(),
+                    ),
+                    // ── Người phụ trách (Assignee) ────────────────────
+                    _sectionLabel('Người phụ trách (Assignee)'),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      key: const Key('editStory_assigneePicker'),
+                      onTap: isSubmitting ? null : _pickAssignee,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.canvas,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.outline.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: _assigneeId == null
+                                  ? AppColors.surfaceVariant
+                                  : AppColors.primaryContainer
+                                      .withValues(alpha: 0.2),
+                              child: Icon(
+                                _assigneeId == null
+                                    ? Icons.person_outline_rounded
+                                    : Icons.person_rounded,
+                                size: 18,
+                                color: _assigneeId == null
+                                    ? AppColors.onSurfaceVariant
+                                    : AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _assigneeName ?? 'Chưa phân công',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: _assigneeId == null
+                                          ? AppColors.onSurfaceVariant
+                                          : AppColors.onSurface,
+                                    ),
+                                  ),
+                                  if (_assigneeEmail != null &&
+                                      _assigneeEmail!.isNotEmpty)
+                                    Text(
+                                      _assigneeEmail!,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (_assigneeId != null)
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 18),
+                                tooltip: 'Bỏ phân công',
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _assigneeId = null;
+                                          _assigneeName = null;
+                                          _assigneeEmail = null;
+                                        });
+                                      },
+                              )
+                            else
+                              const Icon(Icons.chevron_right_rounded,
+                                  size: 20, color: AppColors.onSurfaceVariant),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
 

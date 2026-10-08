@@ -174,6 +174,9 @@ class BacklogDataSource {
       'priority': story.priority,
       'storyPoints': story.storyPoints,
       'deadline': story.deadline?.toIso8601String(),
+      'assigneeId': story.assigneeId,
+      'assigneeName': story.assigneeName,
+      'assigneeEmail': story.assigneeEmail,
       'updatedAt': story.updatedAt.toIso8601String(),
     }).timeout(_writeTimeout);
 

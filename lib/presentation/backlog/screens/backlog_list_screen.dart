@@ -79,6 +79,9 @@ class _BacklogListViewState extends State<_BacklogListView> {
   /// Số item trên 1 trang (mặc định 10).
   final int _pageSize = 10;
 
+  /// Controller cho ô tìm kiếm (US-007).
+  final TextEditingController _searchController = TextEditingController();
+
   /// Role real-time của user trong project.
   late final Stream<ProjectRole?> _roleStream;
 
@@ -88,6 +91,12 @@ class _BacklogListViewState extends State<_BacklogListView> {
     _roleStream = context
         .read<ProjectMemberRepository>()
         .streamCurrentUserRole(widget.projectId);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _openCreateDialog() async {
@@ -432,7 +441,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   ),
                 ),
 
-                // Filter tabs + Sort selector
+                // Filter tabs + Sort selector + Search & Advanced Filters (US-007, US-008)
                 Container(
                   color: AppColors.surface,
                   padding:
@@ -440,6 +449,8 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildSearchBarAndFilterButton(context, state),
+                      const SizedBox(height: 10),
                       _buildStatusFilters(context, state),
                       const SizedBox(height: 8),
                       _buildSortSelector(context, state),
@@ -454,13 +465,44 @@ class _BacklogListViewState extends State<_BacklogListView> {
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(32),
-                            child: Text(
-                              'Không có User Story nào ở trạng thái này.',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                color: AppColors.onSurfaceVariant,
-                              ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.filter_list_off_rounded,
+                                  size: 48,
+                                  color: AppColors.onSurfaceVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  (state.activeFilterCount > 0 ||
+                                          state.searchQuery.isNotEmpty)
+                                      ? 'Không tìm thấy User Story nào phù hợp.'
+                                      : 'Không có User Story nào ở trạng thái này.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (state.activeFilterCount > 0 ||
+                                    state.searchQuery.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _currentPage = 0);
+                                      context.read<BacklogBloc>().add(
+                                            const BacklogFilterResetRequested(),
+                                          );
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded,
+                                        size: 16),
+                                    label: const Text('Đặt lại bộ lọc'),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         )
@@ -830,4 +872,381 @@ class _BacklogListViewState extends State<_BacklogListView> {
       ],
     );
   }
+
+  /// Thanh tìm kiếm (US-007) và nút mở Bộ lọc nâng cao (US-008).
+  Widget _buildSearchBarAndFilterButton(
+      BuildContext context, BacklogLoaded state) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.canvas,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.outline.withValues(alpha: 0.2),
+              ),
+            ),
+            child: TextField(
+              key: const Key('backlog_searchInput'),
+              controller: _searchController,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppColors.onSurface,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Tìm theo tiêu đề, mã, mô tả, tag...',
+                hintStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 18, color: AppColors.onSurfaceVariant),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _currentPage = 0);
+                          context
+                              .read<BacklogBloc>()
+                              .add(const BacklogSearchChanged(''));
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onChanged: (value) {
+                setState(() => _currentPage = 0);
+                context.read<BacklogBloc>().add(BacklogSearchChanged(value));
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Badge(
+          isLabelVisible: state.activeFilterCount > 0,
+          label: Text(
+            '${state.activeFilterCount}',
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: AppColors.primary,
+          child: InkWell(
+            key: const Key('backlog_filterButton'),
+            onTap: () => _showFilterBottomSheet(context, state),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: state.activeFilterCount > 0
+                    ? AppColors.primaryContainer.withValues(alpha: 0.2)
+                    : AppColors.canvas,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: state.activeFilterCount > 0
+                      ? AppColors.primary
+                      : AppColors.outline.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 18,
+                    color: state.activeFilterCount > 0
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Lọc',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: state.activeFilterCount > 0
+                          ? AppColors.primary
+                          : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Modal BottomSheet bộ lọc đa tiêu chí (US-008: Status, Priority, Tags).
+  void _showFilterBottomSheet(BuildContext context, BacklogLoaded state) {
+    final backlogBloc = context.read<BacklogBloc>();
+    final allAvailableTags = state.stories
+        .expand((s) => s.tags)
+        .where((t) => t.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return BlocProvider.value(
+          value: backlogBloc,
+          child: BlocBuilder<BacklogBloc, BacklogState>(
+            builder: (context, currentState) {
+              if (currentState is! BacklogLoaded) return const SizedBox.shrink();
+
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bộ lọc nâng cao (US-008)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        if (currentState.activeFilterCount > 0 ||
+                            currentState.searchQuery.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _currentPage = 0);
+                              context
+                                  .read<BacklogBloc>()
+                                  .add(const BacklogFilterResetRequested());
+                            },
+                            child: Text(
+                              'Đặt lại',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Divider(height: 20),
+
+                    // Nhóm: Trạng thái
+                    Text(
+                      'Trạng thái',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _statusFilters.entries.map((entry) {
+                        final isSelected =
+                            currentState.statusFilter == entry.value;
+                        return ChoiceChip(
+                          label: Text(entry.key),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: AppColors.canvas,
+                          side: BorderSide(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.outline.withValues(alpha: 0.2),
+                          ),
+                          labelStyle: GoogleFonts.plusJakartaSans(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.onSurfaceVariant,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                          onSelected: (selected) {
+                            setState(() => _currentPage = 0);
+                            context.read<BacklogBloc>().add(
+                                  BacklogStatusFilterChanged(
+                                      selected ? entry.value : null),
+                                );
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Nhóm: Mức ưu tiên
+                    Text(
+                      'Mức ưu tiên',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: <Map<String, String?>>[
+                        {'label': 'Tất cả', 'value': null},
+                        {'label': 'CAO', 'value': 'CAO'},
+                        {'label': 'TB', 'value': 'TB'},
+                        {'label': 'THẤP', 'value': 'THẤP'},
+                      ].map((item) {
+                        final val = item['value'];
+                        final isSelected = currentState.priorityFilter == val;
+                        return ChoiceChip(
+                          label: Text(item['label'] ?? ''),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: AppColors.canvas,
+                          side: BorderSide(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.outline.withValues(alpha: 0.2),
+                          ),
+                          labelStyle: GoogleFonts.plusJakartaSans(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.onSurfaceVariant,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                          onSelected: (selected) {
+                            setState(() => _currentPage = 0);
+                            context.read<BacklogBloc>().add(
+                                  BacklogPriorityFilterChanged(
+                                      selected ? val : null),
+                                );
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    // Nhóm: Nhãn / Tags (nếu có)
+                    if (allAvailableTags.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Nhãn (Tags)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Tất cả'),
+                            selected: currentState.tagFilter == null,
+                            selectedColor: AppColors.primary,
+                            backgroundColor: AppColors.canvas,
+                            side: BorderSide(
+                              color: currentState.tagFilter == null
+                                  ? AppColors.primary
+                                  : AppColors.outline.withValues(alpha: 0.2),
+                            ),
+                            labelStyle: GoogleFonts.plusJakartaSans(
+                              color: currentState.tagFilter == null
+                                  ? Colors.white
+                                  : AppColors.onSurfaceVariant,
+                              fontWeight: currentState.tagFilter == null
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() => _currentPage = 0);
+                                context.read<BacklogBloc>().add(
+                                      const BacklogTagFilterChanged(null),
+                                    );
+                              }
+                            },
+                          ),
+                          ...allAvailableTags.map((tag) {
+                            final isSelected = currentState.tagFilter == tag;
+                            return ChoiceChip(
+                              label: Text('#$tag'),
+                              selected: isSelected,
+                              selectedColor: AppColors.primary,
+                              backgroundColor: AppColors.canvas,
+                              side: BorderSide(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.outline.withValues(alpha: 0.2),
+                              ),
+                              labelStyle: GoogleFonts.plusJakartaSans(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.onSurfaceVariant,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                              onSelected: (selected) {
+                                setState(() => _currentPage = 0);
+                                context.read<BacklogBloc>().add(
+                                      BacklogTagFilterChanged(
+                                          selected ? tag : null),
+                                    );
+                              },
+                            );
+                          }),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => Navigator.pop(bottomSheetContext),
+                        child: Text(
+                          'Đóng',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
 }
