@@ -430,6 +430,34 @@
 
 - **File mới:** `lib/domain/usecases/sprint/start_sprint_usecase.dart`, `lib/domain/usecases/sprint/close_sprint_usecase.dart`, `lib/presentation/sprints/widgets/start_sprint_dialog.dart`, `lib/presentation/sprints/widgets/close_sprint_dialog.dart`
 - **File sửa:** `sprint_repository.dart` (+`startSprint`, `closeSprint`), `sprint_repository_impl.dart` (+impl 2 method), `sprint_datasource.dart` (+impl + WriteBatch), `sprint_event.dart` (+2 events), `sprint_bloc.dart` (+2 handlers), `sprint_detail_screen.dart` (+imports, +2 nút AppBar, +`_showCloseSprintDialog`), `NguCanh.md` (đánh dấu US-049, US-050 ✅).
+### Ngày 14/10/2026: Hoàn Thiện US-038 (Xoá Dự Án Cho Admin/PO), US-062 (SQLite Offline Cache Cho Backlog/Task) & Push Nhánh `hieuthu5`
+
+- **US-038 — Xoá Project dành cho Quản trị viên / PO:**
+  - **Tầng dữ liệu (`ProjectRepositoryImpl` & `ProjectDataSource`):**
+    - Bổ sung phương thức `deleteProject(projectId)` với cơ chế kiểm soát quyền PO bắt buộc (`Permission.manageProject`).
+    - Quy trình xoá tuần tự và an toàn: Xoá toàn bộ bản ghi thành viên liên quan trong `projectMembers`, xoá document dự án trong `projects/{projectId}`, dọn sạch membership của PO, và kích hoạt dọn sạch toàn bộ cache SQLite cục bộ của dự án (`clearProjectCache`).
+  - **Quy tắc bảo mật (`firestore.rules`):**
+    - Mở rộng quyền `allow delete` cho document `projects/{projectId}` và `projectMembers/{membershipId}`: Cho phép người tạo (`createdBy`) hoặc người giữ vai trò `PO` được xoá dự án và các membership tương ứng.
+  - **Giao diện & Trải nghiệm người dùng (UX):**
+    - **Tại màn hình Chi tiết dự án (`ProjectDetailScreen`):** Nút thùng rác đỏ trên AppBar (chỉ hiện với PO) mở hộp thoại xác nhận cảnh báo dữ liệu không thể hoàn tác, điều hướng về trang chủ khi xoá thành công.
+    - **Tại thẻ dự án trên Trang chủ (`HomeScreen` & `ProjectListTile`):** Thêm nút menu tuỳ chọn 3 chấm (`...`) cạnh Badge vai trò PO trên từng thẻ dự án, cho phép PO thao tác xoá dự án nhanh trực tiếp từ danh sách mà không cần mở vào trong, kết nối với `ProjectListBloc` (`ProjectDeleteRequested`) để tự động làm mới danh sách.
+
+- **US-062 — Lưu Cache Backlog & Task xuống SQLite Cục Bộ Để Xem Khi Mất Mạng:**
+  - **Mở rộng SQLite Cache (`LocalCacheDataSource`):**
+    - Nâng cấp schema cơ sở dữ liệu SQLite (`scrumflow_cache.db` v2) bổ sung 2 bảng `cached_user_stories` và `cached_tasks` có chỉ mục Index theo `projectId` và `storyId`.
+    - Cung cấp đầy đủ các phương thức CRUD cache: `cacheUserStories`, `getCachedUserStories`, `deleteCachedStory`, `cacheTasks`, `getCachedTasks`, `getCachedTasksByProject`, `getCachedTask`, `deleteCachedTask`, `clearProjectCache`.
+  - **Đồng bộ với Repositories:**
+    - `BacklogRepositoryImpl`: Tự động lưu cache khi tải User Stories thành công; tự động kích hoạt cơ chế fallback đọc dữ liệu từ SQLite khi mất mạng/ngoại tuyến (`streamUserStories`, `getUserStories`, `getUserStory`, `getStoriesByIds`); tự động xoá cache khi xoá story.
+    - `TaskRepository`: Tự động ghi nhận cache SQLite khi stream danh sách task; tự động fallback đọc SQLite khi mất mạng (`streamTasksByStory`, `streamTasksByProject`, `getTasksByProject`, `streamTask`); tự động xoá task trong SQLite khi có lệnh xoá.
+
+- **Kiểm thử tự động & Đóng gói:**
+  - Toàn bộ bộ kiểm thử tự động đạt **194 / 194 unit tests & widget tests PASS sạch 100%**.
+  - Kiểm tra cú pháp và chất lượng mã nguồn: `flutter analyze` đạt **0 error**.
+  - Cập nhật tiến độ Sprint 5 trong bảng theo dõi đạt **7 / 9 User Stories** hoàn thành.
+
+- **Đồng bộ mã nguồn lên GitHub (Commit `204433f`):**
+  - Commit message: `feat: complete US-038 (delete project for PO/Admin) and US-062 (offline SQLite cache for backlog and tasks)`.
+  - Đã push thành công lên nhánh **`hieuthu5`** của repository `https://github.com/troicomay0385/ScrumFlow.git`.
 
 ---
 
