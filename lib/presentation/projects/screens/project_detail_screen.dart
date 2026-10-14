@@ -107,6 +107,16 @@ class ProjectDetailScreen extends StatelessWidget {
                         project: project,
                       ),
                     ),
+                  if (canManageProject)
+                    IconButton(
+                      icon: Icon(Icons.delete_outline_rounded,
+                          color: AppColors.error.withValues(alpha: 0.8)),
+                      tooltip: 'Xoá dự án',
+                      onPressed: () => _confirmDeleteProject(
+                        context,
+                        project,
+                      ),
+                    ),
                   const NotificationBellWidget(),
                   IconButton(
                     icon: const Icon(Icons.settings_outlined),
@@ -629,6 +639,151 @@ class ProjectDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteProject(
+    BuildContext context,
+    ProjectModel project,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded,
+                  color: AppColors.error),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Xoá dự án',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bạn có chắc muốn xoá dự án "${project.name}"?',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: AppColors.error, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Hành động này không thể hoàn tác. Toàn bộ dữ liệu Backlog, Sprint, Task và thành viên sẽ bị mất.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: AppColors.error,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Xoá vĩnh viễn'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      // Hiện loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Đang xoá dự án...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      try {
+        final projectRepo = context.read<ProjectRepository>();
+        await projectRepo.deleteProject(project.id);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.success,
+              content: Text('🗑️ Đã xoá dự án "${project.name}" thành công.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          // Quay về màn hình danh sách project
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.error,
+              content: Text(
+                  'Lỗi khi xoá: ${e.toString().replaceFirst("Exception: ", "")}'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _confirmSeedSampleData(

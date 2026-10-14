@@ -3,19 +3,23 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../app/constants/firebase_error_mapper.dart';
+import '../datasources/local_cache_datasource.dart';
 import '../models/task_model.dart';
 import 'notification_repository.dart';
 
 class TaskRepository {
   final FirebaseFirestore _firestore;
   final NotificationRepository? _notificationRepository;
+  final LocalCacheDataSource? _localCache;
 
   TaskRepository({
     FirebaseFirestore? firestore,
     NotificationRepository? notificationRepository,
+    LocalCacheDataSource? localCache,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _notificationRepository = notificationRepository ??
-            NotificationRepository(firestore: firestore ?? FirebaseFirestore.instance);
+            NotificationRepository(firestore: firestore ?? FirebaseFirestore.instance),
+        _localCache = localCache;
 
   CollectionReference get _tasksRef => _firestore.collection('tasks');
 
@@ -23,38 +27,85 @@ class TaskRepository {
 
   /// Stream realtime tất cả tasks của 1 User Story.
   /// Không dùng orderBy để tránh yêu cầu Composite Index trên Firestore.
-  Stream<List<TaskModel>> streamTasksByStory(String storyId) {
-    return _tasksRef
-        .where('storyId', isEqualTo: storyId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              return TaskModel.fromMap(
-                doc.data() as Map<String, dynamic>,
-                doc.id,
-              );
-            }).toList());
+  Stream<List<TaskModel>> streamTasksByStory(String storyId) async* {
+    try {
+      await for (final snapshot in _tasksRef
+          .where('storyId', isEqualTo: storyId)
+          .snapshots()) {
+        final tasks = snapshot.docs.map((doc) {
+          return TaskModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
+        }).toList();
+        // US-062: Cache kết quả mỗi lần stream emit
+        _localCache?.cacheTasks(storyId, tasks);
+        yield tasks;
+      }
+    } catch (e) {
+      // US-062: Offline fallback
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedTasks(storyId);
+        if (cached.isNotEmpty) {
+          yield cached;
+          return;
+        }
+      }
+      rethrow;
+    }
   }
 
   /// Stream realtime 1 task (màn Task Detail). Emit `null` nếu task đã bị xoá.
-  Stream<TaskModel?> streamTask(String taskId) {
-    return _tasksRef.doc(taskId).snapshots().map((doc) {
-      final data = doc.data() as Map<String, dynamic>?;
-      if (!doc.exists || data == null) return null;
-      return TaskModel.fromMap(data, doc.id);
-    });
+  Stream<TaskModel?> streamTask(String taskId) async* {
+    try {
+      await for (final snapshot in _tasksRef.doc(taskId).snapshots()) {
+        final data = snapshot.data() as Map<String, dynamic>?;
+        if (!snapshot.exists || data == null) {
+          yield null;
+        } else {
+          yield TaskModel.fromMap(data, snapshot.id);
+        }
+      }
+    } catch (e) {
+      // US-062: Offline fallback
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedTask(taskId);
+        if (cached != null) {
+          yield cached;
+          return;
+        }
+      }
+      rethrow;
+    }
   }
 
   /// Stream realtime tất cả tasks của 1 Project (dùng cho bảng thống kê hiệu suất US-060).
-  Stream<List<TaskModel>> streamTasksByProject(String projectId) {
-    return _tasksRef
-        .where('projectId', isEqualTo: projectId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              return TaskModel.fromMap(
-                doc.data() as Map<String, dynamic>,
-                doc.id,
-              );
-            }).toList());
+  Stream<List<TaskModel>> streamTasksByProject(String projectId) async* {
+    try {
+      await for (final snapshot in _tasksRef
+          .where('projectId', isEqualTo: projectId)
+          .snapshots()) {
+        final tasks = snapshot.docs.map((doc) {
+          return TaskModel.fromMap(
+            doc.data() as Map<String, dynamic>,
+            doc.id,
+          );
+        }).toList();
+        // US-062: Cache kết quả theo project
+        _localCache?.cacheTasks(projectId, tasks);
+        yield tasks;
+      }
+    } catch (e) {
+      // US-062: Offline fallback theo project
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedTasksByProject(projectId);
+        if (cached.isNotEmpty) {
+          yield cached;
+          return;
+        }
+      }
+      rethrow;
+    }
   }
 
   /// Lấy toàn bộ danh sách Tasks của 1 project (dùng cho tính điểm hiệu suất US-058 & gợi ý AI US-057).
@@ -65,13 +116,20 @@ class TaskRepository {
           .get()
           .timeout(_writeTimeout);
 
-      return snapshot.docs.map((doc) {
+      final tasks = snapshot.docs.map((doc) {
         return TaskModel.fromMap(
           doc.data() as Map<String, dynamic>,
           doc.id,
         );
       }).toList();
+
+      return tasks;
     } catch (_) {
+      // US-062: Offline fallback
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedTasksByProject(projectId);
+        if (cached.isNotEmpty) return cached;
+      }
       return [];
     }
   }

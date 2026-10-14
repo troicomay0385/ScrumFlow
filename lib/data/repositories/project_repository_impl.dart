@@ -4,6 +4,7 @@ import '../../app/authorization/role_permissions.dart';
 import '../datasources/firebase_auth_datasource.dart';
 import '../datasources/project_datasource.dart';
 import '../datasources/project_member_datasource.dart';
+import '../datasources/local_cache_datasource.dart';
 import '../models/project_model.dart';
 import '../models/project_summary.dart';
 import 'project_repository.dart';
@@ -25,16 +26,19 @@ class ProjectRepositoryImpl implements ProjectRepository {
   final ProjectMemberDataSource _memberDataSource;
   final FirebaseAuthDataSource _authDataSource;
   final NotificationRepository? _notificationRepository;
+  final LocalCacheDataSource? _localCache;
 
   ProjectRepositoryImpl({
     required ProjectDataSource projectDataSource,
     required ProjectMemberDataSource memberDataSource,
     required FirebaseAuthDataSource authDataSource,
     NotificationRepository? notificationRepository,
+    LocalCacheDataSource? localCache,
   })  : _projectDataSource = projectDataSource,
         _memberDataSource = memberDataSource,
         _authDataSource = authDataSource,
-        _notificationRepository = notificationRepository;
+        _notificationRepository = notificationRepository,
+        _localCache = localCache;
 
   String get _currentUserId {
     final uid = _authDataSource.currentUser?.uid;
@@ -125,13 +129,57 @@ class ProjectRepositoryImpl implements ProjectRepository {
       final memberships = await _memberDataSource.getMembers(projectId);
       final memberIds = memberships.map((m) => m.userId).where((id) => id != uid).toList();
       if (memberIds.isNotEmpty) {
-        _notificationRepository!.notifyProjectUpdated(
+        _notificationRepository.notifyProjectUpdated(
           memberIds: memberIds,
           projectName: name,
           projectId: projectId,
         );
       }
     }
+  }
+
+  @override
+  Future<void> deleteProject(String projectId) async {
+    final uid = _currentUserId;
+
+    // Kiểm tra quyền: chỉ PO được xoá project
+    final membership = await _memberDataSource.getMembership(
+      projectId: projectId,
+      userId: uid,
+    );
+    if (membership == null ||
+        !hasPermission(membership.role, Permission.manageProject)) {
+      throw Exception('Bạn không có quyền xoá project này.');
+    }
+
+    // Xoá tất cả membership của các thành viên khác trước
+    final members = await _memberDataSource.getMembers(projectId);
+    for (final m in members) {
+      if (m.userId != uid) {
+        try {
+          await _memberDataSource.removeMember(
+            projectId: projectId,
+            userId: m.userId,
+          );
+        } catch (_) {}
+      }
+    }
+
+    // Xoá project document
+    await _projectDataSource.deleteProject(projectId);
+
+    // Xoá membership của chính PO sau khi project đã xoá
+    try {
+      await _memberDataSource.removeMember(
+        projectId: projectId,
+        userId: uid,
+      );
+    } catch (_) {}
+
+    // US-062: Xoá SQLite cache của project
+    try {
+      await _localCache?.clearProjectCache(projectId);
+    } catch (_) {}
   }
 
   @override

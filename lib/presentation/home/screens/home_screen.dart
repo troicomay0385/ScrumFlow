@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../app/authorization/permission.dart';
+import '../../../app/authorization/role_permissions.dart';
 import '../../../app/constants/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../data/models/project_summary.dart';
 import '../../../data/repositories/project_repository.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
@@ -378,13 +381,22 @@ class HomeScreen extends StatelessWidget {
                         )
                       else
                         ...projects.map(
-                          (summary) => ProjectListTile(
-                            summary: summary,
-                            onTap: () => Navigator.of(context).pushNamed(
-                              AppRoutes.projectDetail,
-                              arguments: summary.project.id,
-                            ),
-                          ),
+                          (summary) {
+                            final canManage = hasPermission(
+                              summary.myRole,
+                              Permission.manageProject,
+                            );
+                            return ProjectListTile(
+                              summary: summary,
+                              onTap: () => Navigator.of(context).pushNamed(
+                                AppRoutes.projectDetail,
+                                arguments: summary.project.id,
+                              ),
+                              onDelete: canManage
+                                  ? () => _confirmDeleteProject(context, summary)
+                                  : null,
+                            );
+                          },
                         ),
                     ],
                   );
@@ -419,4 +431,112 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _confirmDeleteProject(
+    BuildContext context,
+    ProjectSummary summary,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded,
+                  color: AppColors.error),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Xoá dự án',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bạn có chắc muốn xoá dự án "${summary.project.name}"?',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppColors.error, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Hành động này không thể hoàn tác. Toàn bộ dữ liệu Backlog, Sprint, Task và thành viên sẽ bị mất.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: AppColors.error,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Xoá vĩnh viễn'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      context
+          .read<ProjectListBloc>()
+          .add(ProjectDeleteRequested(summary.project.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.success,
+          content: Text('🗑️ Đã xoá dự án "${summary.project.name}".'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 }
+

@@ -5,12 +5,22 @@ import '../../../app/constants/app_colors.dart';
 import '../../../data/models/project_member_display.dart';
 import 'role_badge.dart';
 
-/// 1 dòng thành viên trong danh sách: Bento card, avatar bo tròn, tên, email, role badge.
+/// 1 dòng thành viên trong danh sách: Bento card, avatar bo tròn, tên, email,
+/// role badge, và nút xoá thành viên (nếu có quyền).
 class MemberListTile extends StatelessWidget {
   final ProjectMemberDisplay member;
   final VoidCallback? onTapRole;
 
-  const MemberListTile({super.key, required this.member, this.onTapRole});
+  /// Callback khi PO nhấn nút xoá thành viên. `null` = ẩn nút xoá
+  /// (user không có quyền hoặc đây là chính mình).
+  final VoidCallback? onRemove;
+
+  const MemberListTile({
+    super.key,
+    required this.member,
+    this.onTapRole,
+    this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +28,7 @@ class MemberListTile extends StatelessWidget {
     final displayName = user?.fullName ?? '(Người dùng đã bị xoá)';
     final email = user?.email ?? member.userId;
 
-    return Container(
+    final tile = Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -67,29 +77,131 @@ class MemberListTile extends StatelessWidget {
             color: AppColors.onSurfaceVariant,
           ),
         ),
-        trailing: InkWell(
-          onTap: onTapRole,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RoleBadge(role: member.membership.role),
-                if (onTapRole != null) ...[
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.edit_outlined,
-                    size: 14,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ],
-              ],
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Role badge + edit icon
+            InkWell(
+              onTap: onTapRole,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RoleBadge(role: member.membership.role),
+                    if (onTapRole != null) ...[
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.edit_outlined,
+                        size: 14,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
+            // Nút xoá thành viên (US-041)
+            if (onRemove != null) ...[
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: onRemove,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(6.0),
+                  child: Icon(
+                    Icons.person_remove_rounded,
+                    size: 18,
+                    color: AppColors.error.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
+
+    // Swipe-to-delete khi có quyền xoá
+    if (onRemove != null) {
+      return Dismissible(
+        key: ValueKey(member.userId),
+        direction: DismissDirection.endToStart,
+        confirmDismiss: (_) => _confirmRemove(context, displayName),
+        onDismissed: (_) => onRemove!(),
+        background: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppColors.error,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          child: const Icon(Icons.delete_rounded, color: Colors.white),
+        ),
+        child: tile,
+      );
+    }
+
+    return tile;
+  }
+
+  Future<bool> _confirmRemove(BuildContext context, String name) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.person_remove_rounded, color: AppColors.error),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Xoá thành viên',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc muốn xoá "$name" khỏi dự án?\n\nThành viên này sẽ mất toàn bộ quyền truy cập vào dự án.',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: AppColors.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 }
 

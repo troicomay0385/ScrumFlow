@@ -551,17 +551,17 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **5 / 9 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
+*Tiến độ thực tế: **7 / 9 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
 
 - [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
   *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*
-- [ ] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  
-  *(Chưa hoàn thành: Đã có hàm xóa ở Data Source phục vụ rollback, chưa gắn vào UI/Repository).*
+- [x] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  
+  *(Đã hoàn thành: Hiện thực `deleteProject` trong `ProjectRepositoryImpl`, tích hợp phân quyền PO, dọn dẹp memberships và dọn sạch SQLite cache liên quan; đã trang bị nút Xoá dự án kèm dialog xác nhận an toàn tại cả màn Chi tiết dự án (`ProjectDetailScreen`) và danh sách dự án (`HomeScreen` / `ProjectListTile`)).*
 - [x] **US-041** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa thành viên khỏi Project khi họ không còn tham gia.  
   *(Đã hoàn thành: Đã hiện thực trong `ProjectMemberRepositoryImpl`, `ProjectMemberDataSource`, `ProjectMembersBloc` và `firestore.rules`).*
-- [ ] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
-  *(Chưa hoàn thành: Hiện mới chỉ cache tài khoản người dùng `UserModel`).*
+- [x] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
+  *(Đã hoàn thành: Đã mở rộng bảng SQLite `cached_user_stories` và `cached_tasks` trong `LocalCacheDataSource`, tự động lưu cache khi tải dữ liệu thành công và cung cấp cơ chế offline fallback trong `BacklogRepositoryImpl` và `TaskRepository`).*
 - [x] **US-063** [Ưu tiên: CAO]: Là người dùng, tôi muốn được thông báo rõ khi mất mạng hoặc API timeout để biết trạng thái và thử lại.  
   *(Đã hoàn thành nền tảng: `ConnectivityService`, tiền kiểm tra mạng và ánh xạ lỗi Firebase).*
 - [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  

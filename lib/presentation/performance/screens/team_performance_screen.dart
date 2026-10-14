@@ -119,7 +119,6 @@ class _TeamPerformanceScreenState extends State<TeamPerformanceScreen> {
 
     final avgScore = (scores.map((s) => s.finalScore).reduce((a, b) => a + b) / scores.length * 100).round();
     final totalCompletedOnTime = scores.fold<int>(0, (sum, s) => sum + s.completedOnTimeTasks);
-    final totalTasks = tasks.length;
     final totalInProgress = tasks.where((t) => t.status == 'In Progress').length;
 
     return Container(

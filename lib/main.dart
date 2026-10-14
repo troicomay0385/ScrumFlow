@@ -82,6 +82,7 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
     notificationRepository: notificationRepository,
+    localCache: localCacheDataSource,
   );
   final ProjectMemberRepository projectMemberRepository = ProjectMemberRepositoryImpl(
     memberDataSource: projectMemberDataSource,
@@ -93,6 +94,7 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
     notificationRepository: notificationRepository,
+    localCache: localCacheDataSource,
   );
   final SprintRepository sprintRepository = SprintRepositoryImpl(
     dataSource: SprintDataSource(firestore: firestore),
@@ -132,6 +134,7 @@ void main() async {
           create: (_) => TaskRepository(
             firestore: firestore,
             notificationRepository: notificationRepository,
+            localCache: localCacheDataSource,
           ),
         ),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),

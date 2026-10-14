@@ -6,10 +6,13 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/user_model.dart';
+import '../models/user_story_model.dart';
+import '../models/task_model.dart';
 
 /// DataSource cho lưu trữ cục bộ: SQLite (cache) + Secure Storage (recent accounts).
 ///
-/// **SQLite**: Cache thông tin user profile để hiển thị offline khi mất mạng.
+/// **SQLite**: Cache thông tin user profile, User Stories và Tasks để hiển thị
+/// offline khi mất mạng (US-062).
 /// **Secure Storage**: Lưu danh sách email tài khoản đã đăng nhập gần đây
 ///   (KHÔNG lưu password, token, hay credential).
 ///
@@ -31,8 +34,10 @@ class LocalCacheDataSource {
 
   // SQLite table & database config
   static const String _tableName = 'cached_user';
+  static const String _storyTableName = 'cached_user_stories';
+  static const String _taskTableName = 'cached_tasks';
   static const String _dbName = 'scrumflow_cache.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   // Giới hạn số tài khoản gần đây được lưu
   static const int _maxRecentAccounts = 5;
@@ -41,13 +46,13 @@ class LocalCacheDataSource {
     : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   // ═══════════════════════════════════════════════════════════
-  // SQLite — Cache user profile
+  // SQLite — Database init
   // ═══════════════════════════════════════════════════════════
 
   /// Lazy-init SQLite database.
   ///
-  /// Tạo table `cached_user` nếu chưa tồn tại.
-  /// Chỉ cache đúng 1 user (user đang đăng nhập).
+  /// Tạo table `cached_user`, `cached_user_stories`, `cached_tasks`
+  /// nếu chưa tồn tại.
   Future<Database> _getDatabase() async {
     if (_database != null) return _database!;
 
@@ -68,11 +73,54 @@ class LocalCacheDataSource {
             loginProvider TEXT NOT NULL
           )
         ''');
+        await _createStoryTable(db);
+        await _createTaskTable(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // v1 → v2: thêm bảng cache cho UserStory và Task (US-062)
+        if (oldVersion < 2) {
+          await _createStoryTable(db);
+          await _createTaskTable(db);
+        }
       },
     );
 
     return _database!;
   }
+
+  Future<void> _createStoryTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_storyTableName (
+        id TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        jsonData TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_story_project ON $_storyTableName(projectId)',
+    );
+  }
+
+  Future<void> _createTaskTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_taskTableName (
+        id TEXT PRIMARY KEY,
+        projectId TEXT,
+        storyId TEXT NOT NULL,
+        jsonData TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_task_story ON $_taskTableName(storyId)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_task_project ON $_taskTableName(projectId)',
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // SQLite — Cache user profile
+  // ═══════════════════════════════════════════════════════════
 
   /// Cache thông tin user hiện tại vào SQLite.
   ///
@@ -110,6 +158,171 @@ class LocalCacheDataSource {
     if (kIsWeb) return;
     final db = await _getDatabase();
     await db.delete(_tableName);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // SQLite — Cache User Stories (US-062)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Cache danh sách User Stories của 1 project.
+  ///
+  /// Xoá dữ liệu cũ của project trước khi insert batch mới (đảm bảo
+  /// dữ liệu offline luôn đồng bộ với lần tải cuối từ Firestore).
+  Future<void> cacheUserStories(String projectId, List<UserStoryModel> stories) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+
+    final batch = db.batch();
+    // Xoá stories cũ của project này
+    batch.delete(
+      _storyTableName,
+      where: 'projectId = ?',
+      whereArgs: [projectId],
+    );
+    // Insert batch mới
+    for (final story in stories) {
+      batch.insert(
+        _storyTableName,
+        {
+          'id': story.id,
+          'projectId': projectId,
+          'jsonData': jsonEncode(story.toMap()),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Đọc danh sách User Stories đã cache theo project.
+  ///
+  /// Trả về List rỗng nếu chưa có cache.
+  Future<List<UserStoryModel>> getCachedUserStories(String projectId) async {
+    if (kIsWeb) return [];
+    final db = await _getDatabase();
+    final results = await db.query(
+      _storyTableName,
+      where: 'projectId = ?',
+      whereArgs: [projectId],
+    );
+
+    return results.map((row) {
+      final map = jsonDecode(row['jsonData'] as String) as Map<String, dynamic>;
+      return UserStoryModel.fromMap(map);
+    }).toList();
+  }
+
+  /// Xoá 1 User Story khỏi cache.
+  Future<void> deleteCachedStory(String storyId) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+    await db.delete(
+      _storyTableName,
+      where: 'id = ?',
+      whereArgs: [storyId],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // SQLite — Cache Tasks (US-062)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Cache danh sách Tasks của 1 User Story.
+  ///
+  /// Xoá tasks cũ của story trước khi insert batch mới.
+  Future<void> cacheTasks(String storyId, List<TaskModel> tasks) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+
+    final batch = db.batch();
+    batch.delete(
+      _taskTableName,
+      where: 'storyId = ?',
+      whereArgs: [storyId],
+    );
+    for (final task in tasks) {
+      batch.insert(
+        _taskTableName,
+        {
+          'id': task.id,
+          'projectId': task.projectId ?? '',
+          'storyId': task.storyId,
+          'jsonData': jsonEncode(task.toMap()),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Đọc danh sách Tasks đã cache theo User Story.
+  Future<List<TaskModel>> getCachedTasks(String storyId) async {
+    if (kIsWeb) return [];
+    final db = await _getDatabase();
+    final results = await db.query(
+      _taskTableName,
+      where: 'storyId = ?',
+      whereArgs: [storyId],
+    );
+
+    return results.map((row) {
+      final map = jsonDecode(row['jsonData'] as String) as Map<String, dynamic>;
+      return TaskModel.fromMap(map);
+    }).toList();
+  }
+
+  /// Đọc tất cả Tasks đã cache trong 1 project.
+  Future<List<TaskModel>> getCachedTasksByProject(String projectId) async {
+    if (kIsWeb) return [];
+    final db = await _getDatabase();
+    final results = await db.query(
+      _taskTableName,
+      where: 'projectId = ?',
+      whereArgs: [projectId],
+    );
+
+    return results.map((row) {
+      final map = jsonDecode(row['jsonData'] as String) as Map<String, dynamic>;
+      return TaskModel.fromMap(map);
+    }).toList();
+  }
+
+  /// Đọc 1 Task đã cache theo ID.
+  Future<TaskModel?> getCachedTask(String taskId) async {
+    if (kIsWeb) return null;
+    final db = await _getDatabase();
+    final results = await db.query(
+      _taskTableName,
+      where: 'id = ?',
+      whereArgs: [taskId],
+      limit: 1,
+    );
+
+    if (results.isEmpty) return null;
+    final map = jsonDecode(results.first['jsonData'] as String) as Map<String, dynamic>;
+    return TaskModel.fromMap(map);
+  }
+
+  /// Xoá 1 Task khỏi cache.
+  Future<void> deleteCachedTask(String taskId) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+    await db.delete(
+      _taskTableName,
+      where: 'id = ?',
+      whereArgs: [taskId],
+    );
+  }
+
+  /// Xoá cache của 1 project cụ thể (stories + tasks).
+  Future<void> clearProjectCache(String projectId) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+
+    final batch = db.batch();
+    batch.delete(_storyTableName, where: 'projectId = ?', whereArgs: [projectId]);
+    batch.delete(_taskTableName, where: 'projectId = ?', whereArgs: [projectId]);
+    await batch.commit(noResult: true);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -174,3 +387,4 @@ class LocalCacheDataSource {
     await clearUserCache();
   }
 }
+

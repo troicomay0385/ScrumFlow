@@ -8,8 +8,14 @@ import '../../project_members/widgets/role_badge.dart';
 class ProjectListTile extends StatelessWidget {
   final ProjectSummary summary;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
-  const ProjectListTile({super.key, required this.summary, required this.onTap});
+  const ProjectListTile({
+    super.key,
+    required this.summary,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +71,55 @@ class ProjectListTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    RoleBadge(role: summary.myRole),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RoleBadge(role: summary.myRole),
+                        if (onDelete != null) ...[
+                          const SizedBox(width: 2),
+                          PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.more_vert_rounded,
+                              size: 18,
+                              color: Color(0xFF64748B),
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            onSelected: (value) {
+                              if (value == 'delete') {
+                                onDelete?.call();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: AppColors.error,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Xoá dự án',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
