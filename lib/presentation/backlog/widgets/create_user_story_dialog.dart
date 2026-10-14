@@ -110,6 +110,9 @@ class _CreateUserStoryDialogState extends State<_CreateUserStoryDialog> {
             state is CreateUserStoryFailure ? state.message : null;
 
         return AlertDialog(
+          // scrollable: tiêu đề + nội dung cuộn chung, không tràn khi bàn
+          // phím chiếm gần nửa màn hình nhỏ (US-055).
+          scrollable: true,
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -129,12 +132,14 @@ class _CreateUserStoryDialogState extends State<_CreateUserStoryDialog> {
                     color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 12),
-              Text(
-                'Tạo User Story',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: AppColors.onSurface,
+              Expanded(
+                child: Text(
+                  'Tạo User Story',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.onSurface,
+                  ),
                 ),
               ),
             ],

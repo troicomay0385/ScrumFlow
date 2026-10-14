@@ -10,6 +10,10 @@ import '../../../data/models/sprint_model.dart';
 // SprintModel import confirmed — no changes required
 import '../../../data/repositories/sprint_repository.dart';
 import '../../../data/repositories/project_member_repository.dart';
+import '../../../app/services/connectivity_service.dart';
+import '../../common/utils/provider_utils.dart';
+import '../../common/widgets/app_state_views.dart';
+import '../../common/widgets/skeleton_list.dart';
 import 'sprint_detail_screen.dart';
 import '../../task_board/screens/task_board_screen.dart';
 import '../widgets/create_sprint_dialog.dart';
@@ -30,9 +34,10 @@ class SprintListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) =>
-          SprintBloc(repository: context.read<SprintRepository>())
-            ..add(SprintSubscriptionRequested(projectId)),
+      create: (context) => SprintBloc(
+        repository: context.read<SprintRepository>(),
+        connectivityService: maybeRead<ConnectivityService>(context),
+      )..add(SprintSubscriptionRequested(projectId)),
       child: _SprintListView(
         projectId: projectId,
         projectName: projectName,
@@ -172,7 +177,16 @@ class _SprintListView extends StatelessWidget {
         },
         builder: (context, state) {
           if (state is SprintLoading || state is SprintInitial) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonList(itemCount: 4, itemHeight: 110);
+          }
+
+          if (state is SprintLoadFailure) {
+            return AppErrorView.fromFailure(
+              state.failure,
+              onRetry: () => context
+                  .read<SprintBloc>()
+                  .add(SprintSubscriptionRequested(projectId)),
+            );
           }
 
           final sprints = switch (state) {
@@ -184,50 +198,17 @@ class _SprintListView extends StatelessWidget {
           if (state is SprintLoaded || state is SprintActionCompleted || state is SprintError) {
 
             if (sprints.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.directions_run_rounded,
-                          size: 56,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Chưa có Sprint nào',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Bấm nút dấu cộng (+) ở góc dưới để tạo Sprint mới thủ công.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppColors.onSurfaceVariant,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              return const AppEmptyView(
+                icon: Icons.directions_run_rounded,
+                title: 'Chưa có Sprint nào',
+                message:
+                    'Bấm nút dấu cộng (+) ở góc dưới để tạo Sprint mới thủ công.',
               );
             }
 
             return ListView.separated(
-              padding: const EdgeInsets.all(16),
+              // Chừa khoảng dưới để nút "Tạo Sprint" không che thẻ cuối (US-055).
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: sprints.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
@@ -266,22 +247,31 @@ class _SprintListView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            sprint.name,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: AppColors.onSurface,
+                          // Tên dài tự xuống dòng (tối đa 2 dòng) thay vì
+                          // đẩy badge trạng thái ra ngoài màn hình (US-055).
+                          Expanded(
+                            child: Text(
+                              sprint.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: AppColors.onSurface,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           _buildStatusBadge(sprint.status),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         sprint.goal,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           color: AppColors.onSurfaceVariant,
                           fontSize: 14,
@@ -293,12 +283,14 @@ class _SprintListView extends StatelessWidget {
                           const Icon(Icons.date_range_rounded,
                               size: 16, color: AppColors.primary),
                           const SizedBox(width: 6),
-                          Text(
-                            '${formatDateVi(sprint.startDate)} - ${formatDateVi(sprint.endDate)}',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 13,
-                              color: AppColors.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: Text(
+                              '${formatDateVi(sprint.startDate)} - ${formatDateVi(sprint.endDate)}',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

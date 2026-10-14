@@ -431,6 +431,56 @@
 - **File mới:** `lib/domain/usecases/sprint/start_sprint_usecase.dart`, `lib/domain/usecases/sprint/close_sprint_usecase.dart`, `lib/presentation/sprints/widgets/start_sprint_dialog.dart`, `lib/presentation/sprints/widgets/close_sprint_dialog.dart`
 - **File sửa:** `sprint_repository.dart` (+`startSprint`, `closeSprint`), `sprint_repository_impl.dart` (+impl 2 method), `sprint_datasource.dart` (+impl + WriteBatch), `sprint_event.dart` (+2 events), `sprint_bloc.dart` (+2 handlers), `sprint_detail_screen.dart` (+imports, +2 nút AppBar, +`_showCloseSprintDialog`), `NguCanh.md` (đánh dấu US-049, US-050 ✅).
 
+### Ngày 14/10/2026: Sprint 5 — US-063 (Mất mạng & Timeout), US-064 (Chuyển trang & Loading), US-055 (Responsive), US-054 (Bộ Test Case 5 Sprint)
+
+- **Khảo sát trước khi sửa:** App gọi **Firebase trực tiếp** (Firestore `get()`/`snapshots()`, không có HTTP client riêng). Baseline trước khi sửa: `flutter test` **194/194 PASS**, `flutter analyze` 51 info, 0 error. Phát hiện một số lỗi có sẵn (ghi ở mục "Bug" bên dưới).
+
+- **US-063: Thông báo rõ khi mất mạng / timeout, có "Thử lại":**
+  - Module lỗi dùng chung `lib/app/errors/`:
+    - `AppFailure`: 8 loại `noConnection` / `timeout` / `server` / `permission` / `auth` / `notFound` / `validation` / `unknown`, thông báo tiếng Việt và cờ `isRetryable`.
+    - `AppErrorHandler.classify()`: chuyển `FirebaseException`, `TimeoutException`, `PlatformException`, chuỗi `SocketException`… thành `AppFailure`. Không lộ mã kỹ thuật/stack trace. Lỗi nghiệp vụ dạng `Exception('…')` vẫn giữ nguyên thông báo tiếng Việt.
+    - `timeoutFirstEvent()`: timeout **cho lần phát dữ liệu đầu tiên** của stream Firestore (15 giây). Stream vẫn được giữ, nên khi mạng có lại UI tự chuyển sang dữ liệu mà không tạo request mới.
+  - `ConnectivityService` thêm `isOnline()` (không bao giờ throw) và `onStatusChanged`. Chỉ dùng làm **pre-check**: "có Wi-Fi" không đảm bảo tới được máy chủ, trường hợp đó được bắt bằng timeout.
+  - `NetworkStatusBanner` (đăng ký qua `MaterialApp.builder` trong `main.dart`): dải cam "Không có kết nối mạng" khi mất mạng; dải xanh "Đã kết nối lại." hiện 3 giây khi có mạng lại.
+  - Áp dụng cho các luồng tải chính: `ProjectListBloc` (Trang chủ), `BacklogBloc`, `SprintBloc`, `ProjectMembersBloc`, `ProjectDetailScreen`. Mỗi luồng: kiểm tra mạng trước khi tải → timeout → phân loại lỗi → màn lỗi kèm "Thử lại" (ẩn nút với lỗi quyền/xác thực).
+  - **Chống request trùng:** `ProjectListBloc` bỏ qua yêu cầu khi đang tải. Backlog/Sprint dùng transformer `restartable()` tự viết (`lib/app/utils/event_transformers.dart`, không thêm package `bloc_concurrency`). Nút "Thử lại" bị khoá sau lần bấm đầu. **Không có retry tự động** (chỉ thử lại thủ công).
+  - `SprintLoadFailure` (state mới) tách lỗi *tải lần đầu* khỏi `SprintError` (lỗi thao tác hiện SnackBar).
+
+- **US-064: Hiệu ứng chuyển trang & loading:**
+  - `lib/app/routes/app_page_transitions.dart`: hiệu ứng fade + trượt nhẹ 4% dùng chung, đăng ký qua `AppTheme.pageTransitionsTheme`, nên **mọi `MaterialPageRoute` (18 chỗ) và named route** giờ chuyển trang giống nhau mà không phải sửa từng `Navigator.push`. iOS/macOS giữ hiệu ứng Cupertino để không mất thao tác vuốt Back. Khi bật "Giảm chuyển động" (`disableAnimations`) thì chuyển trang tức thì.
+  - Widget dùng chung `lib/presentation/common/widgets/`: `AppLoadingView`, `AppErrorView`, `AppEmptyView`, `SkeletonList` (một `AnimationController`, đứng yên khi giảm chuyển động) và `NetworkStatusBanner`.
+  - Skeleton cho Trang chủ, Backlog, Sprint. Màn lỗi/rỗng thống nhất cho Backlog, Sprint, Thành viên, Chi tiết Project, Chi tiết Sprint. Kéo-để-làm-mới ở Trang chủ giữ vòng loading tới khi tải xong.
+
+- **US-055: Responsive (sửa dựa trên lỗi đo được, không thiết kế lại):** Viết widget test dựng màn hình ở **320×568 và 430×932, cỡ chữ ×1.0 và ×1.3**, và dialog khi **bàn phím chiếm 260 px**. Kết quả phát hiện và sửa tràn layout ở:
+  - Đăng nhập (pill, link Đăng ký, badge bảo mật → `Wrap`), Đăng ký (nút, link), checklist mật khẩu.
+  - Backlog: thanh KPI; thanh phân trang (nút từ ~24 px lên 40 px); bộ sắp xếp; hàng gọn `CompactUserStoryRow` (dùng `minHeight` thay vì chiều cao cố định; ẩn SP dưới 360 px và mã story dưới 300 px; badge trạng thái co giãn).
+  - Thẻ Sprint (tên 2 dòng, chừa chỗ cho FAB); Thành viên (tên/email 1 dòng, badge vai trò ≤ 40% chiều rộng).
+  - Các dialog Tạo Story / Tạo Sprint / Thêm thành viên (`AlertDialog.scrollable`) và Bắt đầu Sprint (`SingleChildScrollView`). Đồng thời bỏ nhãn kỹ thuật "US-049 ·" trong dialog Bắt đầu Sprint, theo quy ước UI Polish ngày 08/10.
+
+- **US-054: Bộ Test Case 5 Sprint:** `docs/testing/BaoCaoKiemThu_US054.md` và `docs/testing/test_cases.csv` (72 TC truy vết tới User Story: **48 PASS** đã chạy tự động, **22 NOT RUN**, **2 BLOCKED**), kèm hướng dẫn chạy test, checklist kiểm thử thủ công trên Android và danh sách bug.
+
+- **Bug có sẵn được phát hiện và sửa:**
+  1. Backlog/Sprint datasource **nuốt lỗi stream** và phát danh sách rỗng, khiến mất mạng bị hiển thị thành "Backlog trống / Chưa có Sprint". Nay: đã có dữ liệu thì giữ, chưa có thì báo lỗi. Snapshot rỗng từ cache khi chưa từng đồng bộ không còn bị coi là "trống" (`snapshots(includeMetadataChanges: true)`).
+  2. Mỗi lần subscribe tạo thêm **một listener Firestore không bao giờ huỷ**. Nay mỗi project tối đa 1 listener, tự huỷ khi không còn người nghe.
+  3. Thông báo lỗi lộ `[cloud_firestore/…]`.
+  4. Chi tiết Project coi mọi lỗi mạng là "Project không tồn tại"; stream bị tạo lại mỗi lần rebuild.
+  5. `SprintActionCompleted`/`SprintError` phát danh sách rỗng nên màn Sprint nháy "Chưa có Sprint nào".
+  6. "Nạp dữ liệu mẫu" dùng `BuildContext` sau `await` và không có timeout.
+  - Hai lỗi phát sinh trong lúc làm, do test tự động bắt được và đã sửa: lỗi mạng Google Sign-In (`ApiException: 7`) bị phân loại sai; stream kết thúc khi chưa có dữ liệu làm loading bị kẹt.
+
+- **File mới:** `lib/app/errors/{app_failure,app_error_handler,stream_timeout}.dart`, `lib/app/routes/app_page_transitions.dart`, `lib/app/utils/event_transformers.dart`, `lib/presentation/common/widgets/{app_state_views,skeleton_list,network_status_banner}.dart`, `lib/presentation/common/utils/provider_utils.dart`, 13 file test mới (`test/app/{errors,routes,services,utils}/…`, `test/presentation/{common,projects}/…`, `backlog_network_test`, `backlog_retry_flow_test`, `sprint_network_test`, `project_members_network_test`, `test/responsive/…`, `test/helpers/test_setup.dart`), `docs/testing/BaoCaoKiemThu_US054.md`, `docs/testing/test_cases.csv`.
+- **File sửa:** `main.dart`, `app_routes.dart`, `app_theme.dart`, `connectivity_service.dart`, `backlog_datasource.dart`, `sprint_datasource.dart`, `project_list_bloc/state.dart`, `backlog_bloc/state.dart`, `sprint_bloc/state.dart`, `project_members_bloc/state.dart`, `home_screen.dart`, `project_detail_screen.dart`, `backlog_list_screen.dart`, `compact_user_story_row.dart`, `create_user_story_dialog.dart`, `sprint_list_screen.dart`, `sprint_detail_screen.dart`, `create_sprint_dialog.dart`, `start_sprint_dialog.dart`, `project_members_screen.dart`, `member_list_tile.dart`, `role_badge.dart`, `add_member_dialog.dart`, `login_screen.dart`, `register_screen.dart`, `password_requirements_checklist.dart`.
+- **Dependency:** không thêm hay đổi package nào.
+- **Kiểm thử (đã chạy thật):**
+  - `flutter test`: **286/286 PASS** (tăng từ 194; thêm 92 test).
+  - `flutter analyze`: **0 error, 0 warning**, 46 info đều có từ trước (giảm từ 51, không thêm issue mới).
+  - `flutter build web`: thành công. `flutter build apk --debug`: thành công (459.7s), **chưa cài lên thiết bị**.
+  - **Chưa xác nhận:** integration test và các kịch bản thao tác tay trên Android/Firebase thật. Phiên này không có thiết bị/emulator Android; checklist nằm trong mục 6 của báo cáo kiểm thử.
+- **Việc còn lại / lưu ý:**
+  - Google Sign-In trên Web cần thêm meta `google-signin-client_id` vào `web/index.html`; file `assets/icons/google.png` còn thiếu (cả hai là lỗi có sẵn).
+  - Task Board, Stand-up, Thông báo, Hiệu suất, Retro chưa chuyển sang `AppErrorView` + timeout.
+  - Constructor mới dùng tham số tuỳ chọn (`connectivityService`, `firstLoadTimeout`), nên code/test cũ gọi `BacklogBloc(repository: …)`, `SprintBloc(repository: …)`, `ProjectListBloc(repo)` vẫn chạy như trước.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -551,7 +601,7 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **5 / 9 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
+*Tiến độ thực tế: **6 / 9 User Stories hoàn thành** (còn lại: US-030, US-038, US-062)*
 
 - [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
@@ -563,13 +613,13 @@
 - [ ] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
   *(Chưa hoàn thành: Hiện mới chỉ cache tài khoản người dùng `UserModel`).*
 - [x] **US-063** [Ưu tiên: CAO]: Là người dùng, tôi muốn được thông báo rõ khi mất mạng hoặc API timeout để biết trạng thái và thử lại.  
-  *(Đã hoàn thành nền tảng: `ConnectivityService`, tiền kiểm tra mạng và ánh xạ lỗi Firebase).*
+  *(Đã hoàn thành 14/10/2026: `AppFailure` + `AppErrorHandler` phân loại mất mạng / timeout / lỗi máy chủ / quyền; timeout lần tải đầu 15 giây cho Trang chủ, Backlog, Sprint, Thành viên, Chi tiết Project; màn lỗi kèm "Thử lại" có chống bấm lặp; dải cảnh báo mất mạng toàn app; sửa lỗi datasource nuốt lỗi và rò listener Firestore. Đã có test tự động; kiểm thử thủ công trên Android: chưa chạy).*
 - [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  
-  *(Đã hoàn thành nền tảng: Đã áp dụng loading states, shimmer/indicator cho các màn hình Auth, Project).*
+  *(Đã hoàn thành 14/10/2026: hiệu ứng fade + trượt nhẹ thống nhất cho mọi route qua `pageTransitionsTheme` (tôn trọng "Giảm chuyển động", giữ vuốt Back trên iOS); bộ widget chung `AppLoadingView` / `SkeletonList` / `AppErrorView` / `AppEmptyView`; skeleton cho Trang chủ, Backlog, Sprint).*
 - [x] **US-054** [Ưu tiên: CAO]: Là nhóm phát triển, tôi muốn viết và chạy bộ Test Case cho toàn bộ 5 Sprint để đảm bảo hệ thống vận hành ổn định.  
-  *(Đã hoàn thành cho các module hiện có: 69/69 unit tests pass sạch cho Auth, Permissions, Project Members, Project Repository, Error Mapper, Platform Error Mapper, Product Backlog — tạo story/tag/sort).*
+  *(Cập nhật 14/10/2026: `docs/testing/BaoCaoKiemThu_US054.md` + `test_cases.csv`, gồm 72 Test Case truy vết theo US (48 PASS tự động, 22 NOT RUN, 2 BLOCKED). `flutter test` **286/286 PASS**, `flutter analyze` 0 error. Integration test và kiểm thử tay trên thiết bị: **chưa chạy** (không có thiết bị trong phiên).)*
 - [x] **US-055** [Ưu tiên: CAO]: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
-  *(Đã hoàn thành nền tảng: Tích hợp `flutter_screenutil`, căn chỉnh tỷ lệ giao diện).*
+  *(Đã hoàn thành 14/10/2026: widget test responsive cho 320×568 / 430×932, cỡ chữ ×1.3 và khi bàn phím mở; sửa tràn layout ở Đăng nhập, Đăng ký, Backlog, Sprint, Thành viên và 4 dialog; nút phân trang 40 px. Còn cần kiểm tra tay: Chi tiết Project, Task Board trên thiết bị thật).*
 
 ---
 

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' show DocumentSnapshot;
 import 'package:equatable/equatable.dart';
+import '../../../app/errors/app_failure.dart';
 import '../../../data/models/user_story_model.dart';
 import '../utils/backlog_view.dart';
 
@@ -119,8 +120,19 @@ class BacklogLoaded extends BacklogState {
 class BacklogError extends BacklogState {
   final String message;
 
-  const BacklogError(this.message);
+  /// Loại lỗi để UI chọn icon và quyết định có cho "Thử lại" (US-063).
+  final AppFailureType failureType;
+
+  const BacklogError(
+    this.message, {
+    this.failureType = AppFailureType.unknown,
+  });
+
+  BacklogError.fromFailure(AppFailure failure)
+      : this(failure.message, failureType: failure.type);
+
+  AppFailure get failure => AppFailure(failureType, message);
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, failureType];
 }

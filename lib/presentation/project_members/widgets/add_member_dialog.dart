@@ -40,6 +40,8 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      // Cuộn cả tiêu đề + form khi bàn phím mở trên màn nhỏ (US-055).
+      scrollable: true,
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
@@ -59,12 +61,14 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                 color: AppColors.primary, size: 22),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Thêm thành viên',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: AppColors.onSurface,
+          Expanded(
+            child: Text(
+              'Thêm thành viên',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: AppColors.onSurface,
+              ),
             ),
           ),
         ],
@@ -97,6 +101,8 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<ProjectRole>(
               initialValue: _selectedRole,
+              // Chiếm đúng chiều rộng ô nhập, cắt chữ dài thay vì tràn.
+              isExpanded: true,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: AppColors.onSurface,
@@ -112,7 +118,10 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
               items: ProjectRole.values
                   .map((role) => DropdownMenuItem(
                         value: role,
-                        child: Text(role.displayName),
+                        child: Text(
+                          role.displayName,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ))
                   .toList(),
               onChanged: (value) {

@@ -332,11 +332,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  'Đăng ký tài khoản',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
+                                Flexible(
+                                  child: Text(
+                                    'Đăng ký tài khoản',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -350,9 +353,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Redirect to Login
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    // Redirect to Login — Wrap để xuống dòng trên màn hẹp.
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'Đã có tài khoản? ',
@@ -361,15 +365,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontSize: 14,
                           ),
                         ),
-                        GestureDetector(
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
                           onTap: () => Navigator.of(context).pop(),
-                          child: Text(
-                            'Đăng nhập ngay',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: AppColors.primaryContainer,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              decoration: TextDecoration.underline,
+                          child: Padding(
+                            // Mở rộng vùng chạm cho dễ bấm trên điện thoại.
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 10,
+                            ),
+                            child: Text(
+                              'Đăng nhập ngay',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.primaryContainer,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ),

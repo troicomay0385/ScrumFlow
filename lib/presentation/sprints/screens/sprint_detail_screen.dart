@@ -13,6 +13,7 @@ import '../../../data/repositories/sprint_review_repository.dart';
 import '../../../data/repositories/sprint_retro_repository.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../../common/widgets/app_state_views.dart';
 import '../../task_board/screens/task_board_screen.dart';
 import '../bloc/sprint_bloc.dart';
 import '../bloc/sprint_event.dart';
@@ -60,8 +61,20 @@ class SprintDetailScreen extends StatelessWidget {
 			  _ => const <SprintModel>[],
 			};
 			if (state is SprintInitial || state is SprintLoading) {
-			  return const Scaffold(
-				body: Center(child: CircularProgressIndicator()),
+			  return Scaffold(
+				appBar: AppBar(title: Text(projectName)),
+				body: const AppLoadingView(message: 'Đang tải thông tin Sprint...'),
+			  );
+			}
+			if (state is SprintLoadFailure) {
+			  return Scaffold(
+				appBar: AppBar(title: Text(projectName)),
+				body: AppErrorView.fromFailure(
+				  state.failure,
+				  onRetry: () => context
+					  .read<SprintBloc>()
+					  .add(SprintSubscriptionRequested(projectId)),
+				),
 			  );
 			}
 			final matches = sprints.where((sprint) => sprint.id == sprintId);

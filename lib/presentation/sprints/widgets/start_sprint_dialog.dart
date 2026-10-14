@@ -97,7 +97,8 @@ class _StartSprintDialogState extends State<_StartSprintDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       backgroundColor: AppColors.surface,
-      child: Padding(
+      // Cuộn được trên màn hình thấp / chữ lớn thay vì tràn (US-055).
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -128,7 +129,7 @@ class _StartSprintDialogState extends State<_StartSprintDialog> {
                         ),
                       ),
                       Text(
-                        'US-049 · Chuyển Planned → Active',
+                        'Chuyển Planned → Active',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: AppColors.onSurfaceVariant,
@@ -272,18 +273,22 @@ class _StartSprintDialogState extends State<_StartSprintDialog> {
                       ),
                     ),
                     if (isEndValid)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$durationDays ngày',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$durationDays ngày',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ),

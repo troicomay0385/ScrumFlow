@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
+import '../routes/app_page_transitions.dart';
 
 /// Theme chính cho ScrumFlow theo Design System Kinetic Sprint từ Google Stitch.
 ///
@@ -18,6 +19,8 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      // US-064: hiệu ứng chuyển trang thống nhất cho mọi MaterialPageRoute.
+      pageTransitionsTheme: appPageTransitionsTheme,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
 

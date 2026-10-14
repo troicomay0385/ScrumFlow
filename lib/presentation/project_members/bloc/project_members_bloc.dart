@@ -5,6 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../app/authorization/permission.dart';
 import '../../../app/authorization/project_role.dart';
 import '../../../app/authorization/role_permissions.dart';
+import '../../../app/errors/app_error_handler.dart';
+import '../../../app/errors/app_failure.dart';
+import '../../../app/errors/stream_timeout.dart';
 import '../../../data/models/project_member_display.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import 'project_members_event.dart';
@@ -27,10 +30,10 @@ class _MembersChanged extends ProjectMembersEvent {
 }
 
 class _StreamFailed extends ProjectMembersEvent {
-  final String message;
-  const _StreamFailed(this.message);
+  final AppFailure failure;
+  const _StreamFailed(this.failure);
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [failure.type, failure.message];
 }
 
 /// Bloc cho màn hình Quản lý thành viên.
@@ -52,7 +55,13 @@ class ProjectMembersBloc extends Bloc<ProjectMembersEvent, ProjectMembersState> 
   /// (role stream và members stream không đồng bộ với nhau).
   ProjectRole? _currentRole;
 
-  ProjectMembersBloc(this._repository) : super(ProjectMembersLoading()) {
+  /// Thời gian chờ tối đa cho lần nhận role đầu tiên (US-063).
+  final Duration firstLoadTimeout;
+
+  ProjectMembersBloc(
+    this._repository, {
+    this.firstLoadTimeout = const Duration(seconds: 15),
+  }) : super(ProjectMembersLoading()) {
     on<ProjectMembersStarted>(_onStarted);
     on<_RoleChanged>(_onRoleChanged);
     on<_MembersChanged>(_onMembersChanged);
@@ -70,12 +79,18 @@ class ProjectMembersBloc extends Bloc<ProjectMembersEvent, ProjectMembersState> 
     _projectId = event.projectId;
     emit(ProjectMembersLoading());
 
+    // Gọi lại (nút "Thử lại") → đóng hết listener cũ trước khi mở mới để
+    // không tạo listener trùng lặp (US-063).
     _roleSubscription?.cancel();
-    _roleSubscription =
-        _repository.streamCurrentUserRole(event.projectId).listen(
-      (role) => add(_RoleChanged(role)),
-      onError: (Object e) => add(_StreamFailed(_readableError(e))),
-    );
+    _stopMembersSubscription();
+    _roleSubscription = _repository
+        .streamCurrentUserRole(event.projectId)
+        .timeoutFirstEvent(firstLoadTimeout)
+        .listen(
+          (role) => add(_RoleChanged(role)),
+          onError: (Object e) =>
+              add(_StreamFailed(AppErrorHandler.classify(e))),
+        );
   }
 
   void _onRoleChanged(_RoleChanged event, Emitter<ProjectMembersState> emit) {
@@ -106,7 +121,7 @@ class ProjectMembersBloc extends Bloc<ProjectMembersEvent, ProjectMembersState> 
     _membersSubscription ??=
         _repository.streamMembers(projectId).listen(
       (members) => add(_MembersChanged(members)),
-      onError: (Object e) => add(_StreamFailed(_readableError(e))),
+      onError: (Object e) => add(_StreamFailed(AppErrorHandler.classify(e))),
     );
   }
 
@@ -121,7 +136,19 @@ class ProjectMembersBloc extends Bloc<ProjectMembersEvent, ProjectMembersState> 
   }
 
   void _onStreamFailed(_StreamFailed event, Emitter<ProjectMembersState> emit) {
-    emit(ProjectMembersError(event.message));
+    final current = state;
+    // Đang hiển thị danh sách → giữ nguyên, chỉ báo lỗi qua SnackBar.
+    if (current is ProjectMembersLoaded) {
+      emit(current.copyWith(
+        actionStatus: MemberActionStatus.failure,
+        actionMessage: event.failure.message,
+      ));
+      return;
+    }
+    emit(ProjectMembersError(
+      event.failure.message,
+      failureType: event.failure.type,
+    ));
   }
 
   Future<void> _onAddRequested(
@@ -246,10 +273,7 @@ class ProjectMembersBloc extends Bloc<ProjectMembersEvent, ProjectMembersState> 
     _membersSubscription = null;
   }
 
-  String _readableError(Object e) {
-    final message = e.toString().replaceFirst('Exception: ', '');
-    return message.isEmpty ? 'Đã xảy ra lỗi. Vui lòng thử lại.' : message;
-  }
+  String _readableError(Object e) => AppErrorHandler.messageOf(e);
 
   @override
   Future<void> close() {
