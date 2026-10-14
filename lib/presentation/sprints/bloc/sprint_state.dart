@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../app/errors/app_failure.dart';
 import '../../../data/models/sprint_model.dart';
 
 abstract class SprintState extends Equatable {
@@ -39,4 +40,18 @@ class SprintError extends SprintState {
 
   @override
   List<Object?> get props => [message, sprints];
+}
+
+/// Không tải được danh sách Sprint lần đầu (mất mạng, timeout, lỗi máy chủ…).
+///
+/// Tách riêng khỏi [SprintError] (lỗi của một thao tác như tạo/bắt đầu
+/// Sprint, hiển thị bằng SnackBar) để màn hình hiện trạng thái lỗi toàn
+/// trang kèm nút "Thử lại" (US-063).
+class SprintLoadFailure extends SprintState {
+  final AppFailure failure;
+
+  const SprintLoadFailure(this.failure);
+
+  @override
+  List<Object?> get props => [failure.type, failure.message];
 }

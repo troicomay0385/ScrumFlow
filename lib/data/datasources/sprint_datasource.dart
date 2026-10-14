@@ -7,6 +7,8 @@ class SprintDataSource {
 
   static final Map<String, List<SprintModel>> _localCache = {};
   static final Map<String, StreamController<List<SprintModel>>> _controllers = {};
+  static final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+      _firestoreSubscriptions = {};
 
   SprintDataSource({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -207,7 +209,9 @@ class SprintDataSource {
 
   StreamController<List<SprintModel>> _getController(String projectId) {
     if (!_controllers.containsKey(projectId) || _controllers[projectId]!.isClosed) {
-      _controllers[projectId] = StreamController<List<SprintModel>>.broadcast();
+      _controllers[projectId] = StreamController<List<SprintModel>>.broadcast(
+        onCancel: () => _firestoreSubscriptions.remove(projectId)?.cancel(),
+      );
     }
     return _controllers[projectId]!;
   }
@@ -223,11 +227,20 @@ class SprintDataSource {
       });
     }
 
-    _sprintsCollection(projectId)
+    // Mỗi project tối đa 1 listener Firestore — huỷ listener cũ (US-063).
+    _firestoreSubscriptions.remove(projectId)?.cancel();
+    _firestoreSubscriptions[projectId] = _sprintsCollection(projectId)
         .orderBy('startDate', descending: false)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .listen(
       (snapshot) {
+        // Cache rỗng khi chưa từng đồng bộ với server = chưa với tới máy
+        // chủ, không phải "chưa có Sprint" (xem BacklogDataSource).
+        if (snapshot.metadata.isFromCache &&
+            snapshot.docs.isEmpty &&
+            !_localCache.containsKey(projectId)) {
+          return;
+        }
         final sprints = snapshot.docs
             .map((doc) => SprintModel.fromMap(doc.data(), doc.id))
             .toList();
@@ -236,12 +249,15 @@ class SprintDataSource {
           controller.add(sprints);
         }
       },
-      onError: (error) {
-        if (!_localCache.containsKey(projectId)) {
-          _localCache[projectId] = [];
-        }
-        if (!controller.isClosed) {
-          controller.add(List.from(_localCache[projectId]!));
+      onError: (Object error, StackTrace stackTrace) {
+        if (controller.isClosed) return;
+        // Có dữ liệu cũ → giữ hiển thị; chưa có gì → báo lỗi để UI cho
+        // "Thử lại" thay vì hiện nhầm "Chưa có Sprint nào".
+        final cached = _localCache[projectId];
+        if (cached != null) {
+          controller.add(List.from(cached));
+        } else {
+          controller.addError(error, stackTrace);
         }
       },
     );

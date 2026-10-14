@@ -9,6 +9,7 @@ import '../../../data/repositories/project_member_repository.dart';
 import '../bloc/project_members_bloc.dart';
 import '../bloc/project_members_event.dart';
 import '../bloc/project_members_state.dart';
+import '../../common/widgets/app_state_views.dart';
 import '../widgets/add_member_dialog.dart';
 import '../widgets/change_role_dialog.dart';
 import '../widgets/member_list_tile.dart';
@@ -61,48 +62,17 @@ class ProjectMembersScreen extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is ProjectMembersLoading) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.primary),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Đang tải danh sách thành viên...',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppColors.onSurfaceVariant,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              return const AppLoadingView(
+                message: 'Đang tải danh sách thành viên...',
               );
             }
 
             if (state is ProjectMembersError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline_rounded,
-                          size: 48, color: AppColors.error),
-                      const SizedBox(height: 12),
-                      Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              return AppErrorView.fromFailure(
+                state.failure,
+                onRetry: () => context
+                    .read<ProjectMembersBloc>()
+                    .add(ProjectMembersStarted(projectId)),
               );
             }
 
@@ -168,21 +138,27 @@ class ProjectMembersScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.people_alt_rounded,
-                                  size: 16, color: AppColors.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Tổng cộng: ${loaded.members.length} thành viên',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.onSurface,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.people_alt_rounded,
+                                    size: 16, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Tổng cộng: ${loaded.members.length} thành viên',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: AppColors.onSurface,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),

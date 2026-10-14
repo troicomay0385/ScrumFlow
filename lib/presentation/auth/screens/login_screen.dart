@@ -268,13 +268,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              'SPRINT WORKSPACE V2.4',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                letterSpacing: 0.5,
+                            Flexible(
+                              child: Text(
+                                'SPRINT WORKSPACE V2.4',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ],
@@ -564,9 +567,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Redirect to Register
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    // Redirect to Register — Wrap để tự xuống dòng trên màn
+                    // hẹp / chữ lớn thay vì tràn ngang (US-055).
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'Chưa có tài khoản? ',
@@ -575,17 +580,25 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: 14,
                           ),
                         ),
-                        GestureDetector(
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
                           onTap: () {
                             Navigator.of(context).pushNamed(AppRoutes.register);
                           },
-                          child: Text(
-                            'Đăng ký ngay',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: AppColors.primaryContainer,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              decoration: TextDecoration.underline,
+                          child: Padding(
+                            // Mở rộng vùng chạm cho dễ bấm trên điện thoại.
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 10,
+                            ),
+                            child: Text(
+                              'Đăng ký ngay',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.primaryContainer,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ),
@@ -594,22 +607,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Security Badges
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    // Security Badges (Wrap: xuống dòng khi không đủ chỗ)
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 6,
                       children: [
-                        const Icon(Icons.verified_user_outlined,
-                            size: 14, color: Color(0xFF94A3B8)),
-                        const SizedBox(width: 4),
-                        Text(
+                        _securityBadge(
+                          Icons.verified_user_outlined,
                           'SOC2 Certified',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF94A3B8),
-                          ),
                         ),
-                        const SizedBox(width: 12),
                         Container(
                           width: 4,
                           height: 4,
@@ -618,17 +626,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Icon(Icons.lock_outline_rounded,
-                            size: 14, color: Color(0xFF94A3B8)),
-                        const SizedBox(width: 4),
-                        Text(
+                        _securityBadge(
+                          Icons.lock_outline_rounded,
                           '256-bit TLS',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF94A3B8),
-                          ),
                         ),
                       ],
                     ),
@@ -640,6 +640,24 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _securityBadge(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF94A3B8)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF94A3B8),
+          ),
+        ),
+      ],
     );
   }
 }

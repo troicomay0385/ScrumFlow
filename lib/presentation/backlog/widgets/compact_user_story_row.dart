@@ -88,6 +88,8 @@ class CompactUserStoryRow extends StatelessWidget {
       ),
       child: Text(
         status.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: GoogleFonts.plusJakartaSans(
           color: textColor,
           fontWeight: FontWeight.w700,
@@ -107,8 +109,10 @@ class CompactUserStoryRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          // minHeight thay vì height cố định: hàng tự cao lên khi người dùng
+          // tăng cỡ chữ hệ thống, không cắt chữ (US-055).
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
@@ -117,86 +121,107 @@ class CompactUserStoryRow extends StatelessWidget {
               ),
             ),
           ),
-          child: Row(
-            children: [
-              if (showCheckbox) ...[
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: Checkbox(
-                    value: isSelected,
-                    onChanged: onSelectChanged,
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Màn hẹp: lược bớt thông tin phụ để tiêu đề còn chỗ hiển thị
+              // (điểm SP < 360px, mã story < 300px). Thông tin đầy đủ vẫn có
+              // ở màn chi tiết / chế độ Thẻ.
+              final showPoints = constraints.maxWidth >= 360;
+              final showKey = constraints.maxWidth >= 300;
+              return Row(
+                children: [
+                  if (showCheckbox) ...[
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Checkbox(
+                        value: isSelected,
+                        onChanged: onSelectChanged,
+                        activeColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
+                    const SizedBox(width: 6),
+                  ],
 
-              // Story Key Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.canvas,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: AppColors.outline.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Text(
-                  story.storyKey,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
+                  // Story Key Badge
+                  if (showKey) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.outline.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Text(
+                        story.storyKey,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
 
-              // Title (Truncated 1 line)
-              Expanded(
-                child: Text(
-                  story.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
+                  // Title (Truncated 1 line)
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      story.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
+                  const SizedBox(width: 6),
 
-              // Priority
-              _buildPriorityBadge(story.priority),
-              const SizedBox(width: 6),
+                  // Priority
+                  _buildPriorityBadge(story.priority),
+                  const SizedBox(width: 6),
 
-              // Status
-              _buildStatusBadge(story.status),
-              const SizedBox(width: 6),
+                  // Status — Flexible: nhường chỗ cho tiêu đề trên màn hẹp,
+                  // cắt "IN PROGRESS…" thay vì tràn hàng.
+                  Flexible(child: _buildStatusBadge(story.status)),
 
-              // Points (SP)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${story.storyPoints} SP',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFB45309),
-                  ),
-                ),
-              ),
-            ],
+                  // Points (SP)
+                  if (showPoints) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${story.storyPoints} SP',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFB45309),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ),

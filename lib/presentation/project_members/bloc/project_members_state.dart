@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../app/errors/app_failure.dart';
+
 import '../../../app/authorization/project_role.dart';
 import '../../../data/models/project_member_display.dart';
 
@@ -19,10 +21,19 @@ class ProjectMembersLoading extends ProjectMembersState {}
 class ProjectMembersError extends ProjectMembersState {
   final String message;
 
-  const ProjectMembersError(this.message);
+  /// Loại lỗi (US-063): lỗi mạng/timeout cho "Thử lại", còn "không phải
+  /// thành viên" ([AppFailureType.permission]) thì không.
+  final AppFailureType failureType;
+
+  const ProjectMembersError(
+    this.message, {
+    this.failureType = AppFailureType.permission,
+  });
+
+  AppFailure get failure => AppFailure(failureType, message);
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, failureType];
 }
 
 /// User là thành viên hợp lệ nhưng role không có quyền `viewMembers`

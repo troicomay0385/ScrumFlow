@@ -53,12 +53,16 @@ class RoleBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 5),
-          Text(
-            role.displayName,
-            style: GoogleFonts.plusJakartaSans(
-              color: _color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              role.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                color: _color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

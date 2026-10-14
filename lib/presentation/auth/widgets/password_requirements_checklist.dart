@@ -48,6 +48,7 @@ class PasswordRequirementsChecklist extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -58,11 +59,14 @@ class PasswordRequirementsChecklist extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: isMet ? AppColors.textPrimary : AppColors.textHint,
-              fontSize: 14,
+          // Expanded: yêu cầu dài tự xuống dòng trên màn hẹp (US-055).
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isMet ? AppColors.textPrimary : AppColors.textHint,
+                fontSize: 14,
+              ),
             ),
           ),
         ],

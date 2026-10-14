@@ -56,6 +56,8 @@ class _CreateSprintDialogState extends State<_CreateSprintDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      // Cuộn cả tiêu đề + form khi bàn phím mở trên màn nhỏ (US-055).
+      scrollable: true,
       title: const Text('Tạo Sprint mới'),
       content: Form(
         key: _formKey,

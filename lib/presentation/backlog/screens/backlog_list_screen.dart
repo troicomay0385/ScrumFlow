@@ -10,6 +10,10 @@ import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/sprint_repository.dart';
+import '../../../app/services/connectivity_service.dart';
+import '../../common/utils/provider_utils.dart';
+import '../../common/widgets/app_state_views.dart';
+import '../../common/widgets/skeleton_list.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
 import '../../sprints/widgets/move_to_sprint_dialog.dart';
 import '../bloc/backlog_bloc.dart';
@@ -34,9 +38,10 @@ class BacklogListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) =>
-          BacklogBloc(repository: context.read<BacklogRepository>())
-            ..add(BacklogSubscriptionRequested(projectId)),
+      create: (context) => BacklogBloc(
+        repository: context.read<BacklogRepository>(),
+        connectivityService: maybeRead<ConnectivityService>(context),
+      )..add(BacklogSubscriptionRequested(projectId)),
       child: _BacklogListView(
         projectId: projectId,
         projectName: projectName,
@@ -281,6 +286,10 @@ class _BacklogListViewState extends State<_BacklogListView> {
         ],
       ),
       body: BlocConsumer<BacklogBloc, BacklogState>(
+        // Lỗi khi đang tải lần đầu đã có màn hình lỗi + "Thử lại" riêng;
+        // SnackBar chỉ dành cho lỗi thao tác khi danh sách đang hiển thị.
+        listenWhen: (previous, current) =>
+            current is BacklogError && previous is BacklogLoaded,
         listener: (context, state) {
           if (state is BacklogError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -293,10 +302,8 @@ class _BacklogListViewState extends State<_BacklogListView> {
           }
         },
         builder: (context, state) {
-          if (state is BacklogLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+          if (state is BacklogLoading || state is BacklogInitial) {
+            return const SkeletonList(itemCount: 6, itemHeight: 64);
           }
 
           if (state is BacklogLoaded) {
@@ -398,21 +405,27 @@ class _BacklogListViewState extends State<_BacklogListView> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.format_list_bulleted_rounded,
-                              size: 16, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tổng cộng: ${allStories.length} User Stories',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.onSurface,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.format_list_bulleted_rounded,
+                                size: 16, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Tổng cộng: ${allStories.length} User Stories',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
@@ -580,36 +593,43 @@ class _BacklogListViewState extends State<_BacklogListView> {
                     child: Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Trang ${safePage + 1} / ${totalPages == 0 ? 1 : totalPages} (${visibleStories.length} mục)',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.onSurfaceVariant,
+                            Expanded(
+                              child: Text(
+                                'Trang ${safePage + 1} / ${totalPages == 0 ? 1 : totalPages} (${visibleStories.length} mục)',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
                               ),
                             ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.chevron_left_rounded),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: safePage > 0
-                                      ? () => setState(() => _currentPage = safePage - 1)
-                                      : null,
-                                ),
-                                const SizedBox(width: 12),
-                                IconButton(
-                                  icon: const Icon(Icons.chevron_right_rounded),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: safePage < totalPages - 1
-                                      ? () => setState(() => _currentPage = safePage + 1)
-                                      : null,
-                                ),
-                              ],
+                            // Vùng chạm 40x40 (trước đây ~24px, khó bấm).
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left_rounded),
+                              tooltip: 'Trang trước',
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                minWidth: 40,
+                                minHeight: 40,
+                              ),
+                              onPressed: safePage > 0
+                                  ? () => setState(() => _currentPage = safePage - 1)
+                                  : null,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right_rounded),
+                              tooltip: 'Trang sau',
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                minWidth: 40,
+                                minHeight: 40,
+                              ),
+                              onPressed: safePage < totalPages - 1
+                                  ? () => setState(() => _currentPage = safePage + 1)
+                                  : null,
                             ),
                           ],
                         ),
@@ -657,46 +677,11 @@ class _BacklogListViewState extends State<_BacklogListView> {
           }
 
           if (state is BacklogError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFF7ED),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.cloud_off_rounded,
-                        size: 56,
-                        color: Color(0xFFEA580C),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Chưa đồng bộ được với Cloud Firestore',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Vui lòng kiểm tra kết nối mạng và thử lại sau.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return AppErrorView.fromFailure(
+              state.failure,
+              onRetry: () => context
+                  .read<BacklogBloc>()
+                  .add(BacklogSubscriptionRequested(widget.projectId)),
             );
           }
 
@@ -707,71 +692,34 @@ class _BacklogListViewState extends State<_BacklogListView> {
   }
 
   Widget _buildEmptyState(BuildContext context, bool canManageBacklog) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.inventory_2_outlined,
-                size: 56,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Product Backlog đang trống',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Hãy bắt đầu bằng cách bấm nút bên dưới để thêm User Story thủ công.',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: AppColors.onSurfaceVariant,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (canManageBacklog) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 3,
+    return AppEmptyView(
+      icon: Icons.inventory_2_outlined,
+      title: 'Product Backlog đang trống',
+      message:
+          'Hãy bắt đầu bằng cách bấm nút bên dưới để thêm User Story thủ công.',
+      action: canManageBacklog
+          ? ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                onPressed: _openCreateDialog,
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: Text(
-                  'Tạo User Story mới',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                elevation: 3,
+              ),
+              onPressed: _openCreateDialog,
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: Text(
+                'Tạo User Story mới',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
-            ],
-          ],
-        ),
-      ),
+            )
+          : null,
     );
   }
 
@@ -823,17 +771,20 @@ class _BacklogListViewState extends State<_BacklogListView> {
         const Icon(Icons.sort_rounded,
             size: 18, color: AppColors.onSurfaceVariant),
         const SizedBox(width: 6),
-        Text(
-          'Sắp xếp theo:',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.onSurfaceVariant,
+        Flexible(
+          child: Text(
+            'Sắp xếp theo:',
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(width: 8),
         Container(
-          height: 36,
+          constraints: const BoxConstraints(minHeight: 36),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: AppColors.canvas,
@@ -846,6 +797,7 @@ class _BacklogListViewState extends State<_BacklogListView> {
             child: DropdownButton<BacklogSortOption>(
               key: const Key('backlog_sortDropdown'),
               value: state.sortOption,
+              isDense: true,
               borderRadius: BorderRadius.circular(14),
               icon: const Icon(Icons.keyboard_arrow_down_rounded,
                   color: AppColors.primary),
@@ -857,7 +809,10 @@ class _BacklogListViewState extends State<_BacklogListView> {
               items: BacklogSortOption.values
                   .map((option) => DropdownMenuItem(
                         value: option,
-                        child: Text(option.label),
+                        child: Text(
+                          option.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ))
                   .toList(),
               onChanged: (option) {

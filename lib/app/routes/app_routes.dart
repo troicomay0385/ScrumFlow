@@ -6,6 +6,7 @@ import '../../presentation/home/screens/home_screen.dart';
 import '../../presentation/projects/screens/create_project_screen.dart';
 import '../../presentation/projects/screens/project_detail_screen.dart';
 import '../../presentation/project_members/screens/project_members_screen.dart';
+import 'app_page_transitions.dart';
 
 
 /// Định nghĩa tên các route và hàm tạo route với animated transitions.
@@ -24,39 +25,23 @@ class AppRoutes {
   static const String projectDetail = '/projects/detail';
   static const String projectMembers = '/projects/members';
 
-  /// Tạo route với fade + slide transition.
+  /// Tạo route với fade + slide transition dùng chung ([AppPageTransition]),
+  /// giống hệt hiệu ứng của các `MaterialPageRoute` trong app (US-064).
   ///
   /// [page] — widget màn hình đích.
-  /// [duration] — thời gian animation (mặc định 400ms).
+  /// [duration] — thời gian animation (mặc định 300ms).
   static PageRouteBuilder buildRoute({
     required Widget page,
     required RouteSettings settings,
-    Duration duration = const Duration(milliseconds: 400),
+    Duration duration = AppPageTransition.duration,
   }) {
     return PageRouteBuilder(
       settings: settings,
       transitionDuration: duration,
       reverseTransitionDuration: duration,
       pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        // Kết hợp fade + slide từ dưới lên
-        final fadeAnimation = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-        );
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(0, 0.05),
-          end: Offset.zero,
-        ).animate(fadeAnimation);
-
-        return FadeTransition(
-          opacity: fadeAnimation,
-          child: SlideTransition(
-            position: slideAnimation,
-            child: child,
-          ),
-        );
-      },
+      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+          AppPageTransition.build(context, animation, child),
     );
   }
 

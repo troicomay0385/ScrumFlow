@@ -6,6 +6,8 @@ import '../../../app/authorization/permission.dart';
 import '../../../app/authorization/project_role.dart';
 import '../../../app/authorization/role_permissions.dart';
 import '../../../app/constants/app_colors.dart';
+import '../../../app/errors/app_error_handler.dart';
+import '../../../app/errors/stream_timeout.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/repositories/attachment_repository.dart';
@@ -26,22 +28,54 @@ import '../../standup/screens/standup_history_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../notifications/widgets/notification_bell_widget.dart';
+import '../../common/widgets/app_state_views.dart';
 
 /// Màn hình Chi tiết Project — không gian làm việc chính phong cách Kinetic Sprint Bento:
 /// 1. Bento Header dự án: Tên, mục tiêu, role pill, action chỉnh sửa (PO).
 /// 2. Bento Quick Action Modules: Product Backlog, Sprint & Kanban, Quản lý thành viên.
-class ProjectDetailScreen extends StatelessWidget {
+class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
 
   const ProjectDetailScreen({super.key, required this.projectId});
 
   @override
+  State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
+}
+
+class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+  /// Thời gian chờ tối đa để nhận thông tin project lần đầu (US-063).
+  static const Duration _firstLoadTimeout = Duration(seconds: 15);
+
+  // Tạo stream một lần (trước đây tạo mới ở mỗi lần build → mỗi lần role
+  // thay đổi lại mở thêm một listener Firestore).
+  late final Stream<ProjectRole?> _roleStream;
+  late Stream<ProjectModel?> _projectStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _roleStream = context
+        .read<ProjectMemberRepository>()
+        .streamCurrentUserRole(widget.projectId);
+    _projectStream = _createProjectStream();
+  }
+
+  Stream<ProjectModel?> _createProjectStream() => context
+      .read<ProjectRepository>()
+      .streamProject(widget.projectId)
+      .timeoutFirstEvent(_firstLoadTimeout);
+
+  void _retryLoadProject() {
+    if (!mounted) return;
+    setState(() => _projectStream = _createProjectStream());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final projectRepository = context.read<ProjectRepository>();
-    final memberRepository = context.read<ProjectMemberRepository>();
+    final projectId = widget.projectId;
 
     return StreamBuilder<ProjectRole?>(
-      stream: memberRepository.streamCurrentUserRole(projectId),
+      stream: _roleStream,
       builder: (context, roleSnapshot) {
         final currentRole = roleSnapshot.data;
         final canManageProject =
@@ -50,13 +84,25 @@ class ProjectDetailScreen extends StatelessWidget {
             hasPermission(currentRole, Permission.viewMembers);
 
         return StreamBuilder<ProjectModel?>(
-          stream: projectRepository.streamProject(projectId),
+          stream: _projectStream,
           builder: (context, projectSnapshot) {
-            if (projectSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
+            if (projectSnapshot.hasError && !projectSnapshot.hasData) {
+              return Scaffold(
                 backgroundColor: AppColors.canvas,
-                body: Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
+                appBar: AppBar(title: const Text('Chi tiết Project')),
+                body: AppErrorView.fromFailure(
+                  AppErrorHandler.classify(projectSnapshot.error!),
+                  onRetry: _retryLoadProject,
+                ),
+              );
+            }
+
+            if (projectSnapshot.connectionState == ConnectionState.waiting) {
+              return Scaffold(
+                backgroundColor: AppColors.canvas,
+                appBar: AppBar(title: const Text('Chi tiết Project')),
+                body: const AppLoadingView(
+                  message: 'Đang tải thông tin dự án...',
                 ),
               );
             }
@@ -734,9 +780,10 @@ class ProjectDetailScreen extends StatelessWidget {
         currentUserName = authState.user.fullName;
       }
 
+      // Đọc dependency trước khi await để không dùng BuildContext sau
+      // khoảng chờ bất đồng bộ.
+      final messenger = ScaffoldMessenger.of(context);
       final memberRepo = context.read<ProjectMemberRepository>();
-      final members = await memberRepo.streamMembers(projectId).first;
-
       final seeder = SampleDataSeeder(
         backlogRepo: context.read<BacklogRepository>(),
         taskRepo: context.read<TaskRepository>(),
@@ -744,21 +791,38 @@ class ProjectDetailScreen extends StatelessWidget {
         sprintRepo: context.read<SprintRepository>(),
       );
 
-      final result = await seeder.seedSampleData(
-        projectId: projectId,
-        members: members,
-        currentUserId: currentUserId,
-        currentUserName: currentUserName,
-      );
+      try {
+        final members = await memberRepo
+            .streamMembers(projectId)
+            .first
+            .timeout(const Duration(seconds: 15));
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final result = await seeder.seedSampleData(
+          projectId: projectId,
+          members: members,
+          currentUserId: currentUserId,
+          currentUserName: currentUserName,
+        );
+
+        if (!mounted) return;
+        messenger.showSnackBar(
           SnackBar(
             backgroundColor: AppColors.success,
             content: Text(
               '🎉 Nạp thành công ${result.createdSprints} Sprint, ${result.createdStories} Stories, ${result.createdTasks} Tasks & ${result.createdAttachments} Tệp! Vào Sprint & Kanban Board để trải nghiệm ngay 🚀',
             ),
             duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text(
+              'Chưa nạp được dữ liệu mẫu. ${AppErrorHandler.messageOf(e)}',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );

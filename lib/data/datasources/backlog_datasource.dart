@@ -28,6 +28,12 @@ class BacklogDataSource {
   static final Map<String, List<UserStoryModel>> _localCache = {};
   static final Map<String, StreamController<List<UserStoryModel>>> _controllers = {};
 
+  /// Listener Firestore đang mở theo project — mỗi project tối đa 1 listener,
+  /// huỷ khi không còn ai nghe (US-063: tránh request/listener trùng lặp khi
+  /// người dùng bấm "Thử lại" hoặc mở lại màn hình).
+  static final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+      _firestoreSubscriptions = {};
+
   BacklogDataSource({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
@@ -37,7 +43,9 @@ class BacklogDataSource {
 
   StreamController<List<UserStoryModel>> _getController(String projectId) {
     if (!_controllers.containsKey(projectId) || _controllers[projectId]!.isClosed) {
-      _controllers[projectId] = StreamController<List<UserStoryModel>>.broadcast();
+      _controllers[projectId] = StreamController<List<UserStoryModel>>.broadcast(
+        onCancel: () => _firestoreSubscriptions.remove(projectId)?.cancel(),
+      );
     }
     return _controllers[projectId]!;
   }
@@ -56,12 +64,23 @@ class BacklogDataSource {
       });
     }
 
-    // Kết nối lắng nghe Firestore
-    _storiesCollection(projectId)
+    // Kết nối lắng nghe Firestore (huỷ listener cũ của project nếu có).
+    _firestoreSubscriptions.remove(projectId)?.cancel();
+    _firestoreSubscriptions[projectId] = _storiesCollection(projectId)
         .orderBy('storyKey', descending: false)
-        .snapshots()
+        // Cần metadata changes để nhận được sự kiện "đã đồng bộ với server"
+        // ngay cả khi dữ liệu không đổi so với cache (xem điều kiện bên dưới).
+        .snapshots(includeMetadataChanges: true)
         .listen(
       (snapshot) {
+        // Snapshot rỗng lấy từ cache khi chưa từng tải được từ server
+        // nghĩa là "chưa với tới máy chủ", không phải "backlog trống" —
+        // chờ dữ liệu thật (UI có timeout riêng) thay vì báo nhầm là rỗng.
+        if (snapshot.metadata.isFromCache &&
+            snapshot.docs.isEmpty &&
+            !_localCache.containsKey(projectId)) {
+          return;
+        }
         final stories = snapshot.docs
             .map((doc) => UserStoryModel.fromMap(doc.data(), doc.id))
             .toList();
@@ -70,12 +89,16 @@ class BacklogDataSource {
           controller.add(stories);
         }
       },
-      onError: (error) {
-        if (!_localCache.containsKey(projectId)) {
-          _localCache[projectId] = [];
-        }
-        if (!controller.isClosed) {
-          controller.add(List.from(_localCache[projectId]!));
+      onError: (Object error, StackTrace stackTrace) {
+        if (controller.isClosed) return;
+        // Đã có dữ liệu trước đó → tiếp tục hiển thị bản đã có.
+        // Chưa có gì → báo lỗi lên UI để hiện thông báo + "Thử lại"
+        // (trước đây phát danh sách rỗng khiến người dùng tưởng backlog trống).
+        final cached = _localCache[projectId];
+        if (cached != null) {
+          controller.add(List.from(cached));
+        } else {
+          controller.addError(error, stackTrace);
         }
       },
     );

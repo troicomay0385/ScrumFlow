@@ -41,6 +41,7 @@ import 'app/services/connectivity_service.dart';
 import 'app/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
+import 'presentation/common/widgets/network_status_banner.dart';
 
 import 'firebase_options.dart';
 
@@ -140,6 +141,9 @@ void main() async {
           value: attachmentRepository,
         ),
         RepositoryProvider<NotificationRepository>.value(value: notificationRepository),
+        RepositoryProvider<ConnectivityService>.value(
+          value: connectivityService,
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -156,14 +160,20 @@ void main() async {
             ),
           ),
         ],
-        child: const ScrumFlowApp(),
+        child: ScrumFlowApp(
+          networkStatus: connectivityService.onStatusChanged,
+        ),
       ),
     ),
   );
 }
 
 class ScrumFlowApp extends StatelessWidget {
-  const ScrumFlowApp({super.key});
+  /// Trạng thái có/không có mạng để hiện dải cảnh báo toàn app (US-063).
+  /// `null` = không hiện (vd. trong test).
+  final Stream<bool>? networkStatus;
+
+  const ScrumFlowApp({super.key, this.networkStatus});
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +190,12 @@ class ScrumFlowApp extends StatelessWidget {
       ],
       onGenerateRoute: AppRoutes.generateRoute,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        final content = child ?? const SizedBox.shrink();
+        final status = networkStatus;
+        if (status == null) return content;
+        return NetworkStatusBanner(statusStream: status, child: content);
+      },
     );
   }
 }

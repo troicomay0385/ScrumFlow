@@ -12,7 +12,11 @@ import '../../projects/bloc/project_list_event.dart';
 import '../../projects/bloc/project_list_state.dart';
 import '../../projects/widgets/project_list_tile.dart';
 import '../../settings/widgets/security_settings_dialog.dart';
+import '../../../app/services/connectivity_service.dart';
 import '../../../app/services/notification_service.dart';
+import '../../common/utils/provider_utils.dart';
+import '../../common/widgets/app_state_views.dart';
+import '../../common/widgets/skeleton_list.dart';
 import '../../notifications/bloc/notification_bloc.dart';
 import '../../notifications/bloc/notification_event.dart';
 import '../../notifications/widgets/notification_bell_widget.dart';
@@ -41,8 +45,10 @@ class HomeScreen extends StatelessWidget {
           }
         },
         child: BlocProvider(
-          create: (context) => ProjectListBloc(context.read<ProjectRepository>())
-            ..add(ProjectListRequested()),
+          create: (context) => ProjectListBloc(
+            context.read<ProjectRepository>(),
+            connectivityService: maybeRead<ConnectivityService>(context),
+          )..add(ProjectListRequested()),
           child: Builder(builder: (context) {
             final authState = context.watch<AuthBloc>().state;
             String userName = '';
@@ -121,30 +127,23 @@ class HomeScreen extends StatelessWidget {
             body: RefreshIndicator(
               color: AppColors.primaryContainer,
               onRefresh: () async {
-                context.read<ProjectListBloc>().add(ProjectListRequested());
+                final bloc = context.read<ProjectListBloc>()
+                  ..add(ProjectListRequested());
+                // Giữ vòng refresh tới khi tải xong (thành công hoặc lỗi).
+                await bloc.stream.firstWhere((s) => s is! ProjectListLoading);
               },
               child: BlocBuilder<ProjectListBloc, ProjectListState>(
                 builder: (context, state) {
                   if (state is ProjectListLoading || state is ProjectListInitial) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const SkeletonList(itemCount: 4, itemHeight: 96);
                   }
 
                   if (state is ProjectListError) {
-                    return ListView(
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        const SizedBox(height: 80),
-                        Center(
-                          child: Text(
-                            state.message,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    return AppErrorView.fromFailure(
+                      state.failure,
+                      onRetry: () => context
+                          .read<ProjectListBloc>()
+                          .add(ProjectListRequested()),
                     );
                   }
 
