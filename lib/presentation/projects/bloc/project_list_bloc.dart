@@ -21,6 +21,7 @@ class ProjectListBloc extends Bloc<ProjectListEvent, ProjectListState> {
     this._timeout = defaultTimeout,
   }) : super(ProjectListInitial()) {
     on<ProjectListRequested>(_onRequested);
+    on<ProjectDeleteRequested>(_onDeleteRequested);
   }
 
   Future<void> _onRequested(
@@ -44,6 +45,21 @@ class ProjectListBloc extends Bloc<ProjectListEvent, ProjectListState> {
     } catch (e) {
       final failure = AppErrorHandler.classify(e);
       emit(ProjectListError(failure.message, failureType: failure.type));
+    }
+  }
+
+  Future<void> _onDeleteRequested(
+    ProjectDeleteRequested event,
+    Emitter<ProjectListState> emit,
+  ) async {
+    try {
+      await _projectRepository.deleteProject(event.projectId);
+      // Tải lại danh sách sau khi xoá thành công
+      add(ProjectListRequested());
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
+      emit(ProjectListError(
+          message.isEmpty ? 'Không thể xoá project' : message));
     }
   }
 }

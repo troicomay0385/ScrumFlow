@@ -26,6 +26,10 @@ abstract class ProjectRepository {
     required String description,
   });
 
+  /// Xoá project và tất cả membership liên quan (US-038).
+  /// Chỉ PO (quyền [Permission.manageProject]) mới được phép gọi.
+  Future<void> deleteProject(String projectId);
+
   /// Stream real-time cho 1 project.
   Stream<ProjectModel?> streamProject(String projectId);
 }

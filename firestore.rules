@@ -121,8 +121,11 @@ service cloud.firestore {
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.id == resource.data.id;
 
-      // Người tạo có quyền xóa project (để rollback khi cần)
-      allow delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
+      // Người tạo hoặc PO có quyền xóa project (US-038)
+      allow delete: if isSignedIn() && (
+        resource.data.createdBy == request.auth.uid ||
+        isPO(projectId)
+      );
 
       // ── Subcollection: userStories (Backlog) ──────────────────────
       match /userStories/{storyId} {
@@ -222,9 +225,13 @@ service cloud.firestore {
         && isValidRole(request.resource.data.role)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt']);
 
-      // Xóa thành viên: Chỉ PO mới có quyền xóa thành viên, không tự xóa chính mình
-      allow delete: if isPO(resource.data.projectId)
-        && request.auth.uid != resource.data.userId;
+      // Xóa thành viên (US-038, US-041): PO xóa thành viên khác; hoặc khi xoá project
+      allow delete: if isSignedIn() && (
+        (isPO(resource.data.projectId) && request.auth.uid != resource.data.userId) ||
+        !exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) ||
+        (exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) &&
+         get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.createdBy == request.auth.uid)
+      );
     }
 
     // ── 5. TASKS COLLECTION ─────────────────────────────────────────

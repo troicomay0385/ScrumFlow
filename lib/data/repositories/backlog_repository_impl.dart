@@ -7,6 +7,7 @@ import '../../app/authorization/role_permissions.dart';
 import '../../app/constants/firebase_error_mapper.dart';
 import '../datasources/backlog_datasource.dart';
 import '../datasources/firebase_auth_datasource.dart';
+import '../datasources/local_cache_datasource.dart';
 import '../datasources/project_member_datasource.dart';
 import '../models/user_story_model.dart';
 import 'backlog_repository.dart';
@@ -23,6 +24,7 @@ class BacklogRepositoryImpl implements BacklogRepository {
   final FirebaseAuthDataSource _authDataSource;
   final DateTime Function() _now;
   final NotificationRepository? _notificationRepository;
+  final LocalCacheDataSource? _localCache;
 
   BacklogRepositoryImpl({
     BacklogDataSource? dataSource,
@@ -30,20 +32,51 @@ class BacklogRepositoryImpl implements BacklogRepository {
     FirebaseAuthDataSource? authDataSource,
     DateTime Function()? now,
     NotificationRepository? notificationRepository,
+    LocalCacheDataSource? localCache,
   })  : _dataSource = dataSource ?? BacklogDataSource(),
         _memberDataSource = memberDataSource ?? ProjectMemberDataSource(),
         _authDataSource = authDataSource ?? FirebaseAuthDataSource(),
         _now = now ?? DateTime.now,
-        _notificationRepository = notificationRepository ?? NotificationRepository();
+        _notificationRepository = notificationRepository ?? NotificationRepository(),
+        _localCache = localCache;
 
   @override
-  Stream<List<UserStoryModel>> streamUserStories(String projectId) {
-    return _dataSource.streamUserStories(projectId);
+  Stream<List<UserStoryModel>> streamUserStories(String projectId) async* {
+    // US-062: Cache dữ liệu mỗi khi stream emit, fallback offline khi lỗi.
+    try {
+      await for (final stories in _dataSource.streamUserStories(projectId)) {
+        // Lưu cache async — không block stream
+        _localCache?.cacheUserStories(projectId, stories);
+        yield stories;
+      }
+    } catch (e) {
+      // Offline fallback: đọc từ SQLite cache
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedUserStories(projectId);
+        if (cached.isNotEmpty) {
+          yield cached;
+          return;
+        }
+      }
+      rethrow;
+    }
   }
 
   @override
-  Future<List<UserStoryModel>> getUserStories(String projectId) {
-    return _dataSource.getUserStories(projectId);
+  Future<List<UserStoryModel>> getUserStories(String projectId) async {
+    try {
+      final stories = await _dataSource.getUserStories(projectId);
+      // US-062: Cache kết quả thành công
+      _localCache?.cacheUserStories(projectId, stories);
+      return stories;
+    } catch (e) {
+      // US-062: Offline fallback
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedUserStories(projectId);
+        if (cached.isNotEmpty) return cached;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -65,14 +98,31 @@ class BacklogRepositoryImpl implements BacklogRepository {
   Future<List<UserStoryModel>> getStoriesByIds(
     String projectId,
     List<String> storyIds,
-  ) {
-    return _dataSource.getStoriesByIds(projectId, storyIds);
+  ) async {
+    try {
+      return await _dataSource.getStoriesByIds(projectId, storyIds);
+    } catch (e) {
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedUserStories(projectId);
+        final filtered = cached.where((s) => storyIds.contains(s.id)).toList();
+        if (filtered.isNotEmpty) return filtered;
+      }
+      rethrow;
+    }
   }
 
-
   @override
-  Future<UserStoryModel?> getUserStory(String projectId, String storyId) {
-    return _dataSource.getUserStory(projectId, storyId);
+  Future<UserStoryModel?> getUserStory(String projectId, String storyId) async {
+    try {
+      return await _dataSource.getUserStory(projectId, storyId);
+    } catch (e) {
+      if (_localCache != null) {
+        final cached = await _localCache.getCachedUserStories(projectId);
+        final match = cached.where((s) => s.id == storyId);
+        if (match.isNotEmpty) return match.first;
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -206,6 +256,13 @@ class BacklogRepositoryImpl implements BacklogRepository {
     return _guard(() async {
       await _requireManageBacklog(projectId);
       await _dataSource.deleteUserStories(projectId, storyIds);
+      if (_localCache != null) {
+        for (final id in storyIds) {
+          try {
+            await _localCache.deleteCachedStory(id);
+          } catch (_) {}
+        }
+      }
     });
   }
 

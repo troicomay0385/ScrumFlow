@@ -430,6 +430,34 @@
 
 - **File mới:** `lib/domain/usecases/sprint/start_sprint_usecase.dart`, `lib/domain/usecases/sprint/close_sprint_usecase.dart`, `lib/presentation/sprints/widgets/start_sprint_dialog.dart`, `lib/presentation/sprints/widgets/close_sprint_dialog.dart`
 - **File sửa:** `sprint_repository.dart` (+`startSprint`, `closeSprint`), `sprint_repository_impl.dart` (+impl 2 method), `sprint_datasource.dart` (+impl + WriteBatch), `sprint_event.dart` (+2 events), `sprint_bloc.dart` (+2 handlers), `sprint_detail_screen.dart` (+imports, +2 nút AppBar, +`_showCloseSprintDialog`), `NguCanh.md` (đánh dấu US-049, US-050 ✅).
+### Ngày 14/10/2026: Hoàn Thiện US-038 (Xoá Dự Án Cho Admin/PO), US-062 (SQLite Offline Cache Cho Backlog/Task) & Push Nhánh `hieuthu5`
+
+- **US-038 — Xoá Project dành cho Quản trị viên / PO:**
+  - **Tầng dữ liệu (`ProjectRepositoryImpl` & `ProjectDataSource`):**
+    - Bổ sung phương thức `deleteProject(projectId)` với cơ chế kiểm soát quyền PO bắt buộc (`Permission.manageProject`).
+    - Quy trình xoá tuần tự và an toàn: Xoá toàn bộ bản ghi thành viên liên quan trong `projectMembers`, xoá document dự án trong `projects/{projectId}`, dọn sạch membership của PO, và kích hoạt dọn sạch toàn bộ cache SQLite cục bộ của dự án (`clearProjectCache`).
+  - **Quy tắc bảo mật (`firestore.rules`):**
+    - Mở rộng quyền `allow delete` cho document `projects/{projectId}` và `projectMembers/{membershipId}`: Cho phép người tạo (`createdBy`) hoặc người giữ vai trò `PO` được xoá dự án và các membership tương ứng.
+  - **Giao diện & Trải nghiệm người dùng (UX):**
+    - **Tại màn hình Chi tiết dự án (`ProjectDetailScreen`):** Nút thùng rác đỏ trên AppBar (chỉ hiện với PO) mở hộp thoại xác nhận cảnh báo dữ liệu không thể hoàn tác, điều hướng về trang chủ khi xoá thành công.
+    - **Tại thẻ dự án trên Trang chủ (`HomeScreen` & `ProjectListTile`):** Thêm nút menu tuỳ chọn 3 chấm (`...`) cạnh Badge vai trò PO trên từng thẻ dự án, cho phép PO thao tác xoá dự án nhanh trực tiếp từ danh sách mà không cần mở vào trong, kết nối với `ProjectListBloc` (`ProjectDeleteRequested`) để tự động làm mới danh sách.
+
+- **US-062 — Lưu Cache Backlog & Task xuống SQLite Cục Bộ Để Xem Khi Mất Mạng:**
+  - **Mở rộng SQLite Cache (`LocalCacheDataSource`):**
+    - Nâng cấp schema cơ sở dữ liệu SQLite (`scrumflow_cache.db` v2) bổ sung 2 bảng `cached_user_stories` và `cached_tasks` có chỉ mục Index theo `projectId` và `storyId`.
+    - Cung cấp đầy đủ các phương thức CRUD cache: `cacheUserStories`, `getCachedUserStories`, `deleteCachedStory`, `cacheTasks`, `getCachedTasks`, `getCachedTasksByProject`, `getCachedTask`, `deleteCachedTask`, `clearProjectCache`.
+  - **Đồng bộ với Repositories:**
+    - `BacklogRepositoryImpl`: Tự động lưu cache khi tải User Stories thành công; tự động kích hoạt cơ chế fallback đọc dữ liệu từ SQLite khi mất mạng/ngoại tuyến (`streamUserStories`, `getUserStories`, `getUserStory`, `getStoriesByIds`); tự động xoá cache khi xoá story.
+    - `TaskRepository`: Tự động ghi nhận cache SQLite khi stream danh sách task; tự động fallback đọc SQLite khi mất mạng (`streamTasksByStory`, `streamTasksByProject`, `getTasksByProject`, `streamTask`); tự động xoá task trong SQLite khi có lệnh xoá.
+
+- **Kiểm thử tự động & Đóng gói:**
+  - Toàn bộ bộ kiểm thử tự động đạt **194 / 194 unit tests & widget tests PASS sạch 100%**.
+  - Kiểm tra cú pháp và chất lượng mã nguồn: `flutter analyze` đạt **0 error**.
+  - Cập nhật tiến độ Sprint 5 trong bảng theo dõi đạt **7 / 9 User Stories** hoàn thành.
+
+- **Đồng bộ mã nguồn lên GitHub (Commit `204433f`):**
+  - Commit message: `feat: complete US-038 (delete project for PO/Admin) and US-062 (offline SQLite cache for backlog and tasks)`.
+  - Đã push thành công lên nhánh **`hieuthu5`** của repository `https://github.com/troicomay0385/ScrumFlow.git`.
 
 ### Ngày 14/10/2026: Sprint 5 — US-063 (Mất mạng & Timeout), US-064 (Chuyển trang & Loading), US-055 (Responsive), US-054 (Bộ Test Case 5 Sprint)
 
@@ -601,17 +629,17 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **6 / 9 User Stories hoàn thành** (còn lại: US-030, US-038, US-062)*
+*Tiến độ thực tế: **8 / 9 User Stories hoàn thành** (đã hoàn thành US-038 & US-062, chỉ còn US-030 Dark Mode)*
 
 - [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
   *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*
-- [ ] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  
-  *(Chưa hoàn thành: Đã có hàm xóa ở Data Source phục vụ rollback, chưa gắn vào UI/Repository).*
+- [x] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  
+  *(Đã hoàn thành: Hiện thực `deleteProject` trong `ProjectRepositoryImpl`, tích hợp phân quyền PO, dọn dẹp memberships và dọn sạch SQLite cache liên quan; đã trang bị nút Xoá dự án kèm dialog xác nhận an toàn tại cả màn Chi tiết dự án (`ProjectDetailScreen`) và danh sách dự án (`HomeScreen` / `ProjectListTile`)).*
 - [x] **US-041** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa thành viên khỏi Project khi họ không còn tham gia.  
   *(Đã hoàn thành: Đã hiện thực trong `ProjectMemberRepositoryImpl`, `ProjectMemberDataSource`, `ProjectMembersBloc` và `firestore.rules`).*
-- [ ] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
-  *(Chưa hoàn thành: Hiện mới chỉ cache tài khoản người dùng `UserModel`).*
+- [x] **US-062** [Ưu tiên: TB]: Là người dùng, tôi muốn ứng dụng lưu cache Backlog/Task xuống SQLite cục bộ để xem được dữ liệu khi mất mạng.  
+  *(Đã hoàn thành: Đã mở rộng bảng SQLite `cached_user_stories` và `cached_tasks` trong `LocalCacheDataSource`, tự động lưu cache khi tải dữ liệu thành công và cung cấp cơ chế offline fallback trong `BacklogRepositoryImpl` và `TaskRepository`).*
 - [x] **US-063** [Ưu tiên: CAO]: Là người dùng, tôi muốn được thông báo rõ khi mất mạng hoặc API timeout để biết trạng thái và thử lại.  
   *(Đã hoàn thành 14/10/2026: `AppFailure` + `AppErrorHandler` phân loại mất mạng / timeout / lỗi máy chủ / quyền; timeout lần tải đầu 15 giây cho Trang chủ, Backlog, Sprint, Thành viên, Chi tiết Project; màn lỗi kèm "Thử lại" có chống bấm lặp; dải cảnh báo mất mạng toàn app; sửa lỗi datasource nuốt lỗi và rò listener Firestore. Đã có test tự động; kiểm thử thủ công trên Android: chưa chạy).*
 - [x] **US-064** [Ưu tiên: CAO]: Là người dùng, tôi muốn có hiệu ứng chuyển trang mượt và loading animation khi tải dữ liệu.  

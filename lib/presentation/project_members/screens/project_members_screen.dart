@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -103,6 +104,9 @@ class ProjectMembersScreen extends StatelessWidget {
             final loaded = state as ProjectMembersLoaded;
             final canChangeRole =
                 hasPermission(loaded.currentUserRole, Permission.changeMemberRole);
+            final canManageMembers =
+                hasPermission(loaded.currentUserRole, Permission.manageMembers);
+            final currentUid = FirebaseAuth.instance.currentUser?.uid;
             final bloc = context.read<ProjectMembersBloc>();
 
             if (loaded.members.isEmpty) {
@@ -187,6 +191,7 @@ class ProjectMembersScreen extends StatelessWidget {
                         itemCount: loaded.members.length,
                         itemBuilder: (context, index) {
                           final member = loaded.members[index];
+                          final isSelf = member.userId == currentUid;
                           return MemberListTile(
                             member: member,
                             onTapRole: canChangeRole
@@ -194,6 +199,12 @@ class ProjectMembersScreen extends StatelessWidget {
                                       context: context,
                                       member: member,
                                       bloc: bloc,
+                                    )
+                                : null,
+                            // US-041: nút xoá chỉ hiện khi có quyền VÀ không phải chính mình
+                            onRemove: (canManageMembers && !isSelf)
+                                ? () => bloc.add(
+                                      ProjectMemberRemoveRequested(member.userId),
                                     )
                                 : null,
                           );
