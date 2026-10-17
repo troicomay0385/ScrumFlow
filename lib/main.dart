@@ -37,6 +37,8 @@ import 'data/repositories/story_repository_impl.dart';
 import 'presentation/auth/bloc/auth_bloc.dart';
 import 'presentation/auth/bloc/auth_event.dart';
 import 'presentation/standup/bloc/standup_bloc.dart';
+import 'presentation/settings/cubit/theme_cubit.dart';
+import 'presentation/settings/cubit/theme_state.dart';
 import 'app/services/connectivity_service.dart';
 import 'app/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -150,6 +152,9 @@ void main() async {
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider<ThemeCubit>(
+            create: (_) => ThemeCubit(),
+          ),
           BlocProvider<AuthBloc>(
             create: (context) =>
                 AuthBloc(authRepository)..add(AuthCheckRequested()),
@@ -180,25 +185,32 @@ class ScrumFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ScrumFlow',
-      theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.login,
-      // Luôn khởi động từ Login, bỏ qua URL của trình duyệt. Trên Web, khi
-      // reload ở một màn con (vd. `#/projects/detail`), Flutter sẽ dựng lại
-      // route đó mà KHÔNG có `arguments` (projectId) → crash màn hình đỏ.
-      // Login tự chuyển sang Home nếu phiên đăng nhập còn hiệu lực.
-      onGenerateInitialRoutes: (_) => [
-        AppRoutes.generateRoute(const RouteSettings(name: AppRoutes.login)),
-      ],
-      onGenerateRoute: AppRoutes.generateRoute,
-      debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        final content = child ?? const SizedBox.shrink();
-        final status = networkStatus;
-        if (status == null) return content;
-        return NetworkStatusBanner(statusStream: status, child: content);
+    return BlocBuilder<ThemeCubit, ThemeState>(
+      builder: (context, themeState) {
+        return MaterialApp(
+          title: 'ScrumFlow',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeState.themeMode,
+          initialRoute: AppRoutes.login,
+          // Luôn khởi động từ Login, bỏ qua URL của trình duyệt. Trên Web, khi
+          // reload ở một màn con (vd. `#/projects/detail`), Flutter sẽ dựng lại
+          // route đó mà KHÔNG có `arguments` (projectId) → crash màn hình đỏ.
+          // Login tự chuyển sang Home nếu phiên đăng nhập còn hiệu lực.
+          onGenerateInitialRoutes: (_) => [
+            AppRoutes.generateRoute(const RouteSettings(name: AppRoutes.login)),
+          ],
+          onGenerateRoute: AppRoutes.generateRoute,
+          debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            final content = child ?? const SizedBox.shrink();
+            final status = networkStatus;
+            if (status == null) return content;
+            return NetworkStatusBanner(statusStream: status, child: content);
+          },
+        );
       },
     );
   }
 }
+

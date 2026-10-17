@@ -213,310 +213,35 @@
   - **Loại bỏ tính năng tự động sinh mẫu Backlog & Sprint:** Xóa bỏ hoàn toàn nút "Nạp mẫu" và cơ chế tự nạp mảng `_buildSampleStories`/`_buildSampleSprints` trên `backlog_datasource.dart` & `sprint_datasource.dart`. Chuyển 100% sang luồng tạo mới và quản lý dữ liệu thủ công.
   - **Nâng cấp tính năng "Thêm từ backlog" vào Sprint (`sprint_detail_screen.dart`):** Bổ sung sự kiện batch `SprintStoriesAddRequested` trong `SprintBloc` giúp thêm danh sách User Story vào Sprint bằng 1 thao tác duy nhất (tránh xung đột ghi race condition). Thiết kế lại Modal Sheet chọn story với giao diện trực quan, hỗ trợ chọn tất cả, xem điểm Story Points và độ ưu tiên.
 
-### Ngày 06/10/2026: Sprint 3 — US-043 (Đổi assignee Task), US-044 (Deadline Task), US-045 (Comment User Story), US-046 (Comment Task)
+### Ngày 08/10/2026: Triển khai US-049 (Start Sprint), US-050 (Close Sprint) & US-030 (Responsive UI & Dark Mode)
 
-- **Nguyên tắc:** mở rộng hệ thống Task/Backlog sẵn có, KHÔNG tạo Task/User Story system thứ hai. Tái sử dụng `TaskModel`, `TaskRepository`, `TaskBloc`, `ProjectMemberRepository.streamMembers`, `FirebaseErrorMapper`, `RoleBadge`, `formatDateVi`.
-- **Hiện trạng trước khi làm:** Task lưu ở collection top-level `tasks/{taskId}` (chỉ có `storyId`, không có `projectId`), đã có `assigneeId`/`assigneeName`, chưa có deadline, **chưa có màn Task Detail**; chưa có bất kỳ Model/Repository/DataSource nào cho Comment.
-- **US-043 — Đổi người phụ trách Task:**
-  - Màn mới `TaskDetailScreen` (mở bằng cách bấm vào thẻ task trên Task Board của User Story). Ô "Người phụ trách" mở dialog `showAssigneePickerDialog` liệt kê **thành viên thực tế của project** (kèm role badge) + lựa chọn "Chưa phân công"; bấm "Lưu" mới ghi.
-  - `TaskDetailCubit.changeAssignee`: kiểm tra `Permission.assignTask`, chỉ nhận uid có trong danh sách thành viên project, rồi gọi `TaskRepository.updateTaskAssignee` — chỉ `update` 3 field `assigneeId`, `assigneeName`, `updatedAt` (không ghi đè field khác). Người được giao nhận thông báo qua `notifyTaskAssigned` sẵn có.
-- **US-044 — Deadline Task:**
-  - `TaskModel` thêm `deadline: DateTime?` (lưu **Timestamp** như `createdAt/updatedAt` của task; đọc được cả Timestamp lẫn ISO string; thiếu field/sai kiểu → `null`, không crash).
-  - Ô "Deadline" trong Task Detail: hiện `dd/MM/yyyy` hoặc "Chưa đặt", bấm để mở DatePicker, nút x để xoá deadline; quá hạn (chưa Done) hiện màu đỏ. Thẻ task trên board cũng hiện deadline.
-  - `TaskDetailCubit.setDeadline`: kiểm tra `Permission.setTaskDeadline`, chỉ lưu phần ngày, từ chối ngày trong quá khứ; `TaskRepository.updateTaskDeadline` chỉ `update` `deadline` + `updatedAt`.
-- **US-045 / US-046 — Bình luận (dùng chung 1 bộ code):**
-  - `CommentModel` + `CommentTarget` (`.story(projectId, storyId)` / `.task(projectId, taskId)`), `CommentDataSource`, `CommentRepository` + `CommentRepositoryImpl`, `CommentsCubit`, widget dùng chung `CommentsSection` / `CommentItem` / `CommentInput` (`lib/presentation/comments/`).
-  - Gắn `CommentsSection` vào cuối `UserStoryDetailScreen` (US-045) và `TaskDetailScreen` (US-046). Có loading / empty / error (kèm "Thử lại") / đang gửi; real-time qua Firestore stream; gửi thành công thì xoá ô nhập; hiện tên người viết + thời gian tương đối ("5 phút trước").
-  - Validate: không rỗng / không toàn khoảng trắng / tối đa 1000 ký tự (`CommentValidator`, kiểm tra ở cả Cubit, Repository và Rules). `CommentRepositoryImpl` kiểm tra đăng nhập + là thành viên project (`Permission.comment`) trước khi ghi; `authorId` luôn là uid đang đăng nhập.
-- **Firestore structure (không migrate dữ liệu cũ):**
-  - Comment User Story: `projects/{projectId}/userStories/{storyId}/comments/{commentId}`.
-  - Comment Task: `tasks/{taskId}/comments/{commentId}`.
-  - Field comment: `projectId`, `storyId` **hoặc** `taskId`, `authorId`, `authorName`, `content`, `createdAt` (server timestamp).
-  - Task: thêm `deadline` (Timestamp|null) và `projectId` (string). Task mới tạo từ Task Board có sẵn `projectId`; **task cũ** được gắn `projectId` tự động lần đầu mở Task Detail (`TaskRepository.attachProject`, chỉ update đúng 1 field) — cần cho rule bình luận task.
-- **Phân quyền (RBAC):** thêm `Permission.assignTask`, `Permission.setTaskDeadline`, `Permission.comment` cho cả **PO / SM / MEMBER** (actor của 4 US là "thành viên nhóm"). Không đổi mapping của các permission cũ.
-- **Firestore Security Rules (`firestore.rules`):**
-  - Thêm rule `comments` cho story và task: chỉ thành viên project đọc/tạo; `authorId == request.auth.uid`; `projectId`/`storyId`/`taskId` phải khớp path; nội dung 1–1000 ký tự; `createdAt == request.time`; không sửa/xoá.
-  - Task: `projectId` (nếu có) phải là project mà người gọi là thành viên và không đổi được sau khi gắn; task đã gắn project thì chỉ thành viên project sửa được; assignee mới phải là thành viên project (chỉ kiểm tra khi assignee thay đổi → kéo thả trạng thái không bị ảnh hưởng); `deadline` phải là null/Timestamp. Task cũ chưa có `projectId` giữ nguyên luật cũ.
-  - Thêm block `standups` (mọi user đã đăng nhập đọc/ghi) vì file trong repo trước đó **thiếu rule này** dù tính năng Stand-up đang dùng collection `standups`.
-  - ⚠️ **Rules đang chạy trên Firebase KHÁC file trong repo:** bản trên server (cập nhật 06/10/2026) là bản "mở" (`allow read, write: if isSignedIn()` cho mọi collection, có cả `standups`). Để không ảnh hưởng tính năng của các thành viên khác, phiên này **KHÔNG deploy `firestore.rules` trong repo**, mà deploy lên `scrumflow-c835d` bản **"rules đang chạy + chỉ thêm 2 block `comments`"** (cùng nội dung với block `comments` trong repo). Đã đọc lại rules trên server sau khi deploy để xác nhận.
-- **File mới:** `lib/data/models/comment_model.dart`, `lib/data/datasources/comment_datasource.dart`, `lib/data/repositories/comment_repository.dart`, `lib/data/repositories/comment_repository_impl.dart`, `lib/app/utils/comment_validator.dart`, `lib/presentation/comments/bloc/{comments_cubit,comments_state}.dart`, `lib/presentation/comments/widgets/{comments_section,comment_item,comment_input}.dart`, `lib/presentation/tasks/bloc/{task_detail_cubit,task_detail_state}.dart`, `lib/presentation/tasks/screens/task_detail_screen.dart`, `lib/presentation/tasks/widgets/assignee_picker_dialog.dart`, và 5 file test mới.
-- **File sửa:** `task_model.dart` (+`deadline`, `projectId`, `copyWith` có `clearAssignee`/`clearDeadline`), `task_repository.dart` (+`streamTask`, `updateTaskAssignee`, `updateTaskDeadline`, `attachProject`; `createTask` nhận thêm `projectId`/`deadline`), `task_event.dart` + `task_bloc.dart` (`TaskCreated.projectId`), `tasks/screens/task_board_screen.dart` (thêm tham số bắt buộc `projectId`, bấm thẻ mở Task Detail, hiện deadline), `user_story_detail_screen.dart` (truyền `projectId`, thêm card Bình luận), `permission.dart`, `role_permissions.dart`, `date_formatter.dart` (+`formatRelativeTimeVi`), `main.dart` (đăng ký `CommentRepository`), `firestore.rules`, `test/data/repositories/backlog_repository_impl_test.dart` (truyền mock `NotificationRepository`).
-- **Kiểm thử:**
-  - `flutter test`: **131/131 PASS**. Trước phiên này là 60 pass / **11 fail**: toàn bộ `backlog_repository_impl_test.dart` hỏng từ khi `BacklogRepositoryImpl` tự tạo `NotificationRepository()` thật (cần `Firebase.initializeApp()`); đã sửa bằng cách truyền mock trong test, không đổi code sản phẩm. Test mới: parse deadline null/Timestamp/string, đổi assignee theo từng role PO/SM/MEMBER, không chọn được người ngoài project, đặt/đổi/xoá deadline, từ chối ngày quá khứ, load/gửi comment, từ chối comment rỗng, author đúng, comment task không lẫn sang story, map lỗi Firebase.
-  - `flutter analyze`: **0 error**, 43 issue (info/warning) — bằng đúng số lượng trước khi sửa, không thêm issue mới.
-  - Firestore rules: chạy trên Firestore Emulator (cục bộ, không đụng dữ liệu thật) cho PO/SM/MEMBER/người ngoài project/chưa đăng nhập — **30/30** với `firestore.rules` trong repo (gồm cả kiểm tra các thao tác Task cũ của teammate vẫn chạy) và **15/15** với bản đã deploy lên server.
-  - Chrome: `flutter run -d web-server` build và phục vụ thành công tại `http://localhost:5000`. **Kịch bản thao tác tay** (đổi assignee, đặt deadline, gửi comment, refresh, đăng nhập user khác) **chưa được xác nhận trong phiên này**.
-- **Việc còn lại / lưu ý:**
-  - Rules trên server hiện vẫn là bản "mở" cho Task/User Story/Project (chỉ riêng `comments` được kiểm tra thành viên project). Việc kiểm tra assignee phải là thành viên project, deadline đúng kiểu... mới chỉ được chặn ở tầng app; phần rule tương ứng nằm sẵn trong `firestore.rules` của repo nhưng **chưa có hiệu lực** cho tới khi nhóm thống nhất deploy bản chặt.
-  - Nếu ai deploy lại rules từ Firebase Console/CLI thì phải giữ 2 block `comments`, nếu không bình luận sẽ báo lỗi không có quyền.
-  - `TaskBoardScreen` (theo story) giờ bắt buộc truyền `projectId` — nhánh nào còn gọi kiểu cũ cần thêm tham số này.
-
-### Ngày 07/10/2026: Giai đoạn 1 — Hoàn thiện Sprint 2 (US-007, US-008, US-012) & Kích hoạt Thông báo US-029
-
-- **US-029 — Kích hoạt Push/In-app Notification khi có bình luận mới & Popup chi tiết:**
-  - `CommentRepositoryImpl.addComment`: Tự động tìm `assigneeId` của task khi bình luận, nếu khác người bình luận thì gọi `_notificationRepository.notifyNewComment(...)` gửi thông báo đến người phụ trách.
-  - `NotificationListScreen`: Khi tap vào bất kỳ thông báo nào, hiển thị `AlertDialog` xem chi tiết tiêu đề, nội dung, thời gian và loại thông báo; tự động đánh dấu đã đọc.
-- **US-007 — Tìm kiếm User Story theo từ khóa:**
-  - Tích hợp thanh tìm kiếm `TextField` (icon kính lúp, nút xóa nhanh từ khóa) tại `BacklogListScreen`.
-  - Hỗ trợ tìm kiếm thời gian thực theo: tiêu đề, mã story (`US-xxx`), nội dung mô tả, và danh sách nhãn (`tags`). Không phân biệt hoa thường. Tự động reset về trang 1 khi gõ tìm kiếm.
-- **US-008 — Bộ lọc User Story đa tiêu chí:**
-  - Nút "Lọc" kèm Badge đếm số lượng bộ lọc đang active (`activeFilterCount`).
-  - Modal BottomSheet hỗ trợ chọn linh hoạt:
-    - Trạng thái: Tất cả / To Do / In Progress / Done.
-    - Mức ưu tiên: Tất cả / CAO / TB / THẤP.
-    - Nhãn (Tags): Trích xuất động toàn bộ tag độc nhất từ các story trong dự án.
-  - Hỗ trợ nút "Đặt lại" để xóa toàn bộ điều kiện lọc và tìm kiếm về mặc định.
-- **US-012 — Xóa User Story độc lập:**
-  - Thêm icon nút xóa (`Icons.delete_outline_rounded`) trên AppBar của `UserStoryDetailScreen` (chỉ hiển thị khi người dùng có quyền PO/SM: `Permission.manageBacklog`).
-  - Hộp thoại xác nhận `DeleteUserStoryDialog` kèm cảnh báo tác động xóa vĩnh viễn và các task liên quan.
-  - Quản lý trạng thái bằng `DeleteUserStoryCubit` chống bấm lặp (anti-double-tap) và cập nhật real-time.
-- **Kiểm thử tự động & Đóng gói:**
-  - `flutter test`: **141 / 141 tests PASS sạch 100%**.
-  - `flutter analyze`: **0 error**.
-
-- **Sửa lỗi nút Lọc & Bổ sung chức năng Đổi người phụ trách User Story:**
-  - Sửa lỗi Red Screen "Could not find the correct Provider<BacklogBloc> above this BacklogFilterBottomSheet Widget": Bọc `BlocProvider.value(value: backlogBloc)` trong `_showFilterBottomSheet` tại `BacklogListScreen`.
-  - Bổ sung chức năng Đổi người phụ trách cho User Story ngay trong `EditUserStoryDialog` (`edit_user_story_dialog.dart`), thêm `UserStoryModel.copyWith(clearAssignee: ...)`, cập nhật `BacklogDataSource.updateUserStory`, `BacklogRepository.updateUserStory`, `EditUserStoryCubit.submit`, và cập nhật UI tức thì trên `UserStoryDetailScreen`.
-
-### Ngày 07/10/2026: Giai đoạn 2 — US-047 (Đính kèm Tệp / Attachment cho User Story & Task)
-
-- **US-047 — Đính kèm File & Liên kết ngoài cho User Story và Task:**
-  - **Mô hình & Dữ liệu:**
-    - `AttachmentModel`: Quản lý siêu dữ liệu tệp (`fileName`, `fileSize`, `fileType`, `fileUrl`, `isLink`, `uploadedById`, `uploadedByName`, `createdAt`). Tự động định dạng dung lượng tệp (`formattedSize`: B, KB, MB) và phân loại biểu tượng (`AttachmentType`: image, pdf, doc, link, archive, other).
-    - `AttachmentTarget`: Thiết kế dùng chung nhất quán với Comments (`AttachmentTarget.story` và `AttachmentTarget.task`).
-    - `AttachmentDataSource`: Thao tác CRUD real-time trên sub-collection `attachments` của User Story (`projects/{projectId}/userStories/{storyId}/attachments`) và Task (`tasks/{taskId}/attachments`).
-    - `AttachmentRepository` & `AttachmentRepositoryImpl`: Kiểm tra đăng nhập, xác thực thành viên dự án (`isProjectMember`), lấy tên người tải lên, bọc xử lý lỗi thân thiện qua `FirebaseErrorMapper`. Đăng ký `AttachmentRepository` vào `MultiRepositoryProvider` trong `main.dart`.
-  - **Quản lý trạng thái (Cubit):**
-    - `AttachmentsCubit` & `AttachmentsState`: Lắng nghe stream danh sách tệp real-time; hỗ trợ `pickAndUploadFile` (chọn file từ máy), `addLink` (thêm liên kết web Figma/Docs/Drive...), `deleteAttachment` (xóa tệp đính kèm).
-  - **Giao diện người dùng (Bento Card Design System):**
-    - `AttachmentsSection`: Card Bento tiêu chuẩn tích hợp vào cả `UserStoryDetailScreen` và `TaskDetailScreen`. Hiển thị badge số lượng tệp, thanh tiến trình loading, trạng thái rỗng trực quan.
-    - `AddAttachmentBottomSheet`: BottomSheet hiện đại cho phép chuyển đổi 2 tab "Tải từ máy" (chọn file đa định dạng từ bộ nhớ thiết bị di động) và "Liên kết web" (nhập tên hiển thị và URL tài liệu).
-    - `AttachmentItemWidget`: Hiển thị icon màu sắc theo định dạng tệp, tên tệp, dung lượng, người tải, ngày giờ tải; nút mở liên kết (`url_launcher`) và nút xóa kèm hộp thoại xác nhận.
-  - **Firestore Security Rules:**
-    - Thêm quy tắc bảo mật cho sub-collection `attachments` trong cả `userStories` và `tasks` trên `firestore.rules`.
-  - **Kiểm thử tự động:**
-    - Bổ sung 3 file unit test mới: `attachment_model_test.dart` (5 tests), `attachment_repository_impl_test.dart` (7 tests), `attachments_cubit_test.dart` (7 tests).
-    - Tổng bộ test dự án nâng lên **160 / 160 tests PASS sạch 100%**.
-    - `flutter analyze`: **0 error**.
-
-
-### Ngày 07/10/2026: Giai đoạn 3 — US-058 (Tính Điểm Hiệu Suất Thành Viên) & US-057 (Trợ Lý Gợi Ý Phân Công AI)
-
-- **US-058 — Tự động tính điểm hiệu suất (Performance Score) cho từng thành viên:**
-  - **Mô hình `MemberPerformanceScore`:** Quản lý chỉ số định lượng chi tiết cho từng thành viên trong dự án:
-    - `totalTasks`: Tổng số task được giao trong dự án.
-    - `completedOnTimeTasks` & `completedOverdueTasks`: Phân loại task hoàn thành trước/đúng hạn hoặc sau hạn dựa trên mốc thời gian cập nhật `updatedAt` so với `deadline`.
-    - `inProgressTasks`: Khối lượng task đang thực hiện đồng thời.
-    - `onTimeRate`: Tỷ lệ hoàn thành đúng hạn (0.0 -> 1.0). Thành viên mới chưa có task được gán mặc định 1.0 (sẵn sàng nhận việc).
-    - `workloadFactor`: Mức độ rảnh rỗi / tải công việc tính theo $\text{clamp}(1.0 - \frac{\text{inProgressTasks}}{5}, 0.0, 1.0)$.
-    - `finalScore`: Điểm hiệu suất tổng hợp theo công thức chuẩn:
-      $$\text{finalScore} = 0.5 \cdot \text{onTimeRate} + 0.3 \cdot \text{workloadFactor} + 0.2 \cdot \text{ratingScore}$$
-    - Formatters tiện ích: `scorePercentage` (VD: "94%"), `workloadText` (VD: "1/5 task đang làm").
-  - **Dịch vụ `PerformanceScoreService`:** 
-    - Thuật toán tự động quét toàn bộ task của dự án qua `TaskRepository.getTasksByProject(projectId)`, tính toán các trọng số $w_1, w_2, w_3$, xếp hạng giảm dần theo điểm số và độ rảnh rỗi.
-    - Tự động sinh lý do phân tích thông minh dựa trên dữ liệu thực tế (VD: *"Tỷ lệ đúng hạn xuất sắc 100% • Đang hoàn toàn rảnh rỗi"* hoặc *"Thành viên mới sẵn sàng nhận việc • Workload tối ưu (0/5)"*).
-
-- **US-057 — Trợ lý AI gợi ý phân công tối ưu nhất cho Task và User Story:**
-  - **Giao diện Trợ lý Bento Card AI (`assignee_picker_dialog.dart`):**
-    - Banner tím gradient phong cách Bento hiện đại: `✨ Gợi ý phân công AI (US-057)` hiển thị ở đầu dialog chọn người phụ trách.
-    - Huy hiệu điểm số nổi bật (VD: `100% Điểm`), tên thành viên Top 1 được AI lựa chọn, và lý do gợi ý khách quan.
-    - Nút thao tác nhanh 1 chạm `⚡ Chọn nhanh [Tên]` giúp người dùng áp dụng gợi ý tức thì mà không cần cuộn tìm trong danh sách.
-    - Mỗi thành viên trong danh sách đều có thêm Pill Badge trực quan: Badge `% hiệu suất` (màu xanh lục nếu $\ge 80\%$, màu vàng cam nếu $\ge 50\%$) và Badge `X/5 task đang làm`.
-  - **Tích hợp đồng bộ trên toàn ứng dụng:**
-    - `TaskDetailScreen`: Tích hợp khi đổi người phụ trách Task.
-    - `EditUserStoryDialog`: Tích hợp khi đổi người phụ trách User Story trong Product Backlog.
-
-- **Kiểm thử tự động & Đóng gói:**
-  - Bổ sung 2 file unit test mới:
-    - `test/data/models/performance_score_model_test.dart` (2 tests).
-    - `test/data/services/performance_score_service_test.dart` (5 tests).
-  - Toàn bộ suite test dự án đạt **167 / 167 tests PASS sạch 100%**.
-  - `flutter analyze`: **0 error**.
-  - Đóng gói thành công bản build APK debug `build/app/outputs/flutter-apk/app-debug.apk` trong 61.4s.
-
-
-### Ngày 08/10/2026: Sửa Lỗi Hiển Thị US-004, Hoàn Thành Sprint 4 (US-060, US-025, US-023, US-024) & Tinh Chỉnh Giao Diện
-
-- **Sửa lỗi hiển thị UI & Overflow trên US-004:**
-  - Phát hiện lỗi tràn viền 15px (`A RenderFlex overflowed by 15 pixels on the right`) tại màn hình chi tiết User Story US-004 (`user_story_detail_screen.dart`): Khi badge độ ưu tiên đặt cạnh các thành phần phụ trong `Row`, việc thiếu ràng buộc linh hoạt khiến màn hình hẹp bị tràn viền đỏ.
-  - Sửa lỗi triệt để trong `priority_badge.dart` và `user_story_detail_screen.dart`: Bọc chữ và nhãn trong `Flexible` kèm `TextOverflow.ellipsis`, giữ cho UI co giãn đàn hồi hoàn hảo trên mọi kích thước màn hình.
-
-- **US-060 — Thống kê Hiệu suất Đội ngũ (Team Performance Dashboard):**
-  - Xây dựng `TeamPerformanceScreen` phong cách Bento Box:
-    - Khu vực KPI toàn đội: Điểm hiệu suất trung bình %, Tỷ lệ hoàn thành đúng hạn %, Tải công việc trung bình.
-    - Danh sách thẻ thành viên chi tiết: Tỷ lệ đúng hạn, tải công việc X/5 task, Pill Badge điểm hiệu suất % và lý do phân tích khách quan từ AI.
-    - Nút truy cập nhanh từ AppBar của `ProjectDetailScreen` (icon `analytics_outlined`).
-
-- **US-025 — Biểu đồ Burndown Chart:**
-  - Xây dựng `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas trực quan:
-    - Đường lý tưởng (Ideal Guideline) nét đứt màu xám bạc.
-    - Đường thực tế (Actual Progress) nét liền gradient tím kèm các điểm mốc (dots) ngày/story points.
-    - Thống kê tóm tắt: Tổng Story Points ban đầu, điểm đã xong, điểm còn lại, cùng nhãn đánh giá "Đúng tiến độ" / "Chậm tiến độ".
-    - Tích hợp mượt mà vào đầu màn hình `SprintDetailScreen`.
-
-- **US-023 — Biên bản Sprint Review:**
-  - Mô hình `SprintReviewModel`, DataSource & `SprintReviewRepository` lưu trữ sub-collection `/projects/{id}/sprints/{id}/reviews`.
-  - Hộp thoại `SprintReviewDialog`: Tóm tắt demo, ghi nhận ý kiến stakeholders, bảng nghiệm thu chấp thuận/từ chối (Accepted / Rejected) từng User Story với giao diện chuyển đổi trực quan, lưu trữ real-time.
-
-- **US-024 — Không gian Sprint Retrospective 3 cột chuẩn Scrum:**
-  - Mô hình `SprintRetroItemModel`, DataSource & `SprintRetroRepository` lưu trữ sub-collection `/projects/{id}/sprints/{id}/retroItems`.
-  - Màn hình `SprintRetroScreen` hỗ trợ 3 cột Scrum tiêu chuẩn: "Làm tốt", "Cần cải thiện", "Kế hoạch hành động".
-  - Cho phép đóng góp ý kiến theo cột, bình chọn/vote đồng tình (`upvoteCount`), hiển thị người gửi và thời gian real-time.
-
-- **Tinh chỉnh giao diện (UI Polish) theo yêu cầu:**
-  - Loại bỏ các chữ/nhãn mã kỹ thuật (`US-25`, `US-023`, `US-60`, `US-024`) tại các tiêu đề và thẻ chức năng:
-    - Burndown Chart: Bỏ nhãn `(US-025)`, giữ tiêu đề "Burndown Chart".
-    - Sprint Review: Bỏ nhãn `(US-023)` ở tiêu đề biên bản và thay thẻ badge trên thẻ Sprint Bento bằng icon mũi tên điều hướng.
-    - Hiệu suất Đội ngũ: Bỏ nhãn `(US-060)`, giữ tiêu đề "Hiệu suất Đội ngũ".
-- **US-048 — Cập nhật trạng thái User Story (Clean Architecture):**
-  - **Kiến trúc Clean Architecture:**
-    - Domain: [`story_repository.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/repositories/story_repository.dart) và [`update_story_status_usecase.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/domain/usecases/story/update_story_status_usecase.dart).
-    - Data: [`story_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/story_repository_impl.dart), mở rộng [`backlog_repository_impl.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/repositories/backlog_repository_impl.dart) và [`backlog_datasource.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/data/datasources/backlog_datasource.dart).
-    - Presentation: [`update_story_status_cubit.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/bloc/update_story_status_cubit.dart) và widget [`change_status_dialog.dart`](file:///d:/DO_AN_LTTTBDD/ScrumFlow/lib/presentation/story/widgets/change_status_dialog.dart).
-  - **Phân quyền & Nghiệp vụ:**
-    - Hỗ trợ 4 trạng thái: "To Do", "In Progress", "Done", "Rejected".
-    - Kiểm soát vai trò nghiêm ngặt: Chỉ PO (Product Owner) hoặc SM (Scrum Master) trong dự án mới được thao tác. Người dùng không có quyền nhận thông báo "Chỉ PO/SM mới có quyền cập nhật trạng thái".
-    - Khi trạng thái chuyển sang "Done" hoặc "Rejected", tự động cập nhật `updatedAt` và `completedAt` trên Cloud Firestore và Local Cache. Khi quay lại "To Do" hoặc "In Progress", `completedAt` được giải phóng.
-  - **UI/UX & Trải nghiệm người dùng:**
-    - `ChangeStatusDialog` thiết kế hiện đại, thẻ trạng thái trực quan với icon và màu sắc đặc trưng (To Do xám, In Progress cam, Done xanh ngọc, Rejected đỏ).
-    - Tích hợp trực tiếp vào Badge trạng thái và AppBar của màn hình chi tiết User Story (`UserStoryDetailScreen`), hỗ trợ hiển thị Badge màu đỏ nổi bật cho trạng thái `Rejected` trên cả danh sách thẻ và chi tiết.
-    - Cập nhật thời gian thực (reactive) không cần reload danh sách, thông báo kết quả bằng SnackBar.
-
-- **Kiểm thử tự động & Đóng gói:**
-  - Toàn bộ **173 / 173 unit tests PASS sạch 100%**.
-  - `flutter analyze`: **0 error**.
-  - Đóng gói APK cài đặt trực tiếp lên thiết bị di động thật Xiaomi 11T qua ADB.
+- **US-049 — Start Sprint (Bắt đầu Sprint):**
+  - Xây dựng UseCase `StartSprintUseCase`, phân quyền chỉ cho PO/SM khởi chạy Sprint.
+  - Ràng buộc kiểm tra chặt chẽ: Chỉ 1 Sprint Active duy nhất trong project, Sprint phải có >= 1 User Story.
+  - Hộp thoại `StartSprintDialog` hiển thị ngày bắt đầu và dự kiến kết thúc, xác nhận kích hoạt Sprint.
+- **US-050 — Close Sprint (Đóng Sprint):**
+  - Xây dựng UseCase `CloseSprintUseCase` sử dụng Firestore `WriteBatch` để cập nhật atomic trạng thái Sprint thành Completed và chuyển User Story chưa xong về Product Backlog (`sprintId = null`) hoặc Sprint tiếp theo.
+  - Hộp thoại `CloseSprintDialog` thống kê Story Done vs chưa hoàn thành, cho phép PO/SM linh hoạt điều hướng Story tồn đọng.
+- **US-030 — Responsive UI & Dark Mode (Giao diện thích ứng & Chế độ tối):**
+  - Định nghĩa bảng màu Dark Mode hoàn chỉnh trong `lib/app/constants/app_colors.dart` và `lib/app/theme/app_theme.dart` (Light Theme & Kinetic Sprint Dark Theme theo chuẩn Material 3).
+  - Xây dựng `ThemeCubit` & `ThemeState` (`lib/presentation/settings/cubit/`) lưu trạng thái giao diện vào `shared_preferences` (`scrumflow_theme_mode`).
+  - Tích hợp nút chuyển đổi giao diện nhanh (Sun/Moon toggle) trên thanh AppBar của `HomeScreen` và Switch bật/tắt trong `SecuritySettingsDialog`.
+  - Khai báo `ThemeCubit` trong `main.dart` bọc `MaterialApp` để cập nhật `themeMode` reactive real-time.
+  - Xây dựng widget tiện ích thích ứng `ResponsiveLayout` (`lib/app/utils/responsive_layout.dart`) dùng `LayoutBuilder` với Breakpoint: Mobile < 600px, Tablet/Desktop >= 600px.
+  - Áp dụng `ResponsiveLayout` cho các màn hình chính:
+    - **LoginScreen:** Bố cục thích ứng với Bento Form trên Mobile; trên Tablet/Desktop (>= 600px) căn giữa hoặc hiển thị bố cục 2 cột với panel ScrumFlow Agile Hero Branding.
+    - **HomeScreen (Dashboard):** Hiển thị danh sách dự án dạng GridView 2-3 cột thích ứng và Bento stats dàn ngang tối ưu cho màn hình Tablet/Desktop.
+    - **TaskBoardScreen (Kanban Board):** Hiển thị 3 cột cuộn ngang trên Mobile; trên Tablet/Desktop các cột To Do, In Progress, Done tự động dàn đều side-by-side toàn màn hình.
 
 ---
 
-### Ngày 08/10/2026: US-049 (Start Sprint) & US-050 (Close Sprint)
-
-- **US-049 — Bắt đầu Sprint (Start Sprint):**
-  - **Domain Layer:** Tạo mới `lib/domain/usecases/sprint/start_sprint_usecase.dart` — UseCase validate input (projectId, sprintId, ngày hợp lệ) trước khi delegate xuống Repository.
-  - **Data Layer:**
-    - Bổ sung abstract method `startSprint()` vào `SprintRepository`.
-    - Implement `startSprint()` trong `SprintRepositoryImpl` với **3 ràng buộc nghiệp vụ nghiêm ngặt**:
-      1. Chỉ PO/SM mới được thực hiện (kiểm tra `Permission.manageSprint`).
-      2. Sprint phải ở trạng thái "Planned".
-      3. Chỉ được có 1 Sprint "Active" trong 1 project tại 1 thời điểm — báo lỗi nếu đã có sprint khác Active.
-      4. Sprint phải có ≥ 1 User Story.
-    - Bổ sung `startSprint()` vào `SprintDataSource` — cập nhật Firestore document và local cache.
-  - **Presentation Layer:**
-    - Thêm event `SprintStartRequested` vào `sprint_event.dart`.
-    - Thêm handler `_onStartRequested` vào `SprintBloc`.
-    - Tạo `lib/presentation/sprints/widgets/start_sprint_dialog.dart` — Dialog xác nhận bắt đầu Sprint hiển thị tên sprint, số stories, ngày bắt đầu hôm nay (cố định), ngày kết thúc (có thể chỉnh), thời lượng tự tính. Thiết kế Kinetic Sprint với gradient header và animation loading.
-    - Tích hợp nút **"Bắt đầu"** (`FilledButton.icon + rocket_launch`) vào AppBar của `SprintDetailScreen` — chỉ hiện khi sprint Planned & canManage.
-
-- **US-050 — Đóng Sprint (Close Sprint):**
-  - **Domain Layer:** Tạo mới `lib/domain/usecases/sprint/close_sprint_usecase.dart` — UseCase validate rồi delegate xuống Repository.
-  - **Data Layer:**
-    - Bổ sung abstract method `closeSprint()` vào `SprintRepository`.
-    - Implement `closeSprint()` trong `SprintRepositoryImpl` — kiểm tra sprint đang Active trước khi đóng.
-    - Bổ sung `closeSprint()` vào `SprintDataSource` với **Firestore `WriteBatch` atomic**:
-      - Cập nhật `status = 'Completed'` cho Sprint trong 1 write.
-      - Gỡ incomplete stories khỏi `storyIds` của sprint cũ.
-      - Nếu chuyển sang sprint tiếp theo: `arrayUnion` vào sprint đó.
-      - Nếu về backlog: `update({sprintId: null})` trên từng story document.
-      - Toàn bộ trong 1 `batch.commit()` — atomic, không partial update.
-  - **Presentation Layer:**
-    - Thêm event `SprintCloseRequested` vào `sprint_event.dart`.
-    - Thêm handler `_onCloseRequested` vào `SprintBloc`.
-    - Tạo `lib/presentation/sprints/widgets/close_sprint_dialog.dart` — Dialog đóng Sprint với:
-      - Thống kê trực quan: LinearProgressBar Done%, chip "X Hoàn thành" + "Y Chưa xong".
-      - Radio options để chọn đích chuyển story: **Product Backlog** hoặc bất kỳ **Sprint Planned** còn lại.
-      - Nếu tất cả story Done: hiện banner chúc mừng 🎉.
-    - Tích hợp nút **"Đóng Sprint"** (màu đỏ `DC2626 + flag_rounded`) vào AppBar của `SprintDetailScreen` — chỉ hiện khi sprint Active & canManage.
-    - Phương thức `_showCloseSprintDialog()` trong `SprintDetailScreen` load stories trước khi mở dialog.
-
-- **File mới:** `lib/domain/usecases/sprint/start_sprint_usecase.dart`, `lib/domain/usecases/sprint/close_sprint_usecase.dart`, `lib/presentation/sprints/widgets/start_sprint_dialog.dart`, `lib/presentation/sprints/widgets/close_sprint_dialog.dart`
-- **File sửa:** `sprint_repository.dart` (+`startSprint`, `closeSprint`), `sprint_repository_impl.dart` (+impl 2 method), `sprint_datasource.dart` (+impl + WriteBatch), `sprint_event.dart` (+2 events), `sprint_bloc.dart` (+2 handlers), `sprint_detail_screen.dart` (+imports, +2 nút AppBar, +`_showCloseSprintDialog`), `NguCanh.md` (đánh dấu US-049, US-050 ✅).
-### Ngày 14/10/2026: Hoàn Thiện US-038 (Xoá Dự Án Cho Admin/PO), US-062 (SQLite Offline Cache Cho Backlog/Task) & Push Nhánh `hieuthu5`
-
-- **US-038 — Xoá Project dành cho Quản trị viên / PO:**
-  - **Tầng dữ liệu (`ProjectRepositoryImpl` & `ProjectDataSource`):**
-    - Bổ sung phương thức `deleteProject(projectId)` với cơ chế kiểm soát quyền PO bắt buộc (`Permission.manageProject`).
-    - Quy trình xoá tuần tự và an toàn: Xoá toàn bộ bản ghi thành viên liên quan trong `projectMembers`, xoá document dự án trong `projects/{projectId}`, dọn sạch membership của PO, và kích hoạt dọn sạch toàn bộ cache SQLite cục bộ của dự án (`clearProjectCache`).
-  - **Quy tắc bảo mật (`firestore.rules`):**
-    - Mở rộng quyền `allow delete` cho document `projects/{projectId}` và `projectMembers/{membershipId}`: Cho phép người tạo (`createdBy`) hoặc người giữ vai trò `PO` được xoá dự án và các membership tương ứng.
-  - **Giao diện & Trải nghiệm người dùng (UX):**
-    - **Tại màn hình Chi tiết dự án (`ProjectDetailScreen`):** Nút thùng rác đỏ trên AppBar (chỉ hiện với PO) mở hộp thoại xác nhận cảnh báo dữ liệu không thể hoàn tác, điều hướng về trang chủ khi xoá thành công.
-    - **Tại thẻ dự án trên Trang chủ (`HomeScreen` & `ProjectListTile`):** Thêm nút menu tuỳ chọn 3 chấm (`...`) cạnh Badge vai trò PO trên từng thẻ dự án, cho phép PO thao tác xoá dự án nhanh trực tiếp từ danh sách mà không cần mở vào trong, kết nối với `ProjectListBloc` (`ProjectDeleteRequested`) để tự động làm mới danh sách.
-
-- **US-062 — Lưu Cache Backlog & Task xuống SQLite Cục Bộ Để Xem Khi Mất Mạng:**
-  - **Mở rộng SQLite Cache (`LocalCacheDataSource`):**
-    - Nâng cấp schema cơ sở dữ liệu SQLite (`scrumflow_cache.db` v2) bổ sung 2 bảng `cached_user_stories` và `cached_tasks` có chỉ mục Index theo `projectId` và `storyId`.
-    - Cung cấp đầy đủ các phương thức CRUD cache: `cacheUserStories`, `getCachedUserStories`, `deleteCachedStory`, `cacheTasks`, `getCachedTasks`, `getCachedTasksByProject`, `getCachedTask`, `deleteCachedTask`, `clearProjectCache`.
-  - **Đồng bộ với Repositories:**
-    - `BacklogRepositoryImpl`: Tự động lưu cache khi tải User Stories thành công; tự động kích hoạt cơ chế fallback đọc dữ liệu từ SQLite khi mất mạng/ngoại tuyến (`streamUserStories`, `getUserStories`, `getUserStory`, `getStoriesByIds`); tự động xoá cache khi xoá story.
-    - `TaskRepository`: Tự động ghi nhận cache SQLite khi stream danh sách task; tự động fallback đọc SQLite khi mất mạng (`streamTasksByStory`, `streamTasksByProject`, `getTasksByProject`, `streamTask`); tự động xoá task trong SQLite khi có lệnh xoá.
-
-- **Kiểm thử tự động & Đóng gói:**
-  - Toàn bộ bộ kiểm thử tự động đạt **194 / 194 unit tests & widget tests PASS sạch 100%**.
-  - Kiểm tra cú pháp và chất lượng mã nguồn: `flutter analyze` đạt **0 error**.
-  - Cập nhật tiến độ Sprint 5 trong bảng theo dõi đạt **7 / 9 User Stories** hoàn thành.
-
-- **Đồng bộ mã nguồn lên GitHub (Commit `204433f`):**
-  - Commit message: `feat: complete US-038 (delete project for PO/Admin) and US-062 (offline SQLite cache for backlog and tasks)`.
-  - Đã push thành công lên nhánh **`hieuthu5`** của repository `https://github.com/troicomay0385/ScrumFlow.git`.
-
-### Ngày 14/10/2026: Sprint 5 — US-063 (Mất mạng & Timeout), US-064 (Chuyển trang & Loading), US-055 (Responsive), US-054 (Bộ Test Case 5 Sprint)
-
-- **Khảo sát trước khi sửa:** App gọi **Firebase trực tiếp** (Firestore `get()`/`snapshots()`, không có HTTP client riêng). Baseline trước khi sửa: `flutter test` **194/194 PASS**, `flutter analyze` 51 info, 0 error. Phát hiện một số lỗi có sẵn (ghi ở mục "Bug" bên dưới).
-
-- **US-063: Thông báo rõ khi mất mạng / timeout, có "Thử lại":**
-  - Module lỗi dùng chung `lib/app/errors/`:
-    - `AppFailure`: 8 loại `noConnection` / `timeout` / `server` / `permission` / `auth` / `notFound` / `validation` / `unknown`, thông báo tiếng Việt và cờ `isRetryable`.
-    - `AppErrorHandler.classify()`: chuyển `FirebaseException`, `TimeoutException`, `PlatformException`, chuỗi `SocketException`… thành `AppFailure`. Không lộ mã kỹ thuật/stack trace. Lỗi nghiệp vụ dạng `Exception('…')` vẫn giữ nguyên thông báo tiếng Việt.
-    - `timeoutFirstEvent()`: timeout **cho lần phát dữ liệu đầu tiên** của stream Firestore (15 giây). Stream vẫn được giữ, nên khi mạng có lại UI tự chuyển sang dữ liệu mà không tạo request mới.
-  - `ConnectivityService` thêm `isOnline()` (không bao giờ throw) và `onStatusChanged`. Chỉ dùng làm **pre-check**: "có Wi-Fi" không đảm bảo tới được máy chủ, trường hợp đó được bắt bằng timeout.
-  - `NetworkStatusBanner` (đăng ký qua `MaterialApp.builder` trong `main.dart`): dải cam "Không có kết nối mạng" khi mất mạng; dải xanh "Đã kết nối lại." hiện 3 giây khi có mạng lại.
-  - Áp dụng cho các luồng tải chính: `ProjectListBloc` (Trang chủ), `BacklogBloc`, `SprintBloc`, `ProjectMembersBloc`, `ProjectDetailScreen`. Mỗi luồng: kiểm tra mạng trước khi tải → timeout → phân loại lỗi → màn lỗi kèm "Thử lại" (ẩn nút với lỗi quyền/xác thực).
-  - **Chống request trùng:** `ProjectListBloc` bỏ qua yêu cầu khi đang tải. Backlog/Sprint dùng transformer `restartable()` tự viết (`lib/app/utils/event_transformers.dart`, không thêm package `bloc_concurrency`). Nút "Thử lại" bị khoá sau lần bấm đầu. **Không có retry tự động** (chỉ thử lại thủ công).
-  - `SprintLoadFailure` (state mới) tách lỗi *tải lần đầu* khỏi `SprintError` (lỗi thao tác hiện SnackBar).
-
-- **US-064: Hiệu ứng chuyển trang & loading:**
-  - `lib/app/routes/app_page_transitions.dart`: hiệu ứng fade + trượt nhẹ 4% dùng chung, đăng ký qua `AppTheme.pageTransitionsTheme`, nên **mọi `MaterialPageRoute` (18 chỗ) và named route** giờ chuyển trang giống nhau mà không phải sửa từng `Navigator.push`. iOS/macOS giữ hiệu ứng Cupertino để không mất thao tác vuốt Back. Khi bật "Giảm chuyển động" (`disableAnimations`) thì chuyển trang tức thì.
-  - Widget dùng chung `lib/presentation/common/widgets/`: `AppLoadingView`, `AppErrorView`, `AppEmptyView`, `SkeletonList` (một `AnimationController`, đứng yên khi giảm chuyển động) và `NetworkStatusBanner`.
-  - Skeleton cho Trang chủ, Backlog, Sprint. Màn lỗi/rỗng thống nhất cho Backlog, Sprint, Thành viên, Chi tiết Project, Chi tiết Sprint. Kéo-để-làm-mới ở Trang chủ giữ vòng loading tới khi tải xong.
-
-- **US-055: Responsive (sửa dựa trên lỗi đo được, không thiết kế lại):** Viết widget test dựng màn hình ở **320×568 và 430×932, cỡ chữ ×1.0 và ×1.3**, và dialog khi **bàn phím chiếm 260 px**. Kết quả phát hiện và sửa tràn layout ở:
-  - Đăng nhập (pill, link Đăng ký, badge bảo mật → `Wrap`), Đăng ký (nút, link), checklist mật khẩu.
-  - Backlog: thanh KPI; thanh phân trang (nút từ ~24 px lên 40 px); bộ sắp xếp; hàng gọn `CompactUserStoryRow` (dùng `minHeight` thay vì chiều cao cố định; ẩn SP dưới 360 px và mã story dưới 300 px; badge trạng thái co giãn).
-  - Thẻ Sprint (tên 2 dòng, chừa chỗ cho FAB); Thành viên (tên/email 1 dòng, badge vai trò ≤ 40% chiều rộng).
-  - Các dialog Tạo Story / Tạo Sprint / Thêm thành viên (`AlertDialog.scrollable`) và Bắt đầu Sprint (`SingleChildScrollView`). Đồng thời bỏ nhãn kỹ thuật "US-049 ·" trong dialog Bắt đầu Sprint, theo quy ước UI Polish ngày 08/10.
-
-- **US-054: Bộ Test Case 5 Sprint:** `docs/testing/BaoCaoKiemThu_US054.md` và `docs/testing/test_cases.csv` (72 TC truy vết tới User Story: **48 PASS** đã chạy tự động, **22 NOT RUN**, **2 BLOCKED**), kèm hướng dẫn chạy test, checklist kiểm thử thủ công trên Android và danh sách bug.
-
-- **Bug có sẵn được phát hiện và sửa:**
-  1. Backlog/Sprint datasource **nuốt lỗi stream** và phát danh sách rỗng, khiến mất mạng bị hiển thị thành "Backlog trống / Chưa có Sprint". Nay: đã có dữ liệu thì giữ, chưa có thì báo lỗi. Snapshot rỗng từ cache khi chưa từng đồng bộ không còn bị coi là "trống" (`snapshots(includeMetadataChanges: true)`).
-  2. Mỗi lần subscribe tạo thêm **một listener Firestore không bao giờ huỷ**. Nay mỗi project tối đa 1 listener, tự huỷ khi không còn người nghe.
-  3. Thông báo lỗi lộ `[cloud_firestore/…]`.
-  4. Chi tiết Project coi mọi lỗi mạng là "Project không tồn tại"; stream bị tạo lại mỗi lần rebuild.
-  5. `SprintActionCompleted`/`SprintError` phát danh sách rỗng nên màn Sprint nháy "Chưa có Sprint nào".
-  6. "Nạp dữ liệu mẫu" dùng `BuildContext` sau `await` và không có timeout.
-  - Hai lỗi phát sinh trong lúc làm, do test tự động bắt được và đã sửa: lỗi mạng Google Sign-In (`ApiException: 7`) bị phân loại sai; stream kết thúc khi chưa có dữ liệu làm loading bị kẹt.
-
-- **File mới:** `lib/app/errors/{app_failure,app_error_handler,stream_timeout}.dart`, `lib/app/routes/app_page_transitions.dart`, `lib/app/utils/event_transformers.dart`, `lib/presentation/common/widgets/{app_state_views,skeleton_list,network_status_banner}.dart`, `lib/presentation/common/utils/provider_utils.dart`, 13 file test mới (`test/app/{errors,routes,services,utils}/…`, `test/presentation/{common,projects}/…`, `backlog_network_test`, `backlog_retry_flow_test`, `sprint_network_test`, `project_members_network_test`, `test/responsive/…`, `test/helpers/test_setup.dart`), `docs/testing/BaoCaoKiemThu_US054.md`, `docs/testing/test_cases.csv`.
-- **File sửa:** `main.dart`, `app_routes.dart`, `app_theme.dart`, `connectivity_service.dart`, `backlog_datasource.dart`, `sprint_datasource.dart`, `project_list_bloc/state.dart`, `backlog_bloc/state.dart`, `sprint_bloc/state.dart`, `project_members_bloc/state.dart`, `home_screen.dart`, `project_detail_screen.dart`, `backlog_list_screen.dart`, `compact_user_story_row.dart`, `create_user_story_dialog.dart`, `sprint_list_screen.dart`, `sprint_detail_screen.dart`, `create_sprint_dialog.dart`, `start_sprint_dialog.dart`, `project_members_screen.dart`, `member_list_tile.dart`, `role_badge.dart`, `add_member_dialog.dart`, `login_screen.dart`, `register_screen.dart`, `password_requirements_checklist.dart`.
-- **Dependency:** không thêm hay đổi package nào.
-- **Kiểm thử (đã chạy thật):**
-  - `flutter test`: **286/286 PASS** (tăng từ 194; thêm 92 test).
-  - `flutter analyze`: **0 error, 0 warning**, 46 info đều có từ trước (giảm từ 51, không thêm issue mới).
-  - `flutter build web`: thành công. `flutter build apk --debug`: thành công (459.7s), **chưa cài lên thiết bị**.
-  - **Chưa xác nhận:** integration test và các kịch bản thao tác tay trên Android/Firebase thật. Phiên này không có thiết bị/emulator Android; checklist nằm trong mục 6 của báo cáo kiểm thử.
-- **Việc còn lại / lưu ý:**
-  - Google Sign-In trên Web cần thêm meta `google-signin-client_id` vào `web/index.html`; file `assets/icons/google.png` còn thiếu (cả hai là lỗi có sẵn).
-  - Task Board, Stand-up, Thông báo, Hiệu suất, Retro chưa chuyển sang `AppErrorView` + timeout.
-  - Constructor mới dùng tham số tuỳ chọn (`connectivityService`, `firstLoadTimeout`), nên code/test cũ gọi `BacklogBloc(repository: …)`, `SprintBloc(repository: …)`, `ProjectListBloc(repo)` vẫn chạy như trước.
-
----
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
 
 > *Dữ liệu đối chiếu từ file kế hoạch `Sprint Backlog LTTTBDD.xlsx` với tiến độ mã nguồn thực tế của dự án.*
 
 ### 🚀 SPRINT 1: Nền Tảng Tài Khoản, Dự Án & Phân Quyền Vai Trò
-*Tiến độ thực tế: **11 / 11 User Stories hoàn thành (Đạt 100% Sprint 1)***
+*Tiến độ thực tế: **9 / 9 User Stories hoàn thành (Đạt 100% Sprint 5)!***
 
 - [x] **US-001** [Ưu tiên: CAO] *(Thúy)*: Là người dùng mới, tôi muốn đăng ký tài khoản bằng email và mật khẩu để truy cập hệ thống an toàn.  
   *(Đã hoàn thành: UI Register, BLoC, AuthRepositoryImpl, Firebase Auth).*
@@ -611,27 +336,26 @@
 ### 📈 SPRINT 4: Đóng/Mở Sprint, Báo Cáo & Biểu Đồ Burndown/Velocity
 *Tiến độ thực tế: **4 / 7 User Stories hoàn thành***
 
-- [x] **US-060** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xem bảng thống kê hiệu suất từng thành viên (tỷ lệ đúng hạn, số task đang xử lý).  
-  *(Đã hoàn thành: `TeamPerformanceScreen` phong cách Bento Box: KPI tổng quan toàn đội, thẻ thành viên chi tiết tỷ lệ đúng hạn, tải công việc X/5 task, điểm hiệu suất % và gợi ý AI).*
-- [x] **US-023** [Ưu tiên: TB]: Là Product Owner, tôi muốn ghi nhận kết quả Sprint Review (demo + feedback).  
-  *(Đã hoàn thành: `SprintReviewModel`, `SprintReviewRepository` và `SprintReviewDialog`, hỗ trợ tóm tắt demo, ghi nhận ý kiến stakeholders, nghiệm thu nhanh từng Story bằng Accepted/Rejected).*
-- [x] **US-024** [Ưu tiên: TB]: Là nhóm phát triển, tôi muốn tạo Sprint Retrospective.  
-  *(Đã hoàn thành: `SprintRetroItemModel`, `SprintRetroRepository` và `SprintRetroScreen` giao diện 3 cột chuẩn Scrum: Làm tốt, Cần cải thiện, Kế hoạch hành động, hỗ trợ đăng ý kiến và vote đồng tình).*
-- [x] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart.  
-  *(Đã hoàn thành: `BurndownChartWidget` & `_BurndownPainter` vẽ Canvas nhẹ mượt: đường lý tưởng Ideal nét đứt, đường thực tế Actual gradient tím, thống kê điểm SP ban đầu, đã xong, còn lại và đánh giá đúng/chậm tiến độ).*
-- [x] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected).  
-  *(Đã hoàn thành: Clean Architecture tách biệt Domain `UpdateStoryStatusUseCase`, Data `StoryRepositoryImpl`, Presentation `UpdateStoryStatusCubit` & `ChangeStatusDialog`. Phân quyền PO/SM nghiêm ngặt, tự động cập nhật `updatedAt` và `completedAt` khi Done/Rejected, UI cập nhật real-time không cần reload).*
+- [ ] **US-060** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xem bảng thống kê hiệu suất từng thành viên (tỷ lệ đúng hạn, số task đang xử lý). *(Chưa hoàn thành)*
+- [ ] **US-023** [Ưu tiên: TB]: Là Product Owner, tôi muốn ghi nhận kết quả Sprint Review (demo + feedback). *(Chưa hoàn thành)*
+- [ ] **US-024** [Ưu tiên: TB]: Là nhóm phát triển, tôi muốn tạo Sprint Retrospective. *(Chưa hoàn thành)*
+- [ ] **US-025** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Burndown Chart. *(Chưa hoàn thành)*
+- [ ] **US-026** [Ưu tiên: TB]: Là Scrum Master/PO, tôi muốn xem Velocity Chart. *(Chưa hoàn thành)*
+- [ ] **US-027** [Ưu tiên: THẤP]: Là Scrum Master/PO, tôi muốn export báo cáo Sprint ra PDF/Excel. *(Chưa hoàn thành)*
+- [ ] **US-048** [Ưu tiên: CAO]: Là PO/SM, tôi muốn cập nhật trạng thái của User Story (To Do / In Progress / Done / Rejected). *(Chưa hoàn thành)*
 - [x] **US-049** [Ưu tiên: CAO]: Là PO/SM, tôi muốn bắt đầu Sprint (Start Sprint) để chính thức triển khai.  
-  *(Đã hoàn thành: Domain `StartSprintUseCase`, Repository method `startSprint` với 3 ràng buộc nghiệp vụ (chỉ PO/SM, chỉ 1 sprint active/project, sprint ≥ 1 story), DataSource ghi Firestore, BLoC event `SprintStartRequested` + handler, UI `StartSprintDialog` hiển thị tên/ngày bắt đầu hôm nay/ngày kết thúc điều chỉnh được. Báo lỗi khi MEMBER cố bắt đầu Sprint).*
+  *(Đã hoàn thành: StartSprintUseCase, StartSprintDialog, kiểm tra quyền PO/SM, ràng buộc 1 sprint active duy nhất & >= 1 story).*
 - [x] **US-050** [Ưu tiên: CAO]: Là PO/SM, tôi muốn kết thúc Sprint (Close Sprint) để tổng kết kết quả.  
-  *(Đã hoàn thành: Domain `CloseSprintUseCase`, Repository method `closeSprint` với kiểm tra Active, DataSource dùng Firestore `WriteBatch` atomic cập nhật Sprint status + Story sprintIds trong 1 giao dịch, BLoC event `SprintCloseRequested` + handler, UI `CloseSprintDialog` thống kê Done/chưa xong với progress bar, cho chọn chuyển story về Product Backlog hoặc Sprint Planned tiếp theo).*
+  *(Đã hoàn thành: CloseSprintUseCase với Firestore WriteBatch atomic, CloseSprintDialog thống kê story hoàn thành/chưa xong, di chuyển story chưa xong).*
 
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **8 / 9 User Stories hoàn thành** (đã hoàn thành US-038 & US-062, chỉ còn US-030 Dark Mode)*
+*Tiến độ thực tế: **6 / 10 User Stories hoàn thành hoặc đạt nền tảng cốt lõi***
 
-- [ ] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus). *(Chưa hoàn thành)*
+- [ ] **US-028** [Ưu tiên: THẤP]: Phát triển tính năng Realtime update Task Board bằng Socket.io (bonus). *(Chưa hoàn thành)*
+- [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
+  *(Đã hoàn thành: AppTheme Light & Dark Material 3, ThemeCubit với shared_preferences, switch trong SecuritySettingsDialog & AppBar, ResponsiveLayout với breakpoint 600px trên Login, Dashboard, TaskBoard).*
 - [x] **US-031** [Ưu tiên: CAO]: Build và đóng gói file APK/AAB để cài đặt, backend deploy Render/Railway.  
   *(Đã hoàn thành phần đóng gói APK: Build thành công APK 159MB, cài đặt & chạy trực tiếp trên thiết bị di động thật Xiaomi Android 14).*
 - [x] **US-038** [Ưu tiên: TB]: Là quản trị viên/PO, tôi muốn xóa Project khi dự án kết thúc hoặc không còn sử dụng.  

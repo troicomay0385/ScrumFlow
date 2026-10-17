@@ -27,7 +27,7 @@ class ProjectMembersScreen extends StatelessWidget {
         context.read<ProjectMemberRepository>(),
       )..add(ProjectMembersStarted(projectId)),
       child: Scaffold(
-        backgroundColor: AppColors.canvas,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           title: Text(
             'Quản lý thành viên',
@@ -138,7 +138,7 @@ class ProjectMembersScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
-                      color: AppColors.surface,
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -182,7 +182,7 @@ class ProjectMembersScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Divider(height: 1, thickness: 1, color: AppColors.surfaceVariant),
+                    Divider(height: 1, thickness: 1, color: Theme.of(context).colorScheme.outlineVariant),
 
                     // Member list
                     Expanded(
@@ -220,7 +220,7 @@ class ProjectMembersScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(
@@ -278,4 +278,5 @@ class ProjectMembersScreen extends StatelessWidget {
     );
   }
 }
+
 

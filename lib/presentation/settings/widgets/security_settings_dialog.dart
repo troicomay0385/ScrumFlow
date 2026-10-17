@@ -7,6 +7,8 @@ import '../../../app/services/biometric_service.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
+import '../cubit/theme_cubit.dart';
+import '../cubit/theme_state.dart';
 
 class SecuritySettingsDialog extends StatefulWidget {
   const SecuritySettingsDialog({super.key});
@@ -15,8 +17,11 @@ class SecuritySettingsDialog extends StatefulWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => BlocProvider.value(
-        value: context.read<AuthBloc>(),
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<AuthBloc>()),
+          BlocProvider.value(value: context.read<ThemeCubit>()),
+        ],
         child: const SecuritySettingsDialog(),
       ),
     );
@@ -240,8 +245,82 @@ class _SecuritySettingsDialogState extends State<SecuritySettingsDialog> {
                   ),
                   const SizedBox(height: 14),
 
+                  // ── Giao diện (US-030: Responsive UI & Dark Mode) ──
+                  Text(
+                    'Giao diện ứng dụng',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  BlocBuilder<ThemeCubit, ThemeState>(
+                    builder: (context, themeState) {
+                      final isDark = themeState.isDark(context);
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Theme.of(context).dividerTheme.color ?? const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          secondary: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF312E81)
+                                  : const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                              color: isDark
+                                  ? const Color(0xFFA5B4FC)
+                                  : const Color(0xFFD97706),
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            'Chế độ tối (Dark Mode)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isDark ? 'Giao diện tối dịu mắt' : 'Giao diện sáng tiêu chuẩn',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          value: isDark,
+                          activeThumbColor: AppColors.primaryContainer,
+                          onChanged: (_) => context.read<ThemeCubit>().toggleTheme(context),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  Text(
+                    'Bảo mật & Xác thực',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
                   // Hardware status
                   Container(
+
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: _isAvailable

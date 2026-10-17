@@ -129,26 +129,6 @@ class MemberListTile extends StatelessWidget {
             ],
           ],
         ),
-              ),
-            ),
-            // Nút xoá thành viên (US-041)
-            if (onRemove != null) ...[
-              const SizedBox(width: 4),
-              InkWell(
-                onTap: onRemove,
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: Icon(
-                    Icons.person_remove_rounded,
-                    size: 18,
-                    color: AppColors.error.withValues(alpha: 0.8),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
 
