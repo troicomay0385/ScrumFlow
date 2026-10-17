@@ -6,9 +6,12 @@ import '../../../../data/models/task_model.dart';
 import '../../../../data/repositories/task_repository.dart';
 import '../../../app/constants/app_colors.dart';
 import '../../../app/utils/date_formatter.dart';
+import '../../../app/utils/work_log_validator.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
+import '../widgets/log_work_bottom_sheet.dart';
+import '../widgets/swipeable_task_card.dart';
 import 'task_detail_screen.dart';
 
 class TaskBoardScreen extends StatelessWidget {
@@ -148,43 +151,59 @@ class _TaskBoardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TaskBloc, TaskState>(
-      builder: (context, state) {
-        if (state is TaskLoading || state is TaskInitial) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is TaskError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Lỗi: ${state.message}',
-                  style: const TextStyle(color: Colors.red)),
-            ),
-          );
-        } else if (state is TaskLoaded) {
-          final tasks = state.tasks;
-          final todoTasks = tasks.where((t) => t.status == 'To Do').toList();
-          final inProgressTasks = tasks.where((t) => t.status == 'In Progress').toList();
-          final doneTasks = tasks.where((t) => t.status == 'Done').toList();
-
-          return Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: SizedBox.expand(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _TaskColumn(title: 'To Do', status: 'To Do', tasks: todoTasks, projectId: projectId)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _TaskColumn(title: 'In Progress', status: 'In Progress', tasks: inProgressTasks, projectId: projectId)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _TaskColumn(title: 'Done', status: 'Done', tasks: doneTasks, projectId: projectId)),
-                ],
-              ),
+    return BlocListener<TaskBloc, TaskState>(
+      listenWhen: (previous, current) => current is TaskError,
+      listener: (context, state) {
+        if (state is TaskError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
-        // TaskInitial fallback
-        return const SizedBox.shrink();
       },
+      child: BlocBuilder<TaskBloc, TaskState>(
+        buildWhen: (previous, current) =>
+            current is! TaskError || previous is! TaskLoaded,
+        builder: (context, state) {
+          if (state is TaskLoading || state is TaskInitial) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is TaskError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Lỗi: ${state.message}',
+                    style: const TextStyle(color: Colors.red)),
+              ),
+            );
+          } else if (state is TaskLoaded) {
+            final tasks = state.tasks;
+            final todoTasks = tasks.where((t) => t.status == 'To Do').toList();
+            final inProgressTasks = tasks.where((t) => t.status == 'In Progress').toList();
+            final doneTasks = tasks.where((t) => t.status == 'Done').toList();
+
+            return Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: SizedBox.expand(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _TaskColumn(title: 'To Do', status: 'To Do', tasks: todoTasks, projectId: projectId)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _TaskColumn(title: 'In Progress', status: 'In Progress', tasks: inProgressTasks, projectId: projectId)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _TaskColumn(title: 'Done', status: 'Done', tasks: doneTasks, projectId: projectId)),
+                  ],
+                ),
+              ),
+            );
+          }
+          // TaskInitial fallback
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }
@@ -246,41 +265,59 @@ class _TaskColumn extends StatelessWidget {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final task = tasks[index];
-                    return Draggable<TaskModel>(
-                      data: task,
-                      feedback: Material(
-                        elevation: 4,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 250,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.primary),
-                          ),
-                          child: Text(
-                            task.title,
-                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.3,
-                        child: _TaskCard(task: task),
-                      ),
-                      // Bấm vào thẻ → Task Detail (assignee, deadline, bình luận).
-                      child: GestureDetector(
-                        key: Key('task_card_${task.id}'),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => TaskDetailScreen(
-                              task: task,
-                              projectId: projectId,
+                    return SwipeableTaskCard(
+                      task: task,
+                      onStatusChange: (newStatus) {
+                        context
+                            .read<TaskBloc>()
+                            .add(TaskStatusUpdated(task.id, newStatus));
+
+                        final columnContext = context;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!columnContext.mounted) return;
+                          showLogWorkBottomSheet(
+                            columnContext,
+                            task: task.copyWith(status: newStatus),
+                            projectId: projectId,
+                          );
+                        });
+                      },
+                      child: LongPressDraggable<TaskModel>(
+                        data: task,
+                        feedback: Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: 250,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.primary),
+                            ),
+                            child: Text(
+                              task.title,
+                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
-                        child: _TaskCard(task: task),
+                        childWhenDragging: Opacity(
+                          opacity: 0.3,
+                          child: TaskCard(task: task),
+                        ),
+                        // Bấm vào thẻ → Task Detail (assignee, deadline, bình luận).
+                        child: GestureDetector(
+                          key: Key('task_card_${task.id}'),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => TaskDetailScreen(
+                                task: task,
+                                projectId: projectId,
+                              ),
+                            ),
+                          ),
+                          child: TaskCard(task: task),
+                        ),
                       ),
                     );
                   },
@@ -294,9 +331,9 @@ class _TaskColumn extends StatelessWidget {
   }
 }
 
-class _TaskCard extends StatelessWidget {
+class TaskCard extends StatelessWidget {
   final TaskModel task;
-  const _TaskCard({required this.task});
+  const TaskCard({super.key, required this.task});
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +408,40 @@ class _TaskCard extends StatelessWidget {
                       color: isOverdue
                           ? AppColors.error
                           : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (task.loggedHours > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 13,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Container(
+                    key: Key('task_logged_hours_chip_${task.id}'),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${WorkLogValidator.formatHours(task.loggedHours)}h',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 ),

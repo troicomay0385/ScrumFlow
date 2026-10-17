@@ -271,6 +271,23 @@ class LocalCacheDataSource {
     }).toList();
   }
 
+  /// Đọc danh sách Tasks đã cache theo danh sách User Stories (US-065).
+  Future<List<TaskModel>> getCachedTasksByStories(List<String> storyIds) async {
+    if (kIsWeb || storyIds.isEmpty) return [];
+    final db = await _getDatabase();
+    final placeholders = List.filled(storyIds.length, '?').join(',');
+    final results = await db.query(
+      _taskTableName,
+      where: 'storyId IN ($placeholders)',
+      whereArgs: storyIds,
+    );
+
+    return results.map((row) {
+      final map = jsonDecode(row['jsonData'] as String) as Map<String, dynamic>;
+      return TaskModel.fromMap(map);
+    }).toList();
+  }
+
   /// Đọc tất cả Tasks đã cache trong 1 project.
   Future<List<TaskModel>> getCachedTasksByProject(String projectId) async {
     if (kIsWeb) return [];

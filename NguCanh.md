@@ -539,6 +539,126 @@
   - **US-067** [Ưu tiên: CAO - Phụ trách: Thúy]: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó.
   - **US-068** [Ưu tiên: CAO - Phụ trách: Thúy]: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình.
 
+### Ngày 17/10/2026 – US-065 Mobile Sprint Dashboard
+- **Kiến trúc & Giải pháp:**
+  - **Phân quyền vai trò (RBAC):** Bổ sung quyền `Permission.viewSprintDashboard` vào `lib/app/authorization/permission.dart` và gán cho `ProjectRole.po`, `ProjectRole.sm` trong `role_permissions.dart` (loại trừ `ProjectRole.member`).
+  - **Mô hình & Tiện ích:**
+    - `TaskStatus`: hằng số trạng thái chuẩn (`todo = 'To Do'`, `inProgress = 'In Progress'`, `done = 'Done'`), các hàm tiện ích chuyển đổi `next()`, `previous()`, và chuẩn hóa `normalize()`.
+    - `SprintStatus`: hằng số trạng thái Sprint (`planned = 'Planned'`, `active = 'Active'`, `completed = 'Closed'`).
+    - `SprintProgress`: model bất biến (`Equatable`) tính toán tiến độ Sprint từ danh sách `TaskModel` (`todo`, `inProgress`, `done`, `total`, `donePercent`, `isEmpty`).
+    - `list_utils.dart`: hàm `chunkList<T>()` phân tách danh sách thành các mảng con tối đa 30 phần tử (tương thích giới hạn truy vấn `whereIn` của Cloud Firestore).
+  - **Tầng Dữ liệu & Offline Cache:**
+    - Cập nhật `LocalCacheDataSource.getCachedTasksByStories(storyIds)` đọc cache SQLite cục bộ theo danh sách storyIds.
+    - Mở rộng `TaskRepository.streamTasksByStories(storyIds)`: lắng nghe luồng dữ liệu song song từ Firestore (chia khối nếu storyIds > 30), tự động lưu cache SQLite và fallback đọc cache khi mất mạng.
+  - **SprintDashboardCubit & State:**
+    - State quản lý 4 trạng thái: `loading`, `noSprint`, `loaded`, `error`.
+    - `load(projectId)`: huỷ subscription cũ, kiểm tra mạng `ConnectivityService.isOnline()` trước khi subscribe, chống race-condition / dữ liệu cũ bằng token tải tăng dần (`_loadToken`), bọc stream bằng `timeoutFirstEvent(firstLoadTimeout)`.
+    - Tự động nhận diện Sprint Active đầu tiên: nếu không có phát `noSprint`; nếu có và thay đổi `id` hoặc `storyIds` thì huỷ và mở stream task mới; nếu chỉ đổi tên/ngày thì cập nhật state mà không subscribe lại task; phân loại lỗi qua `AppErrorHandler.classify`.
+    - Cơ chế `retry()` tải lại project gần nhất, bỏ qua khi đang loading.
+  - **Giao diện & Tích hợp Trang chủ (HomeScreen):**
+    - `task_status_style.dart`: hàm cung cấp màu sắc và icon thống nhất theo trạng thái Task/User Story, hỗ trợ tự động Dark Mode.
+    - `DoughnutChart`: widget Canvas vẽ biểu đồ tròn 3 cung màu (Done xanh ngọc, In Progress cam, To Do xám) bắt đầu từ 12 giờ, khe hở viền tinh tế, vòng tròn xám rỗng khi 0 task, hoạt ảnh 600ms qua `TweenAnimationBuilder` (tự động tắt khi bật "Giảm chuyển động"), kèm nhãn trợ năng `Semantics`.
+    - `SprintDashboardCard`: thẻ Bento hiển thị trên HomeScreen hỗ trợ chọn chuyển đổi qua lại giữa các dự án (hàng chip ngang), hiển thị tên Sprint, thời hạn còn lại / quá hạn, biểu đồ Doughnut kèm chú giải 3 dòng và chạm mở `SprintDetailScreen`.
+    - Tích hợp `HomeScreen`: lọc danh sách dự án người dùng có quyền `viewSprintDashboard` (ẩn card nếu không có); vị trí hiển thị ở phần tử đầu tiên của `ListView` trên Mobile và nằm phía trên `GridView` trải rộng toàn màn hình trên Tablet.
+- **File mới:**
+  - `lib/app/constants/task_status.dart`
+  - `lib/app/constants/sprint_status.dart`
+  - `lib/data/models/sprint_progress.dart`
+  - `lib/app/utils/list_utils.dart`
+  - `lib/presentation/dashboard/bloc/sprint_dashboard_cubit.dart`
+  - `lib/presentation/dashboard/bloc/sprint_dashboard_state.dart`
+  - `lib/presentation/tasks/utils/task_status_style.dart`
+  - `lib/presentation/dashboard/widgets/doughnut_chart.dart`
+  - `lib/presentation/dashboard/widgets/sprint_dashboard_card.dart`
+  - `test/app/constants/task_status_test.dart`
+  - `test/app/utils/list_utils_test.dart`
+  - `test/data/models/sprint_progress_test.dart`
+  - `test/presentation/dashboard/sprint_dashboard_cubit_test.dart`
+  - `test/presentation/dashboard/sprint_dashboard_card_test.dart`
+- **File sửa:**
+  - `lib/app/authorization/permission.dart`
+  - `lib/app/authorization/role_permissions.dart`
+  - `lib/data/datasources/local_cache_datasource.dart`
+  - `lib/data/repositories/task_repository.dart`
+  - `lib/presentation/home/screens/home_screen.dart`
+  - `test/app/authorization/role_permissions_test.dart`
+- **Kiểm thử tự động:**
+  - `flutter analyze`: **0 error, 0 warning**, 47 info (bằng đúng nền baseline trước phase, không tăng).
+  - `flutter test`: **323 / 323 test PASS** (toàn bộ 286 test cũ + 37 test mới cho US-065 đều vượt qua).
+- **Việc còn lại / Lưu ý:**
+  - Tiếp tục thực hiện US-066 (Cử chỉ vuốt đổi trạng thái Task + Log work) ở phase tiếp theo.
+  - Đồng bộ app lên thiết bị Android Xiaomi 11T (`21081111RG`) và kiểm thử thủ công theo checklist.
+
+### Ngày 17/10/2026 – US-066 Gestures & Log Work
+- **Kiến trúc & Giải pháp:**
+  - **Tầng Dữ liệu & Phân quyền:**
+    - Phân quyền: Thêm `Permission.logWork` vào enum `Permission` và cấp quyền cho cả 3 vai trò PO, SM, MEMBER trong `role_permissions.dart`.
+    - Model: `WorkLogModel` (`id`, `taskId`, `projectId`, `userId`, `userName`, `hours`, `note`, `workDate`, `createdAt`). Mở rộng `TaskModel` thêm trường `loggedHours: double` (mặc định 0.0), lưu trữ trực tiếp trên document task.
+    - Tiện ích: `WorkLogValidator` kiểm tra giờ làm [0.25..24] là bội số 0.25, hỗ trợ dấu `,` và `.`, kiểm tra ngày làm việc không vượt quá hôm nay, format giờ gọn gàng (`formatHours`).
+    - DataSource: `WorkLogDataSource` dùng `WriteBatch` Firestore ghi đồng thời trong cùng 1 batch: (a) set document mới tại `tasks/{taskId}/workLogs/{newId}`; (b) update `tasks/{taskId}` với `loggedHours = FieldValue.increment(hours)` mà **KHÔNG đổi updatedAt** của task để giữ nguyên mốc thời gian hoàn thành dùng cho thuật toán tính điểm hiệu suất đúng hạn (US-058); stream real-time danh sách workLogs sắp xếp theo `createdAt` giảm dần với timeout 15s.
+    - Repository: `WorkLogRepository` và `WorkLogRepositoryImpl` kiểm tra đăng nhập, thành viên dự án (`isProjectMember`), lấy `userName`, xử lý lỗi qua `FirebaseErrorMapper`.
+  - **Tầng BLoC / Quản lý trạng thái:**
+    - `TaskBloc`: Xử lý cập nhật lạc quan trạng thái task trên board, lưu bản sao danh sách task cũ và hoàn lại (rollback) khi `updateTaskStatus` ném lỗi mạng/Firebase kèm thông báo SnackBar tiếng Việt.
+    - `LogWorkCubit` & `LogWorkState`: Quản lý trạng thái ghi giờ (`initial`, `submitting`, `success`, `failure`), chống submit lặp (`isSubmitting`), phát thông báo inline.
+    - `WorkLogsCubit` & `WorkLogsState`: Lắng nghe stream danh sách work logs real-time với các trạng thái `loading`, `empty`, `loaded`, `error`; kiểm tra mạng qua `ConnectivityService.isOnline()` trước khi subscribe; timeout 15s và xử lý lỗi qua `AppErrorHandler.classify`; hỗ trợ `retry()`.
+  - **Giao diện & Cử chỉ:**
+    - `SwipeableTaskCard`: Bọc thẻ task bằng `Dismissible` độc lập:
+      - Cột "To Do": chỉ vuốt phải → chuyển "In Progress" (nền xanh dương, icon `arrow_forward`).
+      - Cột "In Progress": vuốt trái → chuyển "To Do" (nền xám, icon `arrow_back`); vuốt phải → chuyển "Done" (nền xanh lá, icon `check_circle`).
+      - Cột "Done": chỉ vuốt trái → chuyển "In Progress" (nền cam, icon `undo`).
+      - Quyết định kiến trúc `LongPressDraggable`: Thay thế `Draggable` cũ trên Task Board bằng `LongPressDraggable` (delay 400ms) để giải quyết triệt để xung đột cử chỉ (gesture disambiguation) giữa kéo-thả cột Kanban và vuốt ngang đổi trạng thái nhanh. Rung nhẹ haptic feedback (`HapticFeedback.mediumImpact`) khi bắt đầu vuốt.
+    - `LogWorkBottomSheet`:
+      - Hàm mở `showLogWorkBottomSheet(context, task, projectId)` với `isScrollControlled: true, useSafeArea: true`.
+      - Thanh kéo, tiêu đề "Ghi giờ làm việc", tên task (max 2 dòng ellipsis), hàng ChoiceChip nhanh 0.5h/1h/2h/4h, ô nhập giờ (bàn phím số thập phân, nhận `,` và `.`), DatePicker chọn ngày (lastDate hôm nay), ô ghi chú tối đa 500 ký tự có đếm, nút "Bỏ qua" và nút "Lưu" (khóa + spinner khi gửi).
+      - Đệm đáy `MediaQuery.viewInsets.bottom` chống tràn bàn phím ở màn hình nhỏ 320×568 (bàn phím chiếm 260px và textScale 1.3).
+      - Mở Bottom Sheet sau khi vuốt trên Task Board qua `addPostFrameCallback` dùng context cột an toàn (không bị huỷ khi thẻ rời cột).
+    - `WorkLogsSection`: Card Bento tiêu chuẩn trong `TaskDetailScreen` đặt dưới thông tin và trước bình luận, header "Giờ làm việc" + tổng giờ (`formatHours` + " giờ") + nút "Ghi giờ", danh sách log mới nhất trước (tên, số giờ, ngày làm `dd/MM/yyyy`, ghi chú, thời gian tương đối `formatRelativeTimeVi`), trạng thái rỗng/lỗi có nút "Thử lại", log chỉ đọc không sửa/xoá theo rules.
+    - Chip `loggedHours` trên `TaskCard`: Khi `task.loggedHours > 0`, hiển thị chip nhỏ icon schedule + `"{formatHours}h"` co giãn linh hoạt (`Flexible`) không làm tràn thẻ ở cột hẹp ~100px.
+- **Quyết định thiết kế quan trọng:**
+  - **LongPressDraggable:** Giải quyết triệt để xung đột cử chỉ giữa cuộn dọc cột, vuốt ngang thẻ và kéo-thả giữa các cột.
+  - **Không đổi updatedAt của Task:** Khi ghi giờ làm việc, chỉ tăng `loggedHours` qua `FieldValue.increment`, tuyệt đối không cập nhật `updatedAt` của task nhằm bảo toàn thời điểm hoàn thành chính xác cho thuật toán tính điểm hiệu suất đúng hạn (US-058).
+  - **Firestore Security Rules:** Sub-collection `tasks/{taskId}/workLogs` và quy tắc cập nhật `loggedHours` cần deploy thủ công lên Firebase Server (`firebase deploy --only firestore:rules`).
+  - **Không migration SQLite:** Bảng `cached_tasks` giữ nguyên tương thích ngược; task cũ chưa có log work vẫn hoạt động bình thường với giá trị mặc định 0.0.
+- **File mới:**
+  - `lib/data/models/work_log_model.dart`
+  - `lib/app/utils/work_log_validator.dart`
+  - `lib/data/datasources/work_log_datasource.dart`
+  - `lib/data/repositories/work_log_repository.dart`
+  - `lib/data/repositories/work_log_repository_impl.dart`
+  - `lib/presentation/tasks/bloc/log_work_cubit.dart`
+  - `lib/presentation/tasks/bloc/log_work_state.dart`
+  - `lib/presentation/tasks/bloc/work_logs_cubit.dart`
+  - `lib/presentation/tasks/bloc/work_logs_state.dart`
+  - `lib/presentation/tasks/widgets/swipeable_task_card.dart`
+  - `lib/presentation/tasks/widgets/log_work_bottom_sheet.dart`
+  - `lib/presentation/tasks/widgets/work_logs_section.dart`
+  - `test/data/models/work_log_model_test.dart`
+  - `test/app/utils/work_log_validator_test.dart`
+  - `test/data/datasources/work_log_datasource_test.dart`
+  - `test/data/repositories/work_log_repository_impl_test.dart`
+  - `test/presentation/tasks/log_work_cubit_test.dart`
+  - `test/presentation/tasks/swipeable_task_card_test.dart`
+  - `test/presentation/tasks/log_work_bottom_sheet_test.dart`
+  - `test/presentation/tasks/work_logs_cubit_test.dart`
+  - `test/presentation/tasks/work_logs_section_test.dart`
+- **File sửa:**
+  - `lib/app/authorization/permission.dart`
+  - `lib/app/authorization/role_permissions.dart`
+  - `lib/data/models/task_model.dart`
+  - `lib/presentation/tasks/bloc/task_bloc.dart`
+  - `lib/presentation/tasks/screens/task_board_screen.dart`
+  - `lib/presentation/tasks/screens/task_detail_screen.dart`
+  - `lib/main.dart`
+  - `firestore.rules`
+  - `test/app/authorization/role_permissions_test.dart`
+  - `test/presentation/tasks/task_bloc_test.dart`
+- **Kiểm thử tự động:**
+  - `flutter analyze`: **0 error, 0 warning**, 44 info (giữ nguyên nền cũ).
+  - `flutter test`: **385 / 385 test PASS** (toàn bộ test cũ + 62 test mới cho US-066).
+- **Việc còn lại / Lưu ý:**
+  - Triển khai US-067 (Push Notification cho Blocker) và US-068 (Mobile Retro Card Slider & Double Tap Vote) ở các sprint/phase tiếp theo.
+  - Deploy `firestore.rules` cập nhật lên Firebase Console / CLI khi triển khai Production.
+
 ---
 
 ## 3. 📊 Bảng Theo Dõi Chi Tiết Toàn Bộ Sprint Backlog (Sprint 1 → Sprint 5)
@@ -659,7 +779,7 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **9 / 13 User Stories hoàn thành** (9 hoàn thành, 4 User Story mới đang phát triển: US-065, US-066, US-067, US-068)*
+*Tiến độ thực tế: **11 / 13 User Stories hoàn thành** (11 hoàn thành, 2 User Story mới đang phát triển: US-067, US-068)*
 
 - [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
   *(Đã hoàn thành: Triển khai Dark Mode toàn diện thông qua ThemeCubit / AppThemes / ThemeState, hỗ trợ Light/Dark/System theme với shared_preferences lưu cấu hình người dùng; Giao diện Responsive thích ứng linh hoạt (ResponsiveLayout, breakpoints Mobile/Tablet/Desktop) trên tất cả các màn hình chính bao gồm Login, Home, Project Members, v.v.).*
@@ -679,8 +799,10 @@
   *(Cập nhật 14/10/2026: `docs/testing/BaoCaoKiemThu_US054.md` + `test_cases.csv`, gồm 72 Test Case truy vết theo US (48 PASS tự động, 22 NOT RUN, 2 BLOCKED). `flutter test` **286/286 PASS**, `flutter analyze` 0 error. Integration test và kiểm thử tay trên thiết bị: **chưa chạy** (không có thiết bị trong phiên).)*
 - [x] **US-055** [Ưu tiên: CAO] *(Phúc)*: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
   *(Đã hoàn thành 14/10/2026: widget test responsive cho 320×568 / 430×932, cỡ chữ ×1.3 và khi bàn phím mở; sửa tràn layout ở Đăng nhập, Đăng ký, Backlog, Sprint, Thành viên và 4 dialog; nút phân trang 40 px. Còn cần kiểm tra tay: Chi tiết Project, Task Board trên thiết bị thật).*
-- [ ] **US-065** [Ưu tiên: CAO] *(Duy)*: [Mobile Sprint Dashboard] Là PO/SM, tôi muốn xem biểu đồ tiến độ Sprint (Doughnut Chart hiển thị tỷ lệ Task To Do/In Progress/Done) ngay trên màn hình chính để nắm bắt nhanh tình hình dự án. *(Chưa hoàn thành)*
-- [ ] **US-066** [Ưu tiên: CAO] *(Duy)*: [Gestures & Log Work] Là thành viên nhóm, tôi muốn vuốt (Swipe) thẻ Task sang trái/phải để chuyển trạng thái nhanh, đồng thời bật lên một Bottom Sheet để tôi nhập giờ làm việc (Log work). *(Chưa hoàn thành)*
+- [x] **US-065** [Ưu tiên: CAO] *(Duy)*: [Mobile Sprint Dashboard] Là PO/SM, tôi muốn xem biểu đồ tiến độ Sprint (Doughnut Chart hiển thị tỷ lệ Task To Do/In Progress/Done) ngay trên màn hình chính để nắm bắt nhanh tình hình dự án.  
+  *(Đã hoàn thành 17/10/2026: Phân quyền `Permission.viewSprintDashboard` cho PO/SM; Model `SprintProgress`; constants `TaskStatus`/`SprintStatus`; Stream gom `taskRepository.streamTasksByStories`; `SprintDashboardCubit` chống stale token + timeout 15s; biểu đồ Canvas `DoughnutChart` 3 cung bo tròn + hoạt ảnh 600ms; thẻ Bento `SprintDashboardCard` trên màn hình chính hỗ trợ đổi project, hiển thị thời hạn, chạm mở Sprint Detail, dark mode & responsive 320px–430px x1.3; 37 unit & widget tests).*
+- [x] **US-066** [Ưu tiên: CAO] *(Duy)*: [Gestures & Log Work] Là thành viên nhóm, tôi muốn vuốt (Swipe) thẻ Task sang trái/phải để chuyển trạng thái nhanh, đồng thời bật lên một Bottom Sheet để tôi nhập giờ làm việc (Log work).  
+  *(Đã hoàn thành 17/10/2026: `SwipeableTaskCard` cử chỉ vuốt 2 chiều; chuyển đổi `LongPressDraggable` 400ms giải quyết triệt để xung đột kéo Kanban và cuộn dọc; phân quyền `Permission.logWork` cho PO/SM/MEMBER; `WorkLogModel`, `WorkLogValidator` (bội số 0.25h, [0.25..24]); `WorkLogDataSource` dùng `WriteBatch` ghi Firestore nguyên tử và tăng `loggedHours` mà không đổi `updatedAt` của task; `LogWorkCubit` + `showLogWorkBottomSheet` responsive 320x568 không tràn bàn phím 260px và chữ x1.3; `WorkLogsCubit` stream real-time + Bento card `WorkLogsSection` trong Task Detail; chip `loggedHours` trên Task Board co giãn không tràn cột hẹp 100px; 62 unit & widget tests).*
 - [ ] **US-067** [Ưu tiên: CAO] *(Thúy)*: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó. *(Chưa hoàn thành)*
 - [ ] **US-068** [Ưu tiên: CAO] *(Thúy)*: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình. *(Chưa hoàn thành)*
 

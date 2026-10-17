@@ -23,6 +23,7 @@ import '../../../app/services/notification_service.dart';
 import '../../common/utils/provider_utils.dart';
 import '../../common/widgets/app_state_views.dart';
 import '../../common/widgets/skeleton_list.dart';
+import '../../dashboard/widgets/sprint_dashboard_card.dart';
 import '../../notifications/bloc/notification_bloc.dart';
 import '../../notifications/bloc/notification_event.dart';
 import '../../notifications/widgets/notification_bell_widget.dart';
@@ -167,17 +168,25 @@ class HomeScreen extends StatelessWidget {
                   }
 
                   final projects = (state as ProjectListLoaded).projects;
+                  final dashboardProjects = projects
+                      .where((p) => hasPermission(
+                            p.myRole,
+                            Permission.viewSprintDashboard,
+                          ))
+                      .toList();
 
                   return ResponsiveLayout(
                     mobileBuilder: (context, constraints) => _buildMobileView(
                       context: context,
                       userName: userName,
                       projects: projects,
+                      dashboardProjects: dashboardProjects,
                     ),
                     tabletBuilder: (context, constraints) => _buildTabletView(
                       context: context,
                       userName: userName,
                       projects: projects,
+                      dashboardProjects: dashboardProjects,
                       constraints: constraints,
                     ),
                   );
@@ -218,10 +227,15 @@ class HomeScreen extends StatelessWidget {
     required BuildContext context,
     required String userName,
     required List<ProjectSummary> projects,
+    required List<ProjectSummary> dashboardProjects,
   }) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
+        if (dashboardProjects.isNotEmpty) ...[
+          SprintDashboardCard(projects: dashboardProjects),
+          const SizedBox(height: 16),
+        ],
         _buildGreeting(context, userName),
         const SizedBox(height: 16),
         _buildBentoStats(context, isTablet: false, projectCount: projects.length),
@@ -258,6 +272,7 @@ class HomeScreen extends StatelessWidget {
     required BuildContext context,
     required String userName,
     required List<ProjectSummary> projects,
+    required List<ProjectSummary> dashboardProjects,
     required BoxConstraints constraints,
   }) {
     final crossAxisCount = constraints.maxWidth >= 1000 ? 3 : 2;
@@ -272,6 +287,10 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
             _buildBentoStats(context, isTablet: true, projectCount: projects.length),
             const SizedBox(height: 28),
+            if (dashboardProjects.isNotEmpty) ...[
+              SprintDashboardCard(projects: dashboardProjects),
+              const SizedBox(height: 24),
+            ],
             _buildSectionHeader(context, projects.length),
             const SizedBox(height: 16),
             if (projects.isEmpty)

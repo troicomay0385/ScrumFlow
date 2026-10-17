@@ -15,6 +15,8 @@ import '../../comments/widgets/comments_section.dart';
 import '../bloc/task_detail_cubit.dart';
 import '../bloc/task_detail_state.dart';
 import '../widgets/assignee_picker_dialog.dart';
+import '../widgets/log_work_bottom_sheet.dart';
+import '../widgets/work_logs_section.dart';
 
 /// Chi tiết 1 Task: thông tin, người phụ trách (US-043), deadline (US-044)
 /// và bình luận (US-046).
@@ -99,6 +101,19 @@ class _TaskDetailView extends StatelessWidget {
                 fontSize: 18,
               ),
             ),
+            actions: [
+              if (task != null)
+                IconButton(
+                  key: const Key('task_detail_log_work_button'),
+                  icon: const Icon(Icons.schedule_rounded),
+                  tooltip: 'Ghi giờ',
+                  onPressed: () => showLogWorkBottomSheet(
+                    context,
+                    task: task,
+                    projectId: context.read<TaskDetailCubit>().projectId,
+                  ),
+                ),
+            ],
           ),
           body: task == null
               ? Center(
@@ -120,6 +135,11 @@ class _TaskDetailView extends StatelessWidget {
                       _buildAssignment(context, state, task),
                       const SizedBox(height: 16),
                       if (state.projectLinked) ...[
+                        WorkLogsSection(
+                          task: task,
+                          projectId: context.read<TaskDetailCubit>().projectId,
+                        ),
+                        const SizedBox(height: 16),
                         AttachmentsSection(
                           target: AttachmentTarget.task(
                             projectId:

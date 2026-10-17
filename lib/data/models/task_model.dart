@@ -15,6 +15,10 @@ class TaskModel extends Equatable {
 
   /// Hạn hoàn thành (US-044). `null` = chưa đặt deadline.
   final DateTime? deadline;
+
+  /// Tổng số giờ làm việc đã log cho task (US-066). Mặc định là 0.
+  final double loggedHours;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -28,6 +32,7 @@ class TaskModel extends Equatable {
     this.assigneeId,
     this.assigneeName,
     this.deadline,
+    this.loggedHours = 0.0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -43,6 +48,7 @@ class TaskModel extends Equatable {
       'assigneeId': assigneeId,
       'assigneeName': assigneeName,
       'deadline': deadline?.toIso8601String(),
+      'loggedHours': loggedHours,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -65,6 +71,12 @@ class TaskModel extends Equatable {
       return null;
     }
 
+    double parseLoggedHours(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return TaskModel(
       id: docId ?? (map['id'] as String? ?? ''),
       storyId: map['storyId'] as String? ?? '',
@@ -75,6 +87,7 @@ class TaskModel extends Equatable {
       assigneeId: map['assigneeId'] as String?,
       assigneeName: map['assigneeName'] as String?,
       deadline: parseOptionalDate(map['deadline']),
+      loggedHours: parseLoggedHours(map['loggedHours']),
       createdAt: parseDate(map['createdAt']),
       updatedAt: parseDate(map['updatedAt']),
     );
@@ -93,6 +106,7 @@ class TaskModel extends Equatable {
     bool clearAssignee = false,
     DateTime? deadline,
     bool clearDeadline = false,
+    double? loggedHours,
     DateTime? updatedAt,
   }) {
     return TaskModel(
@@ -106,6 +120,7 @@ class TaskModel extends Equatable {
       assigneeName:
           clearAssignee ? null : (assigneeName ?? this.assigneeName),
       deadline: clearDeadline ? null : (deadline ?? this.deadline),
+      loggedHours: loggedHours ?? this.loggedHours,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -122,6 +137,7 @@ class TaskModel extends Equatable {
         assigneeId,
         assigneeName,
         deadline,
+        loggedHours,
         createdAt,
         updatedAt,
       ];

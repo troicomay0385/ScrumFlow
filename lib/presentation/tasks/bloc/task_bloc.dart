@@ -1,5 +1,7 @@
+// ignore_for_file: prefer_initializing_formals
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../app/errors/app_error_handler.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/repositories/task_repository.dart';
 import 'task_event.dart';
@@ -43,7 +45,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   ) async {
     // Cập nhật optimistic: đổi trạng thái ngay trên UI
     final current = state;
+    List<TaskModel>? previousTasks;
     if (current is TaskLoaded) {
+      previousTasks = current.tasks;
       final updated = current.tasks.map((t) {
         return t.id == event.taskId ? t.copyWith(status: event.newStatus) : t;
       }).toList();
@@ -51,12 +55,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
     // Ghi lên Firestore (stream sẽ confirm lại)
     try {
-      print('[TASK BLOC] Kéo thả task ${event.taskId} sang trạng thái: ${event.newStatus}');
       await _repository.updateTaskStatus(event.taskId, event.newStatus);
     } catch (e) {
-      // Rollback nếu lỗi
-      print('[TASK BLOC ERROR] Lỗi cập nhật trạng thái task: $e');
-      if (!isClosed) add(_TaskError('Lỗi cập nhật trạng thái: $e'));
+      // Rollback lại danh sách cũ trước khi phát thông báo lỗi
+      if (previousTasks != null) {
+        emit(TaskLoaded(previousTasks));
+      }
+      final message = AppErrorHandler.messageOf(e);
+      emit(TaskError(
+        message.isEmpty ? 'Không thể cập nhật trạng thái task' : message,
+      ));
     }
   }
 

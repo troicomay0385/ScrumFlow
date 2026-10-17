@@ -325,6 +325,26 @@ service cloud.firestore {
         allow delete: if isSignedIn() && isProjectMember(taskProjectId());
         allow update: if false;
       }
+
+      // ── Subcollection: workLogs (US-066) ───────────────────────────
+      match /workLogs/{logId} {
+        function taskProjectId() {
+          return get(/databases/$(database)/documents/tasks/$(taskId)).data.projectId;
+        }
+
+        allow read: if isSignedIn() && isProjectMember(taskProjectId());
+        allow create: if isSignedIn()
+          && isProjectMember(taskProjectId())
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.projectId == taskProjectId()
+          && request.resource.data.taskId == taskId
+          && request.resource.data.hours is number
+          && request.resource.data.hours > 0 && request.resource.data.hours <= 24
+          && request.resource.data.note is string && request.resource.data.note.size() <= 500
+          && request.resource.data.workDate is timestamp
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
     }
 
     // ── 6. STANDUPS COLLECTION (Daily Stand-up) ─────────────────────

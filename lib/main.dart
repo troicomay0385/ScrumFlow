@@ -30,6 +30,9 @@ import 'data/datasources/sprint_datasource.dart';
 import 'data/repositories/sprint_repository.dart';
 import 'data/repositories/sprint_repository_impl.dart';
 import 'data/repositories/task_repository.dart';
+import 'data/datasources/work_log_datasource.dart';
+import 'data/repositories/work_log_repository.dart';
+import 'data/repositories/work_log_repository_impl.dart';
 import 'data/repositories/standup_repository.dart';
 import 'data/repositories/notification_repository.dart';
 import 'domain/repositories/story_repository.dart';
@@ -122,6 +125,18 @@ void main() async {
     memberDataSource: projectMemberDataSource,
     authDataSource: firebaseAuthDataSource,
   );
+  final TaskRepository taskRepository = TaskRepository(
+    firestore: firestore,
+    notificationRepository: notificationRepository,
+    localCache: localCacheDataSource,
+  );
+  final WorkLogRepository workLogRepository = WorkLogRepositoryImpl(
+    dataSource: WorkLogDataSource(firestore: firestore),
+    memberRepository: projectMemberRepository,
+    taskRepository: taskRepository,
+    userDataSource: firestoreDataSource,
+    authDataSource: firebaseAuthDataSource,
+  );
 
   runApp(
     MultiRepositoryProvider(
@@ -133,13 +148,8 @@ void main() async {
         RepositoryProvider<BacklogRepository>.value(value: backlogRepository),
         RepositoryProvider<StoryRepository>.value(value: storyRepository),
         RepositoryProvider<SprintRepository>.value(value: sprintRepository),
-        RepositoryProvider<TaskRepository>(
-          create: (_) => TaskRepository(
-            firestore: firestore,
-            notificationRepository: notificationRepository,
-            localCache: localCacheDataSource,
-          ),
-        ),
+        RepositoryProvider<TaskRepository>.value(value: taskRepository),
+        RepositoryProvider<WorkLogRepository>.value(value: workLogRepository),
         RepositoryProvider<StandupRepository>.value(value: standupRepository),
         RepositoryProvider<CommentRepository>.value(value: commentRepository),
         RepositoryProvider<AttachmentRepository>.value(

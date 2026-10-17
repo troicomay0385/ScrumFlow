@@ -80,5 +80,60 @@ void main() {
       expect(unassigned.assigneeId, isNull);
       expect(unassigned.assigneeName, isNull);
     });
+
+    test('đổi loggedHours giữ nguyên các field khác', () {
+      final updated = task.copyWith(loggedHours: 4.5);
+      expect(updated.loggedHours, 4.5);
+      expect(updated.title, task.title);
+      expect(updated.storyId, task.storyId);
+      expect(updated.status, task.status);
+    });
+  });
+
+  group('TaskModel — loggedHours (US-066)', () {
+    test('thiếu field loggedHours mặc định là 0.0, không crash', () {
+      final task = TaskModel.fromMap(legacyMap(), 't1');
+      expect(task.loggedHours, 0.0);
+    });
+
+    test('loggedHours sai kiểu (String, boolean) trả về 0.0, không crash', () {
+      final wrongTypeString =
+          TaskModel.fromMap({...legacyMap(), 'loggedHours': 'hai giờ'}, 't1');
+      expect(wrongTypeString.loggedHours, 0.0);
+
+      final wrongTypeBool =
+          TaskModel.fromMap({...legacyMap(), 'loggedHours': true}, 't1');
+      expect(wrongTypeBool.loggedHours, 0.0);
+    });
+
+    test('đọc num dạng int và double chính xác', () {
+      final intHours =
+          TaskModel.fromMap({...legacyMap(), 'loggedHours': 3}, 't1');
+      expect(intHours.loggedHours, 3.0);
+
+      final doubleHours =
+          TaskModel.fromMap({...legacyMap(), 'loggedHours': 2.75}, 't1');
+      expect(doubleHours.loggedHours, 2.75);
+    });
+
+    test('round-trip toMap -> fromMap giữ nguyên loggedHours', () {
+      final original = TaskModel(
+        id: 't-test',
+        storyId: 's1',
+        title: 'Thử nghiệm round-trip',
+        description: 'Mô tả',
+        loggedHours: 6.25,
+        createdAt: created,
+        updatedAt: created,
+      );
+
+      final map = original.toMap();
+      expect(map['loggedHours'], 6.25);
+
+      final parsed = TaskModel.fromMap(map, 't-test');
+      expect(parsed.loggedHours, 6.25);
+      expect(parsed.title, original.title);
+      expect(parsed.id, original.id);
+    });
   });
 }

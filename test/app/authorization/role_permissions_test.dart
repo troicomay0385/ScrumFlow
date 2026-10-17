@@ -39,6 +39,13 @@ void main() {
       }
     });
 
+    test('US-065: PO & SM có quyền xem Sprint Dashboard, MEMBER không có', () {
+      expect(hasPermission(ProjectRole.po, Permission.viewSprintDashboard), isTrue);
+      expect(hasPermission(ProjectRole.sm, Permission.viewSprintDashboard), isTrue);
+      expect(hasPermission(ProjectRole.member, Permission.viewSprintDashboard), isFalse);
+      expect(hasPermission(null, Permission.viewSprintDashboard), isFalse);
+    });
+
     test('US-043 → US-046: mọi thành viên nhóm (PO/SM/MEMBER) được đổi assignee, đặt deadline, bình luận', () {
       for (final permission in [
         Permission.assignTask,
@@ -51,6 +58,14 @@ void main() {
         }
         expect(hasPermission(null, permission), isFalse);
       }
+    });
+
+    test('US-066: mọi thành viên nhóm (PO/SM/MEMBER) được ghi giờ làm việc (logWork)', () {
+      for (final role in ProjectRole.values) {
+        expect(hasPermission(role, Permission.logWork), isTrue,
+            reason: '$role phải có Permission.logWork');
+      }
+      expect(hasPermission(null, Permission.logWork), isFalse);
     });
 
     test('SM và MEMBER không có quyền quản lý thành viên và quản lý project', () {

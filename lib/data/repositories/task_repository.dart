@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../app/constants/firebase_error_mapper.dart';
+import '../../app/utils/list_utils.dart';
 import '../datasources/local_cache_datasource.dart';
 import '../models/task_model.dart';
 import 'notification_repository.dart';
@@ -108,6 +109,109 @@ class TaskRepository {
     }
   }
 
+  /// Stream realtime tất cả tasks thuộc danh sách User Stories (US-065).
+  ///
+  /// - Danh sách [storyIds] rỗng -> trả về `Stream.value([])`.
+  /// - Chia nhỏ [storyIds] thành từng chunk tối đa 30 phần tử để phù hợp giới hạn `whereIn` của Firestore.
+  /// - Gộp kết quả các chunk: chỉ emit khi mọi chunk đã phát ít nhất 1 lần, loại trùng theo task id.
+  /// - Hủy mọi sub-subscription khi stream bị huỷ.
+  /// - Offline fallback: đọc từ SQLite cache qua [LocalCacheDataSource.getCachedTasksByStories].
+  /// - Không lọc theo projectId (hỗ trợ task cũ có thể thiếu field này).
+  Stream<List<TaskModel>> streamTasksByStories(List<String> storyIds) {
+    if (storyIds.isEmpty) {
+      return Stream.value(const <TaskModel>[]);
+    }
+
+    final chunks = chunkList(storyIds, 30);
+    late final StreamController<List<TaskModel>> controller;
+    final subscriptions = <StreamSubscription>[];
+    final latestChunkTasks = List<List<TaskModel>?>.filled(chunks.length, null);
+    bool hasEmittedFallback = false;
+
+    Future<void> fallbackToCache(Object error) async {
+      if (_localCache != null && !hasEmittedFallback) {
+        try {
+          final cached = await _localCache.getCachedTasksByStories(storyIds);
+          if (cached.isNotEmpty && !controller.isClosed) {
+            hasEmittedFallback = true;
+            controller.add(cached);
+            return;
+          }
+        } catch (_) {}
+      }
+      if (!controller.isClosed && !hasEmittedFallback) {
+        controller.addError(error);
+      }
+    }
+
+    controller = StreamController<List<TaskModel>>(
+      onListen: () {
+        for (int i = 0; i < chunks.length; i++) {
+          final chunkIndex = i;
+          final chunk = chunks[chunkIndex];
+
+          try {
+            final sub = _tasksRef
+                .where('storyId', whereIn: chunk)
+                .snapshots()
+                .listen(
+              (snapshot) {
+                final tasks = snapshot.docs.map((doc) {
+                  return TaskModel.fromMap(
+                    doc.data() as Map<String, dynamic>,
+                    doc.id,
+                  );
+                }).toList();
+
+                // Ghi cache theo từng storyId trong chunk
+                for (final storyId in chunk) {
+                  final storyTasks =
+                      tasks.where((t) => t.storyId == storyId).toList();
+                  _localCache?.cacheTasks(storyId, storyTasks);
+                }
+
+                latestChunkTasks[chunkIndex] = tasks;
+
+                // Chỉ emit khi MỌI chunk đã phát ít nhất 1 lần
+                if (latestChunkTasks.every((t) => t != null)) {
+                  final allTasks = <TaskModel>[];
+                  final seenIds = <String>{};
+                  for (final cList in latestChunkTasks) {
+                    if (cList != null) {
+                      for (final task in cList) {
+                        if (seenIds.add(task.id)) {
+                          allTasks.add(task);
+                        }
+                      }
+                    }
+                  }
+                  if (!controller.isClosed) {
+                    controller.add(allTasks);
+                  }
+                }
+              },
+              onError: (Object error) {
+                fallbackToCache(error);
+              },
+            );
+
+            subscriptions.add(sub);
+          } catch (e) {
+            fallbackToCache(e);
+          }
+        }
+      },
+      onCancel: () async {
+        for (final sub in subscriptions) {
+          await sub.cancel();
+        }
+        subscriptions.clear();
+      },
+    );
+
+    return controller.stream;
+  }
+
   /// Lấy toàn bộ danh sách Tasks của 1 project (dùng cho tính điểm hiệu suất US-058 & gợi ý AI US-057).
   Future<List<TaskModel>> getTasksByProject(String projectId) async {
     try {
@@ -174,6 +278,7 @@ class TaskRepository {
       'assigneeId': newTask.assigneeId,
       'assigneeName': newTask.assigneeName,
       'deadline': deadline != null ? Timestamp.fromDate(deadline) : null,
+      'loggedHours': 0.0,
       'createdAt': Timestamp.fromDate(now),
       'updatedAt': Timestamp.fromDate(now),
     });
@@ -255,14 +360,18 @@ class TaskRepository {
       }
 
       final updated = task.copyWith(updatedAt: DateTime.now());
-      await _tasksRef.doc(task.id).update({
+      final updateData = <String, dynamic>{
         'title': updated.title,
         'description': updated.description,
         'status': updated.status,
         'assigneeId': updated.assigneeId,
         'assigneeName': updated.assigneeName,
         'updatedAt': Timestamp.fromDate(updated.updatedAt),
-      });
+      };
+      // Chống ghi đè (US-066): loggedHours chỉ được thay đổi bằng FieldValue.increment
+      updateData.remove('loggedHours');
+
+      await _tasksRef.doc(task.id).update(updateData);
 
       if (_notificationRepository != null) {
         // 1. Phân công task mới

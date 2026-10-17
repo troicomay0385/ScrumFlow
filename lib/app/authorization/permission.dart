@@ -13,6 +13,9 @@ enum Permission {
   manageBacklog,
   viewSprint,
   manageSprint,
+
+  /// US-065: xem biểu đồ tiến độ Sprint (Doughnut Chart) trên Home Screen.
+  viewSprintDashboard,
   viewTask,
   manageTask,
   updateAssignedTask,
@@ -25,6 +28,9 @@ enum Permission {
 
   /// US-045/US-046: bình luận trong User Story và Task.
   comment,
+
+  /// US-066: ghi nhận thời gian làm việc (Work Log) cho task.
+  logWork,
   viewMembers,
   manageMembers,
   changeMemberRole,
