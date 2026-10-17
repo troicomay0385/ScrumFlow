@@ -523,15 +523,21 @@
   - Hợp nhất lib/main.dart: Kết nối liền mạch dải thông báo mất mạng NetworkStatusBanner, định tuyến an toàn onGenerateInitialRoutes và BlocBuilder<ThemeCubit, ThemeState>.
   - Tối ưu ProjectMembersScreen và MemberListTile: Đảm bảo xử lý an toàn môi trường Widget Test (bảo vệ Firebase Auth instance) và giữ chuẩn responsive layout.
 - **Kiểm thử tự động & Phân tích tĩnh:**
-  - lutter test: **286 / 286 test PASS (100%)**.
-  - lutter analyze: **0 lỗi, 0 cảnh báo**.
+  - flutter test: **286 / 286 test PASS (100%)**.
+  - flutter analyze: **0 lỗi, 0 cảnh báo**.
 - **Tổng kết tiến độ dự án:**
-  - Chính thức hoàn thành **100% toàn bộ 5 Sprint**:
-    - **Sprint 1:** 11 / 11 User Stories (100%)
-    - **Sprint 2:** 12 / 12 User Stories (100%)
-    - **Sprint 3:** 17 / 17 User Stories (100%)
-    - **Sprint 4:** 7 / 7 User Stories (100%)
-    - **Sprint 5:** 9 / 9 User Stories (100%)
+  - **Sprint 1:** 11 / 11 User Stories (100%)
+  - **Sprint 2:** 12 / 12 User Stories (100%)
+  - **Sprint 3:** 17 / 17 User Stories (100%)
+  - **Sprint 4:** 7 / 7 User Stories (100%)
+  - **Sprint 5:** 9 / 13 User Stories hoàn thành (đã hoàn tất 9/9 US gốc; bổ sung 4 US mới nâng cao trải nghiệm Mobile: US-065, US-066, US-067, US-068)
+
+### Ngày 17/10/2026 (Bổ sung): Bổ sung 4 User Story mới vào Sprint 5 theo Kế hoạch Backlog
+- Tiếp nhận 4 User Story mới từ Sprint Backlog nâng cao trải nghiệm ứng dụng di động:
+  - **US-065** [Ưu tiên: CAO - Phụ trách: Duy]: [Mobile Sprint Dashboard] Là PO/SM, tôi muốn xem biểu đồ tiến độ Sprint (Doughnut Chart hiển thị tỷ lệ Task To Do/In Progress/Done) ngay trên màn hình chính để nắm bắt nhanh tình hình dự án.
+  - **US-066** [Ưu tiên: CAO - Phụ trách: Duy]: [Gestures & Log Work] Là thành viên nhóm, tôi muốn vuốt (Swipe) thẻ Task sang trái/phải để chuyển trạng thái nhanh, đồng thời bật lên một Bottom Sheet để tôi nhập giờ làm việc (Log work).
+  - **US-067** [Ưu tiên: CAO - Phụ trách: Thúy]: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó.
+  - **US-068** [Ưu tiên: CAO - Phụ trách: Thúy]: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình.
 
 ---
 
@@ -653,7 +659,7 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **9 / 9 User Stories hoàn thành (Đạt 100% Sprint 5)** (hoàn thành đầy đủ US-030, US-038 & US-062)*
+*Tiến độ thực tế: **9 / 13 User Stories hoàn thành** (9 hoàn thành, 4 User Story mới đang phát triển: US-065, US-066, US-067, US-068)*
 
 - [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
   *(Đã hoàn thành: Triển khai Dark Mode toàn diện thông qua ThemeCubit / AppThemes / ThemeState, hỗ trợ Light/Dark/System theme với shared_preferences lưu cấu hình người dùng; Giao diện Responsive thích ứng linh hoạt (ResponsiveLayout, breakpoints Mobile/Tablet/Desktop) trên tất cả các màn hình chính bao gồm Login, Home, Project Members, v.v.).*
@@ -671,8 +677,12 @@
   *(Đã hoàn thành 14/10/2026: hiệu ứng fade + trượt nhẹ thống nhất cho mọi route qua `pageTransitionsTheme` (tôn trọng "Giảm chuyển động", giữ vuốt Back trên iOS); bộ widget chung `AppLoadingView` / `SkeletonList` / `AppErrorView` / `AppEmptyView`; skeleton cho Trang chủ, Backlog, Sprint).*
 - [x] **US-054** [Ưu tiên: CAO]: Là nhóm phát triển, tôi muốn viết và chạy bộ Test Case cho toàn bộ 5 Sprint để đảm bảo hệ thống vận hành ổn định.  
   *(Cập nhật 14/10/2026: `docs/testing/BaoCaoKiemThu_US054.md` + `test_cases.csv`, gồm 72 Test Case truy vết theo US (48 PASS tự động, 22 NOT RUN, 2 BLOCKED). `flutter test` **286/286 PASS**, `flutter analyze` 0 error. Integration test và kiểm thử tay trên thiết bị: **chưa chạy** (không có thiết bị trong phiên).)*
-- [x] **US-055** [Ưu tiên: CAO]: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
+- [x] **US-055** [Ưu tiên: CAO] *(Phúc)*: Tối ưu hóa giao diện Responsive trên thiết bị di động (UI Refinement).  
   *(Đã hoàn thành 14/10/2026: widget test responsive cho 320×568 / 430×932, cỡ chữ ×1.3 và khi bàn phím mở; sửa tràn layout ở Đăng nhập, Đăng ký, Backlog, Sprint, Thành viên và 4 dialog; nút phân trang 40 px. Còn cần kiểm tra tay: Chi tiết Project, Task Board trên thiết bị thật).*
+- [ ] **US-065** [Ưu tiên: CAO] *(Duy)*: [Mobile Sprint Dashboard] Là PO/SM, tôi muốn xem biểu đồ tiến độ Sprint (Doughnut Chart hiển thị tỷ lệ Task To Do/In Progress/Done) ngay trên màn hình chính để nắm bắt nhanh tình hình dự án. *(Chưa hoàn thành)*
+- [ ] **US-066** [Ưu tiên: CAO] *(Duy)*: [Gestures & Log Work] Là thành viên nhóm, tôi muốn vuốt (Swipe) thẻ Task sang trái/phải để chuyển trạng thái nhanh, đồng thời bật lên một Bottom Sheet để tôi nhập giờ làm việc (Log work). *(Chưa hoàn thành)*
+- [ ] **US-067** [Ưu tiên: CAO] *(Thúy)*: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó. *(Chưa hoàn thành)*
+- [ ] **US-068** [Ưu tiên: CAO] *(Thúy)*: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình. *(Chưa hoàn thành)*
 
 ---
 
