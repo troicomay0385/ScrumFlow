@@ -106,7 +106,10 @@ class ProjectMembersScreen extends StatelessWidget {
                 hasPermission(loaded.currentUserRole, Permission.changeMemberRole);
             final canManageMembers =
                 hasPermission(loaded.currentUserRole, Permission.manageMembers);
-            final currentUid = FirebaseAuth.instance.currentUser?.uid;
+            String? currentUid;
+            try {
+              currentUid = FirebaseAuth.instance.currentUser?.uid;
+            } catch (_) {}
             final bloc = context.read<ProjectMembersBloc>();
 
             if (loaded.members.isEmpty) {
