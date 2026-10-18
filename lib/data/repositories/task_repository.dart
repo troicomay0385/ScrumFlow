@@ -498,6 +498,47 @@ class TaskRepository {
     }
   }
 
+  /// Đánh dấu task bị Blocker và gửi FCM notification tới Scrum Master.
+  ///
+  /// Ghi field `isBlocked=true`, `blockerReason`, `updatedAt` vào Firestore,
+  /// sau đó gọi [NotificationRepository.notifyBlockerAlert] để push tới mọi SM.
+  Future<void> markTaskAsBlocked({
+    required String taskId,
+    required String reason,
+    required String projectId,
+  }) {
+    return _guard(() async {
+      // Lấy tên task để hiển thị trong notification
+      final docSnapshot = await _tasksRef.doc(taskId).get();
+      if (!docSnapshot.exists) {
+        throw Exception('Task $taskId không tồn tại.');
+      }
+      final taskData = docSnapshot.data() as Map<String, dynamic>;
+      final taskTitle = (taskData['title'] as String?) ?? 'Task';
+
+      // Ghi blocker vào Firestore
+      await _tasksRef.doc(taskId).update({
+        'isBlocked': true,
+        'blockerReason': reason,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      }).timeout(_writeTimeout);
+
+      // Push notification tới Scrum Master
+      if (_notificationRepository != null) {
+        try {
+          await _notificationRepository.notifyBlockerAlert(
+            projectId: projectId,
+            taskId: taskId,
+            taskTitle: taskTitle,
+            reason: reason,
+          );
+        } catch (e) {
+          print('[BLOCKER ERROR] Lỗi gửi BLOCKER_ALERT: $e');
+        }
+      }
+    });
+  }
+
   /// Xóa task.
   Future<void> deleteTask(String taskId) async {
     await _tasksRef.doc(taskId).delete();

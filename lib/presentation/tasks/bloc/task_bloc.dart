@@ -17,6 +17,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskSubscriptionRequested>(_onSubscriptionRequested);
     on<TaskStatusUpdated>(_onStatusUpdated);
     on<TaskCreated>(_onTaskCreated);
+    on<MarkTaskAsBlockedEvent>(_onMarkTaskAsBlocked);
     on<_TasksReceived>((event, emit) => emit(TaskLoaded(event.tasks)));
     on<_TaskError>((event, emit) => emit(TaskError(event.message)));
   }
@@ -85,6 +86,29 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       // Không cần emit gì — stream listener sẽ tự push TaskLoaded mới
     } catch (e) {
       emit(TaskError('Lỗi tạo task: $e'));
+    }
+  }
+
+  /// Đánh dấu Task bị Blocker và push notification tới Scrum Master.
+  Future<void> _onMarkTaskAsBlocked(
+    MarkTaskAsBlockedEvent event,
+    Emitter<TaskState> emit,
+  ) async {
+    try {
+      await _repository.markTaskAsBlocked(
+        taskId: event.taskId,
+        reason: event.reason,
+        projectId: event.projectId,
+      );
+      emit(TaskBlockedSuccess(
+        taskId: event.taskId,
+        message: '🚧 Đã gắn Blocker. Scrum Master đã được thông báo.',
+      ));
+    } catch (e) {
+      final message = AppErrorHandler.messageOf(e);
+      emit(TaskError(
+        message.isEmpty ? 'Không thể gắn Blocker cho task.' : message,
+      ));
     }
   }
 

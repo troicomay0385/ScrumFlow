@@ -104,6 +104,14 @@ class _TaskDetailView extends StatelessWidget {
             actions: [
               if (task != null)
                 IconButton(
+                  key: const Key('task_detail_blocker_button'),
+                  icon: const Icon(Icons.block_rounded),
+                  tooltip: 'Báo Blocker cho Scrum Master',
+                  color: AppColors.error,
+                  onPressed: () => _showBlockerDialog(context, task),
+                ),
+              if (task != null)
+                IconButton(
                   key: const Key('task_detail_log_work_button'),
                   icon: const Icon(Icons.schedule_rounded),
                   tooltip: 'Ghi giờ',
@@ -162,6 +170,118 @@ class _TaskDetailView extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Hiển thị dialog nhập lý do Blocker rồi gọi [TaskRepository.markTaskAsBlocked].
+  Future<void> _showBlockerDialog(BuildContext context, TaskModel task) async {
+    final reasonCtrl = TextEditingController();
+    final projectId = context.read<TaskDetailCubit>().projectId;
+    final taskRepo = context.read<TaskRepository>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.block_rounded, color: AppColors.error),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Báo Blocker',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Scrum Master sẽ nhận push notification ngay lập tức.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              autofocus: true,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Lý do bị chặn *',
+                hintText: 'Mô tả vấn đề đang cản trở task...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Gửi cảnh báo'),
+            onPressed: () {
+              if (reasonCtrl.text.trim().isNotEmpty) {
+                Navigator.pop(dialogCtx, true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await taskRepo.markTaskAsBlocked(
+          taskId: task.id,
+          reason: reasonCtrl.text.trim(),
+          projectId: projectId,
+        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(const SnackBar(
+              content: Text('🚧 Đã gửi cảnh báo Blocker tới Scrum Master!'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi gửi Blocker: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
   }
 
   BoxDecoration get _cardDecoration => BoxDecoration(

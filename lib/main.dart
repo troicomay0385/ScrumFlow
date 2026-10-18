@@ -43,7 +43,7 @@ import 'presentation/standup/bloc/standup_bloc.dart';
 import 'presentation/settings/cubit/theme_cubit.dart';
 import 'presentation/settings/cubit/theme_state.dart';
 import 'app/services/connectivity_service.dart';
-import 'app/services/notification_service.dart';
+import 'app/services/notification_service.dart' show navigatorKey, firebaseMessagingBackgroundHandler;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'presentation/notifications/bloc/notification_bloc.dart';
 import 'presentation/common/widgets/network_status_banner.dart';
@@ -202,6 +202,7 @@ class ScrumFlowApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeState.themeMode,
+          navigatorKey: navigatorKey,
           initialRoute: AppRoutes.login,
           // Luôn khởi động từ Login, bỏ qua URL của trình duyệt. Trên Web, khi
           // reload ở một màn con (vd. `#/projects/detail`), Flutter sẽ dựng lại

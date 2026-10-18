@@ -186,4 +186,46 @@ class NotificationRepository {
       print('[NOTIFICATION ERROR] Lỗi gửi thông báo cập nhật dự án: $e');
     }
   }
+
+  /// Lấy danh sách userId của các Scrum Master trong project.
+  Future<List<String>> getScrumMasterIds(String projectId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('projectMembers')
+          .where('projectId', isEqualTo: projectId)
+          .where('role', isEqualTo: 'SM')
+          .get();
+      return snapshot.docs
+          .map((doc) => doc.data()['userId'] as String? ?? '')
+          .where((uid) => uid.isNotEmpty)
+          .toList();
+    } catch (e) {
+      print('[NOTIFICATION ERROR] Lỗi lấy Scrum Master IDs: $e');
+      return [];
+    }
+  }
+
+  /// Gửi notification BLOCKER_ALERT tới tất cả Scrum Master trong project.
+  Future<void> notifyBlockerAlert({
+    required String projectId,
+    required String taskId,
+    required String taskTitle,
+    required String reason,
+  }) async {
+    final smIds = await getScrumMasterIds(projectId);
+    if (smIds.isEmpty) {
+      print('[BLOCKER] Không tìm thấy Scrum Master nào trong project $projectId');
+      return;
+    }
+    for (final smId in smIds) {
+      await sendNotification(
+        userId: smId,
+        title: '🚧 Blocker Alert: $taskTitle',
+        body: 'Task bị chặn. Lý do: $reason',
+        type: 'BLOCKER_ALERT',
+        targetId: taskId,
+      );
+    }
+    print('[BLOCKER] Đã gửi BLOCKER_ALERT tới ${smIds.length} Scrum Master(s)');
+  }
 }
