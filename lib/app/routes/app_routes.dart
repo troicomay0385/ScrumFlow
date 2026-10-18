@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/models/task_model.dart';
+import '../../data/repositories/task_repository.dart';
 import '../../presentation/auth/screens/login_screen.dart';
 import '../../presentation/auth/screens/register_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
 import '../../presentation/projects/screens/create_project_screen.dart';
 import '../../presentation/projects/screens/project_detail_screen.dart';
 import '../../presentation/project_members/screens/project_members_screen.dart';
+import '../../presentation/tasks/screens/task_detail_screen.dart';
 import 'app_page_transitions.dart';
 
 
@@ -24,6 +28,10 @@ class AppRoutes {
   static const String createProject = '/projects/create';
   static const String projectDetail = '/projects/detail';
   static const String projectMembers = '/projects/members';
+
+  /// Route mở Task Detail từ push notification.
+  /// [arguments] = taskId (String).
+  static const String taskDetail = '/tasks/detail';
 
   /// Tạo route với fade + slide transition dùng chung ([AppPageTransition]),
   /// giống hệt hiệu ứng của các `MaterialPageRoute` trong app (US-064).
@@ -94,6 +102,22 @@ class AppRoutes {
           settings: settings,
           page: ProjectMembersScreen(projectId: settings.arguments as String),
         );
+      case taskDetail:
+        // arguments là taskId (String) — được đặt bởi NotificationService khi user bấm
+        // vào BLOCKER_ALERT notification (background hoặc killed state).
+        final taskId = settings.arguments is String
+            ? settings.arguments as String
+            : null;
+        if (taskId == null) {
+          return buildRoute(
+            settings: const RouteSettings(name: home),
+            page: const HomeScreen(),
+          );
+        }
+        return buildRoute(
+          settings: settings,
+          page: _TaskDetailFromIdScreen(taskId: taskId),
+        );
       default:
         return buildRoute(
           settings: settings,
@@ -104,3 +128,34 @@ class AppRoutes {
     }
   }
 }
+
+/// Widget trung gian: tải [TaskModel] từ Firestore theo [taskId] rồi
+/// hiển thị [TaskDetailScreen]. Dùng khi điều hướng từ notification (chỉ có taskId).
+class _TaskDetailFromIdScreen extends StatelessWidget {
+  final String taskId;
+  const _TaskDetailFromIdScreen({required this.taskId});
+
+  @override
+  Widget build(BuildContext context) {
+    final taskRepository = RepositoryProvider.of<TaskRepository>(context, listen: false);
+
+    return StreamBuilder<TaskModel?>(
+      stream: taskRepository.streamTask(taskId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final task = snapshot.data;
+        if (task == null) {
+          return const Scaffold(
+            body: Center(child: Text('Không tìm thấy Task.')),
+          );
+        }
+        return TaskDetailScreen(task: task, projectId: task.projectId ?? '');
+      },
+    );
+  }
+}
+

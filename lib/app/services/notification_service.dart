@@ -1,7 +1,11 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+/// Global Navigator key — dùng để điều hướng từ ngoài widget tree
+/// (notification click khi app ở background/foreground).
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -92,8 +96,17 @@ class NotificationService {
     // Khi bấm vào thông báo từ background → mở app
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('A new onMessageOpenedApp event was published!');
-      _handleNotificationClick(message.data['targetId'] as String?);
+      _handleNotificationData(message.data);
     });
+
+    // Khi app bị kill và user bấm notification → getInitialMessage trả về message
+    final initialMessage = await _fcm.getInitialMessage();
+    if (initialMessage != null) {
+      debugPrint('App opened from terminated state via notification');
+      // Delay nhỏ để Navigator đã ready
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      _handleNotificationData(initialMessage.data);
+    }
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────
@@ -133,10 +146,62 @@ class NotificationService {
     );
   }
 
+  /// Xử lý dữ liệu FCM payload — phân biệt loại thông báo để điều hướng.
+  void _handleNotificationData(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    final taskId = data['taskId'] as String?;
+    final targetId = data['targetId'] as String?;
+
+    if (type == 'BLOCKER_ALERT' && taskId != null) {
+      _navigateToTaskDetail(taskId);
+    } else if (targetId != null) {
+      _navigateToTaskDetail(targetId);
+    }
+  }
+
+  /// Điều hướng tới TaskDetailScreen theo taskId qua named route.
+  void _navigateToTaskDetail(String taskId) {
+    debugPrint('[NotificationService] Navigate to task detail: $taskId');
+    navigatorKey.currentState?.pushNamed(
+      '/tasks/detail',
+      arguments: taskId,
+    );
+  }
+
+  /// (Giữ lại để tương thích ngược với local notification payload cũ)
   void _handleNotificationClick(String? targetId) {
     if (targetId == null) return;
-    // TODO: Điều hướng tới Task Detail / Story Detail qua GlobalKey<NavigatorState>.
-    debugPrint('Should navigate to targetId: $targetId');
+    _navigateToTaskDetail(targetId);
+  }
+
+  /// Hiển thị local notification khi nhận BLOCKER_ALERT (foreground).
+  Future<void> showBlockerAlert({
+    required String taskTitle,
+    required String taskId,
+    required String blockerReason,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'scrumflow_blocker_channel',
+      'Blocker Alert',
+      channelDescription: 'Thông báo khi Task bị gắn Blocker — dành cho Scrum Master',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+      color: Color(0xFFEF4444),
+    );
+
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidDetails);
+
+    await _localNotifications.show(
+      id: taskId.hashCode,
+      title: '🚧 Blocker Alert: $taskTitle',
+      body: 'Lý do: $blockerReason — Chạm để xem chi tiết Task',
+      notificationDetails: notificationDetails,
+      payload: taskId,
+    );
   }
 
   /// Hiển thị thông báo nhắc nhở hạn chót của Task trên thiết bị (US-059).

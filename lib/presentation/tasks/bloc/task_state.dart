@@ -29,3 +29,14 @@ class TaskError extends TaskState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Emit sau khi [MarkTaskAsBlockedEvent] được xử lý thành công.
+class TaskBlockedSuccess extends TaskState {
+  final String taskId;
+  final String message;
+
+  const TaskBlockedSuccess({required this.taskId, required this.message});
+
+  @override
+  List<Object?> get props => [taskId, message];
+}

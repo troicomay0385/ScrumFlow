@@ -55,3 +55,21 @@ class TaskCreated extends TaskEvent {
   List<Object?> get props =>
       [storyId, title, description, assigneeId, assigneeName, projectId];
 }
+
+/// Đánh dấu task bị chặn (Blocker) và gửi FCM push notification tới Scrum Master.
+class MarkTaskAsBlockedEvent extends TaskEvent {
+  final String taskId;
+  final String reason;
+
+  /// Project chứa task — dùng để tìm Scrum Master trong project đó.
+  final String projectId;
+
+  const MarkTaskAsBlockedEvent({
+    required this.taskId,
+    required this.reason,
+    required this.projectId,
+  });
+
+  @override
+  List<Object?> get props => [taskId, reason, projectId];
+}
