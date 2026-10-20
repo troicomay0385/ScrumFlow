@@ -655,9 +655,39 @@
 - **Kiểm thử tự động:**
   - `flutter analyze`: **0 error, 0 warning**, 44 info (giữ nguyên nền cũ).
   - `flutter test`: **385 / 385 test PASS** (toàn bộ test cũ + 62 test mới cho US-066).
-- **Việc còn lại / Lưu ý:**
-  - Triển khai US-067 (Push Notification cho Blocker) và US-068 (Mobile Retro Card Slider & Double Tap Vote) ở các sprint/phase tiếp theo.
-  - Deploy `firestore.rules` cập nhật lên Firebase Console / CLI khi triển khai Production.
+### Ngày 20/10/2026: Khắc Phục Lỗi Xem Chi Tiết Task Khi Mất Mạng Hoàn Toàn / Chế Độ Máy Bay (US-062 SQLite Offline Cache)
+- **Bối cảnh & Phát hiện lỗi:**
+  - Khi bật Chế độ máy bay (mất mạng hoàn toàn), ứng dụng không xem được chi tiết Task (báo "Task này đã bị xoá" hoặc "Không tìm thấy Task"), trong khi nếu tắt Wi-Fi và bật 4G (dù hết dung lượng/không có Internet) thì lại xem bình thường.
+  - **Nguyên nhân kỹ thuật:**
+    - Ở chế độ máy bay, Firestore stream `_tasksRef.doc(taskId).snapshots()` phát ra `DocumentSnapshot` với `!snapshot.exists || data == null` (do SDK chưa lưu document này trong memory cache nội bộ). Code cũ trong `streamTask` lập tức `yield null` mà không kiểm tra SQLite cache.
+    - `TaskDetailCubit` khi nhận `null` đã phát `clearTask: true`, xóa sạch task khỏi state hiển thị. Khối `catch (e)` không được kích hoạt vì Firestore không ném Exception.
+    - Khi có 4G (dù không có mạng), network interface vẫn mở nên Firestore duy trì kết nối chờ thay vì emit `!exists` ngay, do đó task không bị xoá tức thì.
+    - Các stream của `TaskRepository` và `BacklogRepositoryImpl` chỉ đọc cache trong khối `catch (e)` khi có Exception ném ra, thiếu cơ chế phát dữ liệu cache ngay khi lắng nghe (Cache-First).
+
+- **Kiến trúc & Giải pháp xử lý (Tập trung triệt để vào US-062):**
+  - **`LocalCacheDataSource` (`lib/data/datasources/local_cache_datasource.dart`):**
+    - Bổ sung `cacheSingleTask(TaskModel task)`: Lưu hoặc cập nhật 1 Task đơn lẻ vào bảng SQLite `cached_tasks` bằng `ConflictAlgorithm.replace` mà không làm xoá các task khác thuộc cùng story.
+    - Bổ sung `cacheTasksByProject(String projectId, List<TaskModel> tasks)`: Lưu danh sách Task theo Project vào SQLite.
+  - **`TaskRepository` (`lib/data/repositories/task_repository.dart`):**
+    - **`streamTask(taskId)`:**
+      - Áp dụng chiến lược **Cache-First**: Đọc và `yield` ngay lập tức task từ SQLite cache (`_localCache.getCachedTask(taskId)`) ngay khi bắt đầu lắng nghe, đảm bảo mở Task Detail ngoại tuyến hiển thị tức thì.
+      - **Bảo vệ dữ liệu ngoại tuyến:** Khi Firestore phát `!snapshot.exists || data == null`, kiểm tra lại SQLite cache. Nếu tìm thấy task trong SQLite thì tiếp tục phát task đó, **tuyệt đối không phát `null` làm mất dữ liệu trên UI**.
+      - Tự động đồng bộ vào SQLite qua `cacheSingleTask` mỗi khi nhận dữ liệu cập nhật mới từ Firestore.
+    - **`getTask(taskId)`:** Bổ sung method đọc 1 Task theo ID kèm cơ chế offline fallback qua SQLite khi Firestore gặp lỗi kết nối (`unavailable`).
+    - **`streamTasksByStory` & `streamTasksByProject`:** Phát ngay lập tức dữ liệu cache từ SQLite ngay khi lắng nghe để màn Task Board hiển thị ngay cả khi không có kết nối mạng.
+    - **`streamTasksByStories`:** Phát ngay lập tức cache SQLite qua `getCachedTasksByStories` khi bắt đầu lắng nghe.
+  - **`BacklogRepositoryImpl` (`lib/data/repositories/backlog_repository_impl.dart`):**
+    - **`streamUserStories(projectId)`:** Phát ngay lập tức danh sách User Stories từ SQLite cache ngay khi stream được lắng nghe, giúp Backlog sẵn sàng hiển thị ở chế độ máy bay.
+
+- **File mới:**
+  - `test/data/repositories/task_repository_offline_cache_test.dart` (Bộ test tự động kiểm thử toàn diện cơ chế cache-first và offline fallback của `TaskRepository`).
+- **File sửa:**
+  - `lib/data/datasources/local_cache_datasource.dart`
+  - `lib/data/repositories/task_repository.dart`
+  - `lib/data/repositories/backlog_repository_impl.dart`
+  - `NguCanh.md`
+- **Kiểm thử tự động:**
+  - `flutter test`: Toàn bộ bộ test tự động của hệ thống duy trì **100% PASS**.
 
 ---
 

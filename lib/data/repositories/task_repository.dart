@@ -29,6 +29,13 @@ class TaskRepository {
   /// Stream realtime tất cả tasks của 1 User Story.
   /// Không dùng orderBy để tránh yêu cầu Composite Index trên Firestore.
   Stream<List<TaskModel>> streamTasksByStory(String storyId) async* {
+    // US-062: Emit SQLite cache ngay lập tức nếu có để offline hiển thị tức thì
+    if (_localCache != null) {
+      final cached = await _localCache.getCachedTasks(storyId);
+      if (cached.isNotEmpty) {
+        yield cached;
+      }
+    }
     try {
       await for (final snapshot in _tasksRef
           .where('storyId', isEqualTo: storyId)
@@ -58,13 +65,31 @@ class TaskRepository {
 
   /// Stream realtime 1 task (màn Task Detail). Emit `null` nếu task đã bị xoá.
   Stream<TaskModel?> streamTask(String taskId) async* {
+    // US-062: Emit SQLite cache ngay lập tức nếu có để offline hiển thị tức thì
+    if (_localCache != null) {
+      final cached = await _localCache.getCachedTask(taskId);
+      if (cached != null) {
+        yield cached;
+      }
+    }
     try {
       await for (final snapshot in _tasksRef.doc(taskId).snapshots()) {
         final data = snapshot.data() as Map<String, dynamic>?;
         if (!snapshot.exists || data == null) {
+          // Khi offline, Firestore có thể báo !snapshot.exists nếu chưa cache doc này trong SDK
+          // Kiểm tra SQLite cache trước khi quyết định yield null
+          if (_localCache != null) {
+            final cached = await _localCache.getCachedTask(taskId);
+            if (cached != null) {
+              yield cached;
+              continue;
+            }
+          }
           yield null;
         } else {
-          yield TaskModel.fromMap(data, snapshot.id);
+          final task = TaskModel.fromMap(data, snapshot.id);
+          _localCache?.cacheSingleTask(task);
+          yield task;
         }
       }
     } catch (e) {
@@ -80,8 +105,34 @@ class TaskRepository {
     }
   }
 
+  /// Lấy chi tiết 1 task theo ID kèm offline fallback qua SQLite (US-062).
+  Future<TaskModel?> getTask(String taskId) async {
+    try {
+      final doc = await _tasksRef.doc(taskId).get();
+      final data = doc.data() as Map<String, dynamic>?;
+      if (doc.exists && data != null) {
+        final task = TaskModel.fromMap(data, doc.id);
+        _localCache?.cacheSingleTask(task);
+        return task;
+      }
+    } catch (_) {
+      // Offline fallback
+    }
+    if (_localCache != null) {
+      return await _localCache.getCachedTask(taskId);
+    }
+    return null;
+  }
+
   /// Stream realtime tất cả tasks của 1 Project (dùng cho bảng thống kê hiệu suất US-060).
   Stream<List<TaskModel>> streamTasksByProject(String projectId) async* {
+    // US-062: Emit SQLite cache ngay lập tức nếu có
+    if (_localCache != null) {
+      final cached = await _localCache.getCachedTasksByProject(projectId);
+      if (cached.isNotEmpty) {
+        yield cached;
+      }
+    }
     try {
       await for (final snapshot in _tasksRef
           .where('projectId', isEqualTo: projectId)
@@ -93,7 +144,7 @@ class TaskRepository {
           );
         }).toList();
         // US-062: Cache kết quả theo project
-        _localCache?.cacheTasks(projectId, tasks);
+        _localCache?.cacheTasksByProject(projectId, tasks);
         yield tasks;
       }
     } catch (e) {
@@ -146,6 +197,14 @@ class TaskRepository {
 
     controller = StreamController<List<TaskModel>>(
       onListen: () {
+        // US-062 / US-065: Emit SQLite cache ngay khi lắng nghe
+        if (_localCache != null) {
+          _localCache.getCachedTasksByStories(storyIds).then((cached) {
+            if (cached.isNotEmpty && !controller.isClosed && !hasEmittedFallback) {
+              controller.add(cached);
+            }
+          }).catchError((_) {});
+        }
         for (int i = 0; i < chunks.length; i++) {
           final chunkIndex = i;
           final chunk = chunks[chunkIndex];

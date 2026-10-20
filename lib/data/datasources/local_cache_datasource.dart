@@ -331,6 +331,48 @@ class LocalCacheDataSource {
     );
   }
 
+  /// Cache hoặc cập nhật 1 Task đơn lẻ (không xoá các task khác trong story).
+  Future<void> cacheSingleTask(TaskModel task) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+    await db.insert(
+      _taskTableName,
+      {
+        'id': task.id,
+        'projectId': task.projectId ?? '',
+        'storyId': task.storyId,
+        'jsonData': jsonEncode(task.toMap()),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Cache danh sách Tasks của 1 Project (US-060 / US-062).
+  Future<void> cacheTasksByProject(String projectId, List<TaskModel> tasks) async {
+    if (kIsWeb) return;
+    final db = await _getDatabase();
+
+    final batch = db.batch();
+    batch.delete(
+      _taskTableName,
+      where: 'projectId = ?',
+      whereArgs: [projectId],
+    );
+    for (final task in tasks) {
+      batch.insert(
+        _taskTableName,
+        {
+          'id': task.id,
+          'projectId': task.projectId ?? projectId,
+          'storyId': task.storyId,
+          'jsonData': jsonEncode(task.toMap()),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
   /// Xoá cache của 1 project cụ thể (stories + tasks).
   Future<void> clearProjectCache(String projectId) async {
     if (kIsWeb) return;

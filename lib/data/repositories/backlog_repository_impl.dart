@@ -42,7 +42,13 @@ class BacklogRepositoryImpl implements BacklogRepository {
 
   @override
   Stream<List<UserStoryModel>> streamUserStories(String projectId) async* {
-    // US-062: Cache dữ liệu mỗi khi stream emit, fallback offline khi lỗi.
+    // US-062: Emit SQLite cache ngay lập tức nếu có để offline hiển thị tức thì
+    if (_localCache != null) {
+      final cached = await _localCache.getCachedUserStories(projectId);
+      if (cached.isNotEmpty) {
+        yield cached;
+      }
+    }
     try {
       await for (final stories in _dataSource.streamUserStories(projectId)) {
         // Lưu cache async — không block stream
