@@ -31,14 +31,14 @@
 - [x] Commit Phase 1: `feat(ai): pure-Dart ML core, synthetic history, eval + no-API verifier`.
 
 ### Phase 2 — US-069: AI Risk Radar
-- [ ] `TaskRiskFeatureExtractor` (trích xuất 10 feature từ `TaskModel` + Story + Sprint + `MemberPerformanceScore`, chống rò rỉ nhãn cho mẫu `real`).
-- [ ] `AiModelStore` (`shared_preferences`, lưu theo `projectId` có version, tự khôi phục khi dữ liệu hỏng).
-- [ ] `RiskPredictionService` (tự huấn luyện nền trên bootstrap nếu chưa có model, suy luận local, tính What-if đổi người phụ trách / deadline).
-- [ ] Phân quyền: thêm `Permission.viewAiInsights` và `Permission.manageAiModel` cho PO/SM + cập nhật test phân quyền.
-- [ ] Cubit: `TaskRiskCubit`, `SprintRiskCubit` (chống stale token, timeout 15s, DI sạch cho test).
-- [ ] UI: Risk badge trên `TaskCard` & `TaskDetailScreen`, Bento card "AI Risk Radar" trong `TaskDetailScreen`, Bottom sheet What-if, danh sách task rủi ro cao trong `SprintDetailScreen`.
-- [ ] Unit & Widget tests cho US-069 (extractor, chống rò rỉ nhãn, store, service, cubit, widget).
-- [ ] Commit Phase 2: `feat(ai): US-069 task delay risk radar`.
+- [x] `TaskRiskFeatureExtractor` (trích xuất 10 feature từ `TaskModel` + Story + Sprint + `MemberPerformanceScore`, chống rò rỉ nhãn cho mẫu `real`).
+- [x] `AiModelStore` (`shared_preferences`, lưu theo `projectId` có version, tự khôi phục khi dữ liệu hỏng).
+- [x] `RiskPredictionService` (tự huấn luyện nền trên bootstrap nếu chưa có model, suy luận local, tính What-if đổi người phụ trách / deadline).
+- [x] Phân quyền: thêm `Permission.viewAiInsights` và `Permission.manageAiModel` cho PO/SM + cập nhật test phân quyền.
+- [x] Cubit: `TaskRiskCubit`, `SprintRiskCubit` (chống stale token, timeout 15s, DI sạch cho test).
+- [x] UI: Risk badge trên `TaskCard` & `TaskDetailScreen`, Bento card "AI Risk Radar" trong `TaskDetailScreen`, Bottom sheet What-if, danh sách task rủi ro cao trong `SprintDetailScreen`.
+- [x] Unit & Widget tests cho US-069 (extractor, chống rò rỉ nhãn, store, service, cubit, widget).
+- [x] Commit Phase 2: `feat(ai): US-069 task delay risk radar`.
 
 ### Phase 3 — US-071: AI Model Lab
 - [ ] `ModelLabCubit` & `ModelLabState` (tải thông tin mô hình, huấn luyện lại với tiến độ epoch, gộp mẫu `real` từ task Done có deadline, đặt lại mặc định).

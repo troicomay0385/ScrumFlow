@@ -30,9 +30,19 @@ class FeatureContribution {
 
   /// `true` nếu yếu tố này làm tăng nguy cơ trễ hạn (`contribution > 0`).
   bool get isRiskIncreasing => contribution >= 0;
+  bool get increasesRisk => isRiskIncreasing;
 
   /// Độ lớn tuyệt đối của đóng góp $|w_j \cdot z_j|$.
   double get magnitude => contribution.abs();
+
+  /// Chuỗi phần trăm đóng góp tương đối dễ đọc cho UI (ví dụ `+28%` hoặc `-14%`).
+  String get formattedPercentPoints {
+    final approxPct = (contribution * 22.0).round().clamp(-99, 99);
+    if (approxPct == 0) {
+      return contribution >= 0 ? '+1%' : '-1%';
+    }
+    return approxPct > 0 ? '+$approxPct%' : '$approxPct%';
+  }
 }
 
 /// Kết quả giải thích chi tiết cho một dự đoán của mô hình [LogisticRegression].
@@ -57,6 +67,9 @@ class PredictionExplanation {
          topContributors,
        );
 
+  List<FeatureContribution> get allContributions => contributions;
+  List<FeatureContribution> get topContributions => topContributors;
+
   RiskLevel get riskLevel => RiskThresholds.classify(probability);
   int get percentage => (probability * 100).round();
 }
@@ -66,7 +79,7 @@ class PredictionExplanation {
 /// Tính toán đóng góp $\text{contribution}_j = w_j \cdot z_j$ cho từng đặc trưng,
 /// trích xuất Top-K yếu tố ảnh hưởng mạnh nhất kèm nhãn tiếng Việt rõ ràng.
 class Explainer {
-  Explainer._();
+  const Explainer();
 
   static PredictionExplanation explain({
     required LogisticRegression model,

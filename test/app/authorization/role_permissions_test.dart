@@ -46,6 +46,18 @@ void main() {
       expect(hasPermission(null, Permission.viewSprintDashboard), isFalse);
     });
 
+    test('US-069/070/071: PO & SM có quyền viewAiInsights và manageAiModel, MEMBER không có', () {
+      for (final permission in [
+        Permission.viewAiInsights,
+        Permission.manageAiModel,
+      ]) {
+        expect(hasPermission(ProjectRole.po, permission), isTrue);
+        expect(hasPermission(ProjectRole.sm, permission), isTrue);
+        expect(hasPermission(ProjectRole.member, permission), isFalse);
+        expect(hasPermission(null, permission), isFalse);
+      }
+    });
+
     test('US-043 → US-046: mọi thành viên nhóm (PO/SM/MEMBER) được đổi assignee, đặt deadline, bình luận', () {
       for (final permission in [
         Permission.assignTask,

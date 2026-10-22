@@ -5,12 +5,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../app/authorization/permission.dart';
 import '../../../app/authorization/role_permissions.dart';
 import '../../../app/constants/app_colors.dart';
+import '../../../data/ai/risk_prediction_service.dart';
 import '../../../data/models/sprint_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
 import '../../../data/repositories/project_member_repository.dart';
-import '../../../data/repositories/sprint_review_repository.dart';
 import '../../../data/repositories/sprint_retro_repository.dart';
+import '../../../data/repositories/sprint_review_repository.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../ai/bloc/sprint_risk_cubit.dart';
+import '../../ai/widgets/sprint_high_risk_tasks_card.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../common/widgets/app_state_views.dart';
@@ -24,441 +28,571 @@ import '../widgets/sprint_review_dialog.dart';
 import '../widgets/start_sprint_dialog.dart';
 import 'sprint_retro_screen.dart';
 
+T? _maybeRead<T>(BuildContext context) {
+  try {
+    return context.read<T>();
+  } catch (_) {
+    return null;
+  }
+}
+
 class SprintDetailScreen extends StatelessWidget {
   final String projectId;
   final String projectName;
   final String sprintId;
+  final RiskPredictionService? riskPredictionService;
 
   const SprintDetailScreen({
-	super.key,
-	required this.projectId,
-	required this.projectName,
-	required this.sprintId,
+    super.key,
+    required this.projectId,
+    required this.projectName,
+    required this.sprintId,
+    this.riskPredictionService,
   });
 
   @override
   Widget build(BuildContext context) {
-	return StreamBuilder(
-	  stream: context.read<ProjectMemberRepository>().streamCurrentUserRole(projectId),
-	  builder: (context, roleSnapshot) {
-		final canManage = hasPermission(roleSnapshot.data, Permission.manageSprint);
-		return BlocConsumer<SprintBloc, SprintState>(
-		  listener: (context, state) {
-			if (state is SprintError || state is SprintActionCompleted) {
-			  final message = state is SprintError
-				  ? state.message
-				  : (state as SprintActionCompleted).message;
-			  ScaffoldMessenger.of(context).showSnackBar(
-				SnackBar(content: Text(message)),
-			  );
-			}
-		  },
-		  builder: (context, state) {
-			final sprints = switch (state) {
-			  SprintLoaded(:final sprints) => sprints,
-			  SprintActionCompleted(:final sprints) => sprints,
-			  SprintError(:final sprints) => sprints,
-			  _ => const <SprintModel>[],
-			};
-			if (state is SprintInitial || state is SprintLoading) {
-			  return Scaffold(
-				appBar: AppBar(title: Text(projectName)),
-				body: const AppLoadingView(message: 'Đang tải thông tin Sprint...'),
-			  );
-			}
-			if (state is SprintLoadFailure) {
-			  return Scaffold(
-				appBar: AppBar(title: Text(projectName)),
-				body: AppErrorView.fromFailure(
-				  state.failure,
-				  onRetry: () => context
-					  .read<SprintBloc>()
-					  .add(SprintSubscriptionRequested(projectId)),
-				),
-			  );
-			}
-			final matches = sprints.where((sprint) => sprint.id == sprintId);
-			if (matches.isEmpty) {
-			  return Scaffold(
-				appBar: AppBar(title: Text(projectName)),
-				body: const Center(child: Text('Sprint không tồn tại hoặc đã bị xóa.')),
-			  );
-			}
-			final sprint = matches.first;
-			return Scaffold(
-			  backgroundColor: AppColors.canvas,
-			  appBar: AppBar(
-				title: Text(sprint.name),
-				actions: [
-				  // ── US-049: Nút Bắt đầu Sprint (chỉ hiện khi Planned & canManage) ──
-				  if (canManage && sprint.status.toLowerCase() == 'planned')
-					FilledButton.icon(
-					  key: const Key('sprintDetail_startSprint'),
-					  onPressed: () => showStartSprintDialog(
-						context: context,
-						sprint: sprint,
-						projectId: projectId,
-					  ),
-					  style: FilledButton.styleFrom(
-						backgroundColor: AppColors.primary,
-						shape: RoundedRectangleBorder(
-						  borderRadius: BorderRadius.circular(10),
-						),
-						padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-					  ),
-					  icon: const Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
-					  label: Text(
-						'Bắt đầu',
-						style: GoogleFonts.plusJakartaSans(
-						  fontSize: 13,
-						  fontWeight: FontWeight.w700,
-						  color: Colors.white,
-						),
-					  ),
-					),
-				  // ── US-050: Nút Đóng Sprint (chỉ hiện khi Active & canManage) ──
-				  if (canManage && sprint.status.toLowerCase() == 'active')
-					FilledButton.icon(
-					  key: const Key('sprintDetail_closeSprint'),
-					  onPressed: () => _showCloseSprintDialog(context, sprint, sprints),
-					  style: FilledButton.styleFrom(
-						backgroundColor: const Color(0xFFDC2626),
-						shape: RoundedRectangleBorder(
-						  borderRadius: BorderRadius.circular(10),
-						),
-						padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-					  ),
-					  icon: const Icon(Icons.flag_rounded, size: 16, color: Colors.white),
-					  label: Text(
-						'Đóng Sprint',
-						style: GoogleFonts.plusJakartaSans(
-						  fontSize: 13,
-						  fontWeight: FontWeight.w700,
-						  color: Colors.white,
-						),
-					  ),
-					),
-				  // Nút mở Sprint Board theo Sprint (US-055)
-				  IconButton(
-					key: const Key('sprintDetail_openTaskBoard'),
-					icon: const Icon(Icons.view_kanban_outlined),
-					tooltip: 'Xem Sprint Board',
-					onPressed: () {
-					  Navigator.of(context).push(
-						MaterialPageRoute(
-						  builder: (_) => TaskBoardScreen(
-							projectId: projectId,
-							projectName: projectName,
-							initialSprintId: sprint.id,
-						  ),
-						),
-					  );
-					},
-				  ),
-				  const SizedBox(width: 4),
-				],
-			  ),
-			  floatingActionButton: canManage
-				  ? FloatingActionButton.extended(
-					  onPressed: () => _showBacklogPicker(context, sprint),
-					  icon: const Icon(Icons.add),
-					  label: const Text('Thêm từ backlog'),
-					)
-				  : null,
-			  body: ListView(
-				padding: const EdgeInsets.all(16),
-				children: [
-				  Card(
-					child: Padding(
-					  padding: const EdgeInsets.all(16),
-					  child: Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						children: [
-						  Text('Mục tiêu Sprint', style: Theme.of(context).textTheme.titleMedium),
-						  const SizedBox(height: 8),
-						  Text(sprint.goal.isEmpty ? 'Chưa có mục tiêu.' : sprint.goal),
-						  const SizedBox(height: 12),
-						  Text('${_format(sprint.startDate)} – ${_format(sprint.endDate)} · ${sprint.status}'),
-						],
-					  ),
-					),
-				  ),
-				  const SizedBox(height: 16),
-				  // Nút mở Sprint Board dạng banner (US-055)
-				  InkWell(
-					borderRadius: BorderRadius.circular(14),
-					onTap: () {
-					  Navigator.of(context).push(
-						MaterialPageRoute(
-						  builder: (_) => TaskBoardScreen(
-							projectId: projectId,
-							projectName: projectName,
-							initialSprintId: sprint.id,
-						  ),
-						),
-					  );
-					},
-					child: Container(
-					  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-					  decoration: BoxDecoration(
-						gradient: AppColors.cardAccentGradient,
-						borderRadius: BorderRadius.circular(14),
-						boxShadow: [
-						  BoxShadow(
-							color: AppColors.primary.withValues(alpha: 0.2),
-							blurRadius: 8,
-							offset: const Offset(0, 3),
-						  ),
-						],
-					  ),
-					  child: Row(
-						children: [
-						  const Icon(Icons.view_kanban_rounded, color: Colors.white, size: 22),
-						  const SizedBox(width: 12),
-						  Expanded(
-							child: Column(
-							  crossAxisAlignment: CrossAxisAlignment.start,
-							  children: [
-								Text(
-								  'Mở Sprint Board',
-								  style: GoogleFonts.plusJakartaSans(
-									fontSize: 14,
-									fontWeight: FontWeight.w800,
-									color: Colors.white,
-								  ),
-								),
-								Text(
-								  'Xem Kanban theo trạng thái (To Do / In Progress / Done)',
-								  style: GoogleFonts.plusJakartaSans(
-									fontSize: 11,
-									color: Colors.white.withValues(alpha: 0.8),
-									fontWeight: FontWeight.w500,
-								  ),
-								),
-							  ],
-							),
-						  ),
-						  const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
-						],
-					  ),
-					),
-				  ),
-				  const SizedBox(height: 12),
+    return StreamBuilder(
+      stream: context.read<ProjectMemberRepository>().streamCurrentUserRole(
+        projectId,
+      ),
+      builder: (context, roleSnapshot) {
+        final canManage = hasPermission(
+          roleSnapshot.data,
+          Permission.manageSprint,
+        );
+        final canViewAi = hasPermission(
+          roleSnapshot.data,
+          Permission.viewAiInsights,
+        );
+        return BlocConsumer<SprintBloc, SprintState>(
+          listener: (context, state) {
+            if (state is SprintError || state is SprintActionCompleted) {
+              final message = state is SprintError
+                  ? state.message
+                  : (state as SprintActionCompleted).message;
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(message)));
+            }
+          },
+          builder: (context, state) {
+            final sprints = switch (state) {
+              SprintLoaded(:final sprints) => sprints,
+              SprintActionCompleted(:final sprints) => sprints,
+              SprintError(:final sprints) => sprints,
+              _ => const <SprintModel>[],
+            };
+            if (state is SprintInitial || state is SprintLoading) {
+              return Scaffold(
+                appBar: AppBar(title: Text(projectName)),
+                body: const AppLoadingView(
+                  message: 'Đang tải thông tin Sprint...',
+                ),
+              );
+            }
+            if (state is SprintLoadFailure) {
+              return Scaffold(
+                appBar: AppBar(title: Text(projectName)),
+                body: AppErrorView.fromFailure(
+                  state.failure,
+                  onRetry: () => context.read<SprintBloc>().add(
+                    SprintSubscriptionRequested(projectId),
+                  ),
+                ),
+              );
+            }
+            final matches = sprints.where((sprint) => sprint.id == sprintId);
+            if (matches.isEmpty) {
+              return Scaffold(
+                appBar: AppBar(title: Text(projectName)),
+                body: const Center(
+                  child: Text('Sprint không tồn tại hoặc đã bị xóa.'),
+                ),
+              );
+            }
+            final sprint = matches.first;
+            return Scaffold(
+              backgroundColor: AppColors.canvas,
+              appBar: AppBar(
+                title: Text(sprint.name),
+                actions: [
+                  // ── US-049: Nút Bắt đầu Sprint (chỉ hiện khi Planned & canManage) ──
+                  if (canManage && sprint.status.toLowerCase() == 'planned')
+                    FilledButton.icon(
+                      key: const Key('sprintDetail_startSprint'),
+                      onPressed: () => showStartSprintDialog(
+                        context: context,
+                        sprint: sprint,
+                        projectId: projectId,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.rocket_launch_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'Bắt đầu',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  // ── US-050: Nút Đóng Sprint (chỉ hiện khi Active & canManage) ──
+                  if (canManage && sprint.status.toLowerCase() == 'active')
+                    FilledButton.icon(
+                      key: const Key('sprintDetail_closeSprint'),
+                      onPressed: () =>
+                          _showCloseSprintDialog(context, sprint, sprints),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.flag_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'Đóng Sprint',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  // Nút mở Sprint Board theo Sprint (US-055)
+                  IconButton(
+                    key: const Key('sprintDetail_openTaskBoard'),
+                    icon: const Icon(Icons.view_kanban_outlined),
+                    tooltip: 'Xem Sprint Board',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TaskBoardScreen(
+                            projectId: projectId,
+                            projectName: projectName,
+                            initialSprintId: sprint.id,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+              floatingActionButton: canManage
+                  ? FloatingActionButton.extended(
+                      onPressed: () => _showBacklogPicker(context, sprint),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Thêm từ backlog'),
+                    )
+                  : null,
+              body: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mục tiêu Sprint',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            sprint.goal.isEmpty
+                                ? 'Chưa có mục tiêu.'
+                                : sprint.goal,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${_format(sprint.startDate)} – ${_format(sprint.endDate)} · ${sprint.status}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Nút mở Sprint Board dạng banner (US-055)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TaskBoardScreen(
+                            projectId: projectId,
+                            projectName: projectName,
+                            initialSprintId: sprint.id,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.cardAccentGradient,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.view_kanban_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Mở Sprint Board',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Xem Kanban theo trạng thái (To Do / In Progress / Done)',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-				  // ── Bento Hàng đôi: Sprint Review (US-023) & Sprint Retrospective (US-024) ──
-				  Row(
-					children: [
-					  // 1. Sprint Review Bento Button
-					  Expanded(
-						child: Material(
-						  color: Colors.transparent,
-						  child: InkWell(
-							borderRadius: BorderRadius.circular(16),
-							onTap: () {
-							  final authState = context.read<AuthBloc>().state;
-							  String? uid;
-							  String? name;
-							  if (authState is AuthAuthenticated) {
-								uid = authState.user.id;
-								name = authState.user.fullName;
-							  }
+                  // ── Bento Hàng đôi: Sprint Review (US-023) & Sprint Retrospective (US-024) ──
+                  Row(
+                    children: [
+                      // 1. Sprint Review Bento Button
+                      Expanded(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              final authState = context.read<AuthBloc>().state;
+                              String? uid;
+                              String? name;
+                              if (authState is AuthAuthenticated) {
+                                uid = authState.user.id;
+                                name = authState.user.fullName;
+                              }
 
-							  context.read<BacklogRepository>().getStoriesByIds(
-									projectId,
-									sprint.storyIds,
-								  ).then((stories) {
-								if (!context.mounted) return;
-								SprintReviewDialog.show(
-								  context: context,
-								  projectId: projectId,
-								  sprint: sprint,
-								  stories: stories,
-								  repository: SprintReviewRepository(),
-								  canEdit: canManage,
-								  currentUserId: uid,
-								  currentUserName: name,
-								);
-							  });
-							},
-							child: Container(
-							  padding: const EdgeInsets.all(14),
-							  decoration: BoxDecoration(
-								color: const Color(0xFFF0FDF4),
-								borderRadius: BorderRadius.circular(16),
-								border: Border.all(color: const Color(0xFFBBF7D0)),
-							  ),
-							  child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-								  Row(
-									children: [
-									  Container(
-										padding: const EdgeInsets.all(6),
-										decoration: BoxDecoration(
-										  color: const Color(0xFFDCFCE7),
-										  borderRadius: BorderRadius.circular(8),
-										),
-										child: const Icon(Icons.rate_review_rounded,
-											size: 16, color: Color(0xFF16A34A)),
-									  ),
-									  const Spacer(),
-									  const Icon(Icons.arrow_forward_rounded,
-										  size: 16, color: Color(0xFF16A34A)),
-									],
-								  ),
-								  const SizedBox(height: 8),
-								  Text(
-									'Sprint Review',
-									style: GoogleFonts.plusJakartaSans(
-									  fontWeight: FontWeight.w700,
-									  fontSize: 13,
-									  color: const Color(0xFF14532D),
-									),
-								  ),
-								  Text(
-									'Nghiệm thu demo & feedback',
-									style: GoogleFonts.inter(
-									  fontSize: 10,
-									  color: const Color(0xFF166534),
-									),
-									maxLines: 1,
-									overflow: TextOverflow.ellipsis,
-								  ),
-								],
-							  ),
-							),
-						  ),
-						),
-					  ),
-					  const SizedBox(width: 10),
+                              context
+                                  .read<BacklogRepository>()
+                                  .getStoriesByIds(projectId, sprint.storyIds)
+                                  .then((stories) {
+                                    if (!context.mounted) return;
+                                    SprintReviewDialog.show(
+                                      context: context,
+                                      projectId: projectId,
+                                      sprint: sprint,
+                                      stories: stories,
+                                      repository: SprintReviewRepository(),
+                                      canEdit: canManage,
+                                      currentUserId: uid,
+                                      currentUserName: name,
+                                    );
+                                  });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFBBF7D0),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFDCFCE7),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.rate_review_rounded,
+                                          size: 16,
+                                          color: Color(0xFF16A34A),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 16,
+                                        color: Color(0xFF16A34A),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Sprint Review',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: const Color(0xFF14532D),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Nghiệm thu demo & feedback',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      color: const Color(0xFF166534),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
 
-					  // 2. Sprint Retrospective Bento Button
-					  Expanded(
-						child: Material(
-						  color: Colors.transparent,
-						  child: InkWell(
-							borderRadius: BorderRadius.circular(16),
-							onTap: () {
-							  Navigator.of(context).push(
-								MaterialPageRoute(
-								  builder: (_) => SprintRetroScreen(
-									projectId: projectId,
-									sprint: sprint,
-									repository: SprintRetroRepository(),
-								  ),
-								),
-							  );
-							},
-							child: Container(
-							  padding: const EdgeInsets.all(14),
-							  decoration: BoxDecoration(
-								color: const Color(0xFFF5F3FF),
-								borderRadius: BorderRadius.circular(16),
-								border: Border.all(color: const Color(0xFFDDD6FE)),
-							  ),
-							  child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-								  Row(
-									children: [
-									  Container(
-										padding: const EdgeInsets.all(6),
-										decoration: BoxDecoration(
-										  color: const Color(0xFFEDE9FE),
-										  borderRadius: BorderRadius.circular(8),
-										),
-										child: const Icon(Icons.forum_rounded,
-											size: 16, color: Color(0xFF7C3AED)),
-									  ),
-									  const Spacer(),
-									  const Icon(Icons.arrow_forward_rounded,
-										  size: 16, color: Color(0xFF7C3AED)),
-									],
-								  ),
-								  const SizedBox(height: 8),
-								  Text(
-									'Retrospective',
-									style: GoogleFonts.plusJakartaSans(
-									  fontWeight: FontWeight.w700,
-									  fontSize: 13,
-									  color: const Color(0xFF4C1D95),
-									),
-								  ),
-								  Text(
-									'Họp cải tiến 3 cột Scrum',
-									style: GoogleFonts.inter(
-									  fontSize: 10,
-									  color: const Color(0xFF5B21B6),
-									),
-									maxLines: 1,
-									overflow: TextOverflow.ellipsis,
-								  ),
-								],
-							  ),
-							),
-						  ),
-						),
-					  ),
-					],
-				  ),
-				  const SizedBox(height: 16),
+                      // 2. Sprint Retrospective Bento Button
+                      Expanded(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SprintRetroScreen(
+                                    projectId: projectId,
+                                    sprint: sprint,
+                                    repository: SprintRetroRepository(),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F3FF),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFDDD6FE),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEDE9FE),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.forum_rounded,
+                                          size: 16,
+                                          color: Color(0xFF7C3AED),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 16,
+                                        color: Color(0xFF7C3AED),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Retrospective',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: const Color(0xFF4C1D95),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Họp cải tiến 3 cột Scrum',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      color: const Color(0xFF5B21B6),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-				  // ── Burndown Chart (US-025) & Danh sách User Stories ───────
-				  FutureBuilder<List<UserStoryModel>>(
-					future: context.read<BacklogRepository>().getStoriesByIds(
-						  projectId,
-						  sprint.storyIds,
-						),
-					builder: (context, snapshot) {
-					  if (snapshot.connectionState == ConnectionState.waiting) {
-						return const Padding(
-						  padding: EdgeInsets.all(24),
-						  child: Center(child: CircularProgressIndicator()),
-						);
-					  }
-					  final selected = snapshot.data ?? const <UserStoryModel>[];
+                  // ── Burndown Chart (US-025), AI Risk Radar (US-069) & Danh sách User Stories ──
+                  FutureBuilder<List<UserStoryModel>>(
+                    future: context.read<BacklogRepository>().getStoriesByIds(
+                      projectId,
+                      sprint.storyIds,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final selected =
+                          snapshot.data ?? const <UserStoryModel>[];
+                      final taskRepo = _maybeRead<TaskRepository>(context);
+                      final memberRepo = _maybeRead<ProjectMemberRepository>(
+                        context,
+                      );
+                      final aiService =
+                          riskPredictionService ??
+                          _maybeRead<RiskPredictionService>(context) ??
+                          RiskPredictionService();
 
-					  return Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						children: [
-						  // 1. Burndown Chart Widget (US-025)
-						  BurndownChartWidget(sprint: sprint, stories: selected),
-						  const SizedBox(height: 20),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Burndown Chart Widget (US-025)
+                          BurndownChartWidget(
+                            sprint: sprint,
+                            stories: selected,
+                          ),
+                          const SizedBox(height: 16),
 
-						  // 2. Danh sách User Stories đã chọn
-						  Text('User Stories đã chọn (${selected.length})',
-							  style: GoogleFonts.plusJakartaSans(
-								fontSize: 16,
-								fontWeight: FontWeight.w800,
-								color: AppColors.onSurface,
-							  )),
-						  const SizedBox(height: 8),
+                          // 2. US-069: Radar Rủi ro Task trong Sprint (AI) — chỉ hiển thị cho PO / SM
+                          if (canViewAi) ...[
+                            BlocProvider(
+                              create: (_) => SprintRiskCubit(
+                                projectId: projectId,
+                                predictionService: aiService,
+                                taskRepository: taskRepo,
+                                memberRepository: memberRepo,
+                              )..watchSprintTasks(
+                                sprint: sprint,
+                                stories: selected,
+                              ),
+                              child: Builder(
+                                builder: (innerCtx) => SprintHighRiskTasksCard(
+                                  projectId: projectId,
+                                  onRetry: () => innerCtx
+                                      .read<SprintRiskCubit>()
+                                      .watchSprintTasks(
+                                        sprint: sprint,
+                                        stories: selected,
+                                      ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
 
-						  if (selected.isEmpty)
-							const Card(
-							  child: ListTile(title: Text('Chưa có User Story nào trong Sprint.')),
-							)
-						  else
-							...selected.map(
-							  (story) => Card(
-								child: ListTile(
-								  leading: const Icon(Icons.bookmark_border, color: AppColors.primary),
-								  title: Text('${story.storyKey} · ${story.title}'),
-								  subtitle: Text('${story.storyPoints} điểm · ${story.status}'),
-								),
-							  ),
-							),
-						],
-					  );
-					},
-				  ),
-				],
-			  ),
-			);
-		  },
-		);
-	  },
-	);
+                          // 3. Danh sách User Stories đã chọn
+                          Text(
+                            'User Stories đã chọn (${selected.length})',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          if (selected.isEmpty)
+                            const Card(
+                              child: ListTile(
+                                title: Text(
+                                  'Chưa có User Story nào trong Sprint.',
+                                ),
+                              ),
+                            )
+                          else
+                            ...selected.map(
+                              (story) => Card(
+                                child: ListTile(
+                                  leading: const Icon(
+                                    Icons.bookmark_border,
+                                    color: AppColors.primary,
+                                  ),
+                                  title: Text(
+                                    '${story.storyKey} · ${story.title}',
+                                  ),
+                                  subtitle: Text(
+                                    '${story.storyPoints} điểm · ${story.status}',
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   /// US-050: Mở CloseSprintDialog — load stories rồi hiện dialog
@@ -468,7 +602,10 @@ class SprintDetailScreen extends StatelessWidget {
     List<SprintModel> allSprints,
   ) async {
     final backlogRepo = context.read<BacklogRepository>();
-    final stories = await backlogRepo.getStoriesByIds(projectId, sprint.storyIds);
+    final stories = await backlogRepo.getStoriesByIds(
+      projectId,
+      sprint.storyIds,
+    );
     if (!context.mounted) return;
 
     // Chỉ lấy sprint Planned còn lại (không phải sprint đang đóng)
@@ -485,13 +622,20 @@ class SprintDetailScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showBacklogPicker(BuildContext context, SprintModel sprint) async {
+  Future<void> _showBacklogPicker(
+    BuildContext context,
+    SprintModel sprint,
+  ) async {
     final sprintBloc = context.read<SprintBloc>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final stories = await context.read<BacklogRepository>().getUserStories(projectId);
+    final stories = await context.read<BacklogRepository>().getUserStories(
+      projectId,
+    );
     if (!context.mounted) return;
 
-    final available = stories.where((story) => !sprint.storyIds.contains(story.id)).toList();
+    final available = stories
+        .where((story) => !sprint.storyIds.contains(story.id))
+        .toList();
     if (available.isEmpty) {
       scaffoldMessenger.showSnackBar(
         const SnackBar(
@@ -513,7 +657,8 @@ class SprintDetailScreen extends StatelessWidget {
       ),
       builder: (sheetContext) => StatefulBuilder(
         builder: (modalContext, setModalState) {
-          final isAllSelected = selectedIds.length == available.length && available.isNotEmpty;
+          final isAllSelected =
+              selectedIds.length == available.length && available.isNotEmpty;
           return SafeArea(
             child: SizedBox(
               height: MediaQuery.sizeOf(modalContext).height * 0.75,
@@ -531,7 +676,10 @@ class SprintDetailScreen extends StatelessWidget {
                   ),
                   // Top bar with select-all and submit button
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     child: Row(
                       children: [
                         Checkbox(
@@ -569,7 +717,10 @@ class SprintDetailScreen extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                           ),
                           onPressed: selectedIds.isEmpty
                               ? null
@@ -585,7 +736,9 @@ class SprintDetailScreen extends StatelessWidget {
                                   Navigator.pop(sheetContext);
                                   scaffoldMessenger.showSnackBar(
                                     SnackBar(
-                                      content: Text('Đã thêm ${idsToAdd.length} User Story vào Sprint.'),
+                                      content: Text(
+                                        'Đã thêm ${idsToAdd.length} User Story vào Sprint.',
+                                      ),
                                       backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -609,7 +762,8 @@ class SprintDetailScreen extends StatelessWidget {
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: available.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1, indent: 56),
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, indent: 56),
                       itemBuilder: (itemContext, index) {
                         final story = available[index];
                         final isChecked = selectedIds.contains(story.id);
@@ -631,9 +785,14 @@ class SprintDetailScreen extends StatelessWidget {
                           title: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -664,7 +823,11 @@ class SprintDetailScreen extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               children: [
-                                Icon(Icons.stars_rounded, size: 14, color: Colors.amber.shade700),
+                                Icon(
+                                  Icons.stars_rounded,
+                                  size: 14,
+                                  color: Colors.amber.shade700,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${story.storyPoints} điểm',
@@ -675,9 +838,14 @@ class SprintDetailScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 12),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _getPriorityColor(story.priority).withValues(alpha: 0.1),
+                                    color: _getPriorityColor(
+                                      story.priority,
+                                    ).withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(

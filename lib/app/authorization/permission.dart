@@ -34,4 +34,10 @@ enum Permission {
   viewMembers,
   manageMembers,
   changeMemberRole,
+
+  /// US-069 / US-070: xem phân tích rủi ro AI (Task Risk Radar & Sprint Forecast).
+  viewAiInsights,
+
+  /// US-071: quản lý và huấn luyện mô hình trong AI Model Lab.
+  manageAiModel,
 }

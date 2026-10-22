@@ -6,10 +6,13 @@ import 'feature_spec.dart';
 import 'logistic_regression.dart';
 import 'metrics.dart';
 import 'standardizer.dart';
+import 'synthetic_history_generator.dart';
 
 /// Kết quả huấn luyện và đánh giá hoàn chỉnh của một mô hình dự đoán rủi ro trễ hạn.
 class TrainedRiskModelArtifact {
   static const int currentSchemaVersion = 1;
+
+  int get schemaVersion => currentSchemaVersion;
 
   final LogisticRegression model;
   final Standardizer standardizer;
@@ -120,7 +123,46 @@ class AblationResult {
 
 /// Pipeline huấn luyện và thẩm định mô hình chuẩn (`AiTrainingPipeline` — thuần Dart).
 class AiTrainingPipeline {
-  AiTrainingPipeline._();
+  static const int defaultTrainSeed = 42;
+  static const int defaultHoldoutSeed = 2026;
+
+  const AiTrainingPipeline();
+
+  /// Huấn luyện mô hình từ tập khởi tạo `synthetic` kết hợp mẫu `realSamples` (nếu có).
+  TrainedRiskModelArtifact trainModel({
+    List<LabeledSample> realSamples = const [],
+    int seed = defaultTrainSeed,
+    int syntheticCount = 800,
+    int epochs = 120,
+    void Function(int epoch, double trainLoss, double valLoss)? onEpochEnd,
+  }) {
+    const generator = SyntheticHistoryGenerator();
+    final trainDataset = generator.generate(
+      count: syntheticCount,
+      rng: Random(seed),
+    );
+    final holdoutDataset = generator.generate(
+      count: 300,
+      rng: Random(defaultHoldoutSeed),
+    );
+
+    final combinedTrainSamples = <LabeledSample>[
+      ...trainDataset.samples,
+      ...realSamples,
+    ];
+    final combinedTrainPool = Dataset(
+      samples: combinedTrainSamples,
+      featureNames: TaskFeatureSpec.keys,
+    );
+
+    return trainAndEvaluate(
+      trainPool: combinedTrainPool,
+      holdoutTest: holdoutDataset,
+      rng: Random(seed),
+      epochs: epochs,
+      onEpochEnd: onEpochEnd,
+    );
+  }
 
   /// Huấn luyện mô hình trên tập `trainPool` (tự chia 85% train / 15% validation cho early stopping)
   /// và đánh giá độc lập trên tập `holdoutTest`.

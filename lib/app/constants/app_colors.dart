@@ -118,5 +118,21 @@ class AppColors {
   static const Color darkInputBorder = Color(0xFF2E354F);
   static const Color darkInputFill = Color(0xFF131524);
   static const Color darkDivider = Color(0xFF252B42);
-}
 
+  // ── AI Sprint Risk Radar Status Tokens (US-069 / US-070 / US-071) ──
+  // Light Mode: Done (#047857 trên #D1FAE5), In Progress (#B45309 trên #FEF3C7), Blocker (#B91C1C trên #FEE2E2)
+  static const Color riskLowFg = Color(0xFF047857);
+  static const Color riskLowBg = Color(0xFFD1FAE5);
+  static const Color riskMediumFg = Color(0xFFB45309);
+  static const Color riskMediumBg = Color(0xFFFEF3C7);
+  static const Color riskHighFg = Color(0xFFB91C1C);
+  static const Color riskHighBg = Color(0xFFFEE2E2);
+
+  // Dark Mode Risk Tokens
+  static const Color darkRiskLowFg = Color(0xFF6EE7B7);
+  static const Color darkRiskLowBg = Color(0xFF064E3B);
+  static const Color darkRiskMediumFg = Color(0xFFFCD34D);
+  static const Color darkRiskMediumBg = Color(0xFF78350F);
+  static const Color darkRiskHighFg = Color(0xFFFCA5A5);
+  static const Color darkRiskHighBg = Color(0xFF7F1D1D);
+}

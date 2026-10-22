@@ -40,6 +40,7 @@ class TaskDetailState extends Equatable {
   bool get isSaving => status == TaskDetailStatus.saving;
   bool get canAssign => hasPermission(role, Permission.assignTask);
   bool get canSetDeadline => hasPermission(role, Permission.setTaskDeadline);
+  bool get canViewAiInsights => hasPermission(role, Permission.viewAiInsights);
 
   TaskDetailState copyWith({
     TaskModel? task,

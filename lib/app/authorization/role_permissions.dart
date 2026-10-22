@@ -25,6 +25,9 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.viewMembers,
     Permission.manageMembers,
     Permission.changeMemberRole,
+    // Sprint 5 (US-069 / US-070 / US-071): PO & SM có quyền xem phân tích AI và quản lý mô hình.
+    Permission.viewAiInsights,
+    Permission.manageAiModel,
   },
   ProjectRole.sm: {
     Permission.viewProject,
@@ -42,6 +45,9 @@ const Map<ProjectRole, Set<Permission>> _rolePermissions = {
     Permission.setTaskDeadline,
     Permission.comment,
     Permission.logWork,
+    // Sprint 5 (US-069 / US-070 / US-071): PO & SM có quyền xem phân tích AI và quản lý mô hình.
+    Permission.viewAiInsights,
+    Permission.manageAiModel,
   },
   ProjectRole.member: {
     Permission.viewProject,
