@@ -3,21 +3,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/task_model.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../presentation/ai/screens/model_lab_screen.dart';
 import '../../presentation/auth/screens/login_screen.dart';
 import '../../presentation/auth/screens/register_screen.dart';
 import '../../presentation/home/screens/home_screen.dart';
+import '../../presentation/project_members/screens/project_members_screen.dart';
 import '../../presentation/projects/screens/create_project_screen.dart';
 import '../../presentation/projects/screens/project_detail_screen.dart';
-import '../../presentation/project_members/screens/project_members_screen.dart';
 import '../../presentation/tasks/screens/task_detail_screen.dart';
 import 'app_page_transitions.dart';
 
-
 /// Định nghĩa tên các route và hàm tạo route với animated transitions.
-///
-/// Phase 1 chỉ khai báo route names và hàm [generateRoute].
-/// Các màn hình cụ thể (LoginScreen, RegisterScreen, HomeScreen)
-/// sẽ được thêm trong Phase 2.
 class AppRoutes {
   AppRoutes._();
 
@@ -29,15 +25,16 @@ class AppRoutes {
   static const String projectDetail = '/projects/detail';
   static const String projectMembers = '/projects/members';
 
+  /// US-071: Phòng thí nghiệm mô hình AI (AI Model Lab).
+  /// [arguments] = projectId (String).
+  static const String modelLab = '/ai/model-lab';
+
   /// Route mở Task Detail từ push notification.
   /// [arguments] = taskId (String).
   static const String taskDetail = '/tasks/detail';
 
   /// Tạo route với fade + slide transition dùng chung ([AppPageTransition]),
   /// giống hệt hiệu ứng của các `MaterialPageRoute` trong app (US-064).
-  ///
-  /// [page] — widget màn hình đích.
-  /// [duration] — thời gian animation (mặc định 300ms).
   static PageRouteBuilder buildRoute({
     required Widget page,
     required RouteSettings settings,
@@ -58,7 +55,9 @@ class AppRoutes {
     // Route cần projectId nhưng bị mở thiếu `arguments` (vd. gõ thẳng URL
     // trên Web) → quay về Login thay vì crash khi ép kiểu null.
     final needsProjectId =
-        settings.name == projectDetail || settings.name == projectMembers;
+        settings.name == projectDetail ||
+        settings.name == projectMembers ||
+        settings.name == modelLab;
     if (needsProjectId && settings.arguments is! String) {
       return buildRoute(
         settings: const RouteSettings(name: login),
@@ -67,26 +66,13 @@ class AppRoutes {
     }
 
     switch (settings.name) {
-      // '/' được Flutter tự động resolve thêm vào ĐÁY navigation stack khi
-      // initialRoute là named-route (vd. '/login'), kể cả khi app không bao
-      // giờ chủ động điều hướng tới '/'. Nếu không xử lý, route này sẽ rơi
-      // vào `default` (Route not found) và có thể lộ ra khi pop hết stack.
       case '/':
       case login:
-        return buildRoute(
-          settings: settings,
-          page: const LoginScreen(),
-        );
+        return buildRoute(settings: settings, page: const LoginScreen());
       case register:
-        return buildRoute(
-          settings: settings,
-          page: const RegisterScreen(),
-        );
+        return buildRoute(settings: settings, page: const RegisterScreen());
       case home:
-        return buildRoute(
-          settings: settings,
-          page: const HomeScreen(),
-        );
+        return buildRoute(settings: settings, page: const HomeScreen());
       case createProject:
         return buildRoute(
           settings: settings,
@@ -102,9 +88,12 @@ class AppRoutes {
           settings: settings,
           page: ProjectMembersScreen(projectId: settings.arguments as String),
         );
+      case modelLab:
+        return buildRoute(
+          settings: settings,
+          page: ModelLabScreen(projectId: settings.arguments as String),
+        );
       case taskDetail:
-        // arguments là taskId (String) — được đặt bởi NotificationService khi user bấm
-        // vào BLOCKER_ALERT notification (background hoặc killed state).
         final taskId = settings.arguments is String
             ? settings.arguments as String
             : null;
@@ -121,9 +110,7 @@ class AppRoutes {
       default:
         return buildRoute(
           settings: settings,
-          page: const Scaffold(
-            body: Center(child: Text('Route not found')),
-          ),
+          page: const Scaffold(body: Center(child: Text('Route not found'))),
         );
     }
   }
@@ -137,7 +124,10 @@ class _TaskDetailFromIdScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final taskRepository = RepositoryProvider.of<TaskRepository>(context, listen: false);
+    final taskRepository = RepositoryProvider.of<TaskRepository>(
+      context,
+      listen: false,
+    );
 
     return StreamBuilder<TaskModel?>(
       stream: taskRepository.streamTask(taskId),
@@ -158,4 +148,3 @@ class _TaskDetailFromIdScreen extends StatelessWidget {
     );
   }
 }
-

@@ -41,11 +41,11 @@
 - [x] Commit Phase 2: `feat(ai): US-069 task delay risk radar`.
 
 ### Phase 3 — US-071: AI Model Lab
-- [ ] `ModelLabCubit` & `ModelLabState` (tải thông tin mô hình, huấn luyện lại với tiến độ epoch, gộp mẫu `real` từ task Done có deadline, đặt lại mặc định).
-- [ ] `ModelLabScreen` + route trong `AppRoutes` + lối vào từ `ProjectDetailScreen` (chỉ hiển thị với PO/SM có `Permission.manageAiModel`).
-- [ ] UI: Thẻ dữ liệu (`synthetic` vs `real`, tỷ lệ nhãn, giả định checkpoint), nút "Huấn luyện lại" + biểu đồ Loss Curve Canvas, bảng Metrics + Confusion Matrix 2×2, so sánh 3 mô hình (Baseline đa số / Công thức cứng US-057 / Logistic Regression), Feature Importance thanh ngang có dấu, tiện ích Copy JSON & Đặt lại mặc định.
-- [ ] Unit & Widget tests cho US-071.
-- [ ] Commit Phase 3: `feat(ai): US-071 model lab`.
+- [x] `ModelLabCubit` & `ModelLabState` (tải thông tin mô hình, huấn luyện lại với tiến độ epoch, gộp mẫu `real` từ task Done có deadline, đặt lại mặc định).
+- [x] `ModelLabScreen` + route trong `AppRoutes` + lối vào từ `ProjectDetailScreen` (chỉ hiển thị với PO/SM có `Permission.manageAiModel`).
+- [x] UI: Thẻ dữ liệu (`synthetic` vs `real`, tỷ lệ nhãn, giả định checkpoint), nút "Huấn luyện lại" + biểu đồ Loss Curve Canvas, bảng Metrics + Confusion Matrix 2×2, so sánh 3 mô hình (Baseline đa số / Công thức cứng US-057 / Logistic Regression), Feature Importance thanh ngang có dấu, tiện ích Copy JSON & Đặt lại mặc định.
+- [x] Unit & Widget tests cho US-071.
+- [x] Commit Phase 3: `feat(ai): US-071 model lab`.
 
 ### Phase 4 — US-070: AI Sprint Forecast (Monte Carlo) & Demo Seeder
 - [ ] Adapter & Service dự báo Sprint (`SprintForecastAdapter` / `SprintForecastCubit`): kết nối `SprintModel`, `UserStoryModel` với `SprintForecastEngine` (ưu tiên velocity sprint đã đóng → burn rate sprint hiện tại từ `completedAt ?? updatedAt` → prior mặc định + cờ độ tin cậy thấp).

@@ -82,6 +82,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             hasPermission(currentRole, Permission.manageProject);
         final canViewMembers =
             hasPermission(currentRole, Permission.viewMembers);
+        final canManageAiModel =
+            hasPermission(currentRole, Permission.manageAiModel);
 
         return StreamBuilder<ProjectModel?>(
           stream: _projectStream,
@@ -553,6 +555,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
+
+                  // ── US-071: Phòng Thí Nghiệm Mô Hình AI (Model Lab) — PO & SM ──
+                  if (canManageAiModel) ...[
+                    _buildBentoActionCard(
+                      context: context,
+                      icon: Icons.psychology_rounded,
+                      iconBgColor: const Color(0xFFEEF2FF),
+                      iconColor: AppColors.primary,
+                      title: 'AI Model Lab (US-071)',
+                      subtitle:
+                          'Huấn luyện Logistic Regression, Loss Curve & Confusion Matrix',
+                      tag: 'AI Lab',
+                      tagBgColor: AppColors.primary.withValues(alpha: 0.12),
+                      tagTextColor: AppColors.primary,
+                      onTap: () => Navigator.of(context).pushNamed(
+                        AppRoutes.modelLab,
+                        arguments: project.id,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   // ── Bento Module: Nạp dữ liệu mẫu kiểm thử ──────────────
                   _buildBentoActionCard(
