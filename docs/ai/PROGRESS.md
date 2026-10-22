@@ -56,12 +56,12 @@
 - [x] Commit Phase 4: `feat(ai): US-070 sprint forecast + demo seeder`.
 
 ### Phase 5 — Hardening (Responsive, Dark Mode, Offline, Hiệu năng)
-- [ ] Widget test responsive (320×568, 430×932, chữ ×1.0 và ×1.3, bàn phím mở) & Dark mode cho toàn bộ màn hình/card/sheet AI mới.
-- [ ] Kiểm thử Offline (AI hoạt động hoàn toàn khi mất mạng, không gọi network).
-- [ ] Kiểm thử Hiệu năng (suy luận 1 task < 5 ms, Monte Carlo 1000 lần < 300 ms).
-- [ ] Xác nhận `dart run tool/verify_no_external_api.dart` PASS & `dart run tool/ai_eval.dart` exit 0.
-- [ ] Chạy toàn bộ `flutter analyze` và `flutter test`.
-- [ ] Commit Phase 5: `test(ai): hardening, responsive, offline, perf`.
+- [x] Widget test responsive (320×568, 430×932, chữ ×1.0 và ×1.3, bàn phím mở) & Dark mode cho toàn bộ màn hình/card/sheet AI mới (`test/presentation/ai/ai_hardening_test.dart`).
+- [x] Kiểm thử Offline (AI hoạt động hoàn toàn khi mất mạng, không gọi network).
+- [x] Kiểm thử Hiệu năng (suy luận 1 task = `0.448 ms` < 5 ms, Monte Carlo 1000 lần = `24.81 ms` < 300 ms).
+- [x] Xác nhận `dart run tool/verify_no_external_api.dart` PASS & `dart run tool/ai_eval.dart` exit 0.
+- [x] Chạy toàn bộ `flutter analyze` và `flutter test`.
+- [x] Commit Phase 5: `test(ai): hardening, responsive, offline, perf`.
 
 ### Phase 6 — Tài liệu & Bàn giao
 - [ ] Cập nhật `NguCanh.md` (tick `[x]` US-069, US-070, US-071 kèm mô tả chi tiết + nhật ký ngày làm việc + cập nhật tiến độ `14 / 16`).

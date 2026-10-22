@@ -116,9 +116,12 @@ class TaskRiskRadarCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  RiskBadge.fromPrediction(
-                    key: const Key('task_detail_risk_badge'),
-                    prediction: prediction,
+                  Flexible(
+                    child: RiskBadge.fromPrediction(
+                      key: const Key('task_detail_risk_badge'),
+                      prediction: prediction,
+                      compact: MediaQuery.sizeOf(context).width < 360,
+                    ),
                   ),
                 ],
               ),
