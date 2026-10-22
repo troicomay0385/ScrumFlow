@@ -779,7 +779,7 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **11 / 13 User Stories hoàn thành** (11 hoàn thành, 2 User Story mới đang phát triển: US-067, US-068)*
+*Tiến độ thực tế: **11 / 16 User Stories hoàn thành** (11 hoàn thành, 5 User Story mới đang phát triển: US-067, US-068, US-069, US-070, US-071)*
 
 - [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
   *(Đã hoàn thành: Triển khai Dark Mode toàn diện thông qua ThemeCubit / AppThemes / ThemeState, hỗ trợ Light/Dark/System theme với shared_preferences lưu cấu hình người dùng; Giao diện Responsive thích ứng linh hoạt (ResponsiveLayout, breakpoints Mobile/Tablet/Desktop) trên tất cả các màn hình chính bao gồm Login, Home, Project Members, v.v.).*
@@ -805,6 +805,9 @@
   *(Đã hoàn thành 17/10/2026: `SwipeableTaskCard` cử chỉ vuốt 2 chiều; chuyển đổi `LongPressDraggable` 400ms giải quyết triệt để xung đột kéo Kanban và cuộn dọc; phân quyền `Permission.logWork` cho PO/SM/MEMBER; `WorkLogModel`, `WorkLogValidator` (bội số 0.25h, [0.25..24]); `WorkLogDataSource` dùng `WriteBatch` ghi Firestore nguyên tử và tăng `loggedHours` mà không đổi `updatedAt` của task; `LogWorkCubit` + `showLogWorkBottomSheet` responsive 320x568 không tràn bàn phím 260px và chữ x1.3; `WorkLogsCubit` stream real-time + Bento card `WorkLogsSection` trong Task Detail; chip `loggedHours` trên Task Board co giãn không tràn cột hẹp 100px; 62 unit & widget tests).*
 - [ ] **US-067** [Ưu tiên: CAO] *(Thúy)*: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó. *(Chưa hoàn thành)*
 - [ ] **US-068** [Ưu tiên: CAO] *(Thúy)*: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình. *(Chưa hoàn thành)*
+- [ ] **US-069** [Ưu tiên: CAO] *(Duy)*: [AI Risk Radar] Là PO/SM, tôi muốn hệ thống tự dự đoán xác suất trễ hạn của từng Task bằng mô hình Machine Learning tự xây dựng (Logistic Regression, không dùng API ngoài) kèm giải thích các yếu tố ảnh hưởng, để kịp thời xử lý rủi ro. *(Chưa hoàn thành)*
+- [ ] **US-070** [Ưu tiên: CAO] *(Duy)*: [AI Sprint Forecast] Là PO/SM, tôi muốn xem xác suất hoàn thành Sprint và dải dự báo (p10/p50/p90) bằng mô phỏng Monte Carlo ngay trên biểu đồ Burndown, kèm gợi ý what-if loại bớt Story, để quyết định điều chỉnh phạm vi Sprint. *(Chưa hoàn thành)*
+- [ ] **US-071** [Ưu tiên: CAO] *(Duy)*: [AI Model Lab] Là PO/SM, tôi muốn có màn hình huấn luyện và đánh giá mô hình (loss curve, accuracy/precision/recall/F1/AUC, confusion matrix, so sánh baseline) để kiểm chứng AI thực sự học từ dữ liệu. *(Chưa hoàn thành)*
 
 ---
 
