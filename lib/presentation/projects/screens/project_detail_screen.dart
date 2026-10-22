@@ -16,6 +16,7 @@ import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/project_repository.dart';
 import '../../../data/repositories/sprint_repository.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../data/services/ai_demo_data_seeder.dart';
 import '../../../data/services/sample_data_seeder.dart';
 import '../../backlog/screens/backlog_list_screen.dart';
 import '../../sprints/screens/sprint_list_screen.dart';
@@ -54,9 +55,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _roleStream = context
-        .read<ProjectMemberRepository>()
-        .streamCurrentUserRole(widget.projectId);
+    _roleStream = context.read<ProjectMemberRepository>().streamCurrentUserRole(
+      widget.projectId,
+    );
     _projectStream = _createProjectStream();
   }
 
@@ -78,12 +79,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       stream: _roleStream,
       builder: (context, roleSnapshot) {
         final currentRole = roleSnapshot.data;
-        final canManageProject =
-            hasPermission(currentRole, Permission.manageProject);
-        final canViewMembers =
-            hasPermission(currentRole, Permission.viewMembers);
-        final canManageAiModel =
-            hasPermission(currentRole, Permission.manageAiModel);
+        final canManageProject = hasPermission(
+          currentRole,
+          Permission.manageProject,
+        );
+        final canViewMembers = hasPermission(
+          currentRole,
+          Permission.viewMembers,
+        );
+        final canManageAiModel = hasPermission(
+          currentRole,
+          Permission.manageAiModel,
+        );
 
         return StreamBuilder<ProjectModel?>(
           stream: _projectStream,
@@ -118,8 +125,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.folder_off_outlined,
-                          size: 64, color: AppColors.onSurfaceVariant),
+                      Icon(
+                        Icons.folder_off_outlined,
+                        size: 64,
+                        color: AppColors.onSurfaceVariant,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Project không tồn tại hoặc đã bị xoá',
@@ -157,13 +167,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     ),
                   if (canManageProject)
                     IconButton(
-                      icon: Icon(Icons.delete_outline_rounded,
-                          color: AppColors.error.withValues(alpha: 0.8)),
-                      tooltip: 'Xoá dự án',
-                      onPressed: () => _confirmDeleteProject(
-                        context,
-                        project,
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.error.withValues(alpha: 0.8),
                       ),
+                      tooltip: 'Xoá dự án',
+                      onPressed: () => _confirmDeleteProject(context, project),
                     ),
                   const NotificationBellWidget(),
                   IconButton(
@@ -174,7 +183,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ],
               ),
               body: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 children: [
                   // ── Hero Bento Header: Thông tin dự án & Mục tiêu ──────────
                   Container(
@@ -306,7 +318,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                  color: AppColors.primary.withValues(alpha: 0.3),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -316,7 +330,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   vertical: 8,
                                 ),
                               ),
-                              icon: const Icon(Icons.edit_note_rounded, size: 18),
+                              icon: const Icon(
+                                Icons.edit_note_rounded,
+                                size: 18,
+                              ),
                               label: Text(
                                 'Cập nhật mục tiêu',
                                 style: GoogleFonts.plusJakartaSans(
@@ -389,7 +406,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     iconBgColor: const Color(0xFFFFF7ED),
                     iconColor: const Color(0xFFEA580C),
                     title: 'Sprint & Kanban Board',
-                    subtitle: 'Lập kế hoạch Sprint & theo dõi tiến độ công việc',
+                    subtitle:
+                        'Lập kế hoạch Sprint & theo dõi tiến độ công việc',
                     tag: 'Kanban',
                     tagBgColor: const Color(0xFFFFEDD5),
                     tagTextColor: const Color(0xFFC2410C),
@@ -432,7 +450,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             userId: userId,
                             userName: userName,
                             sprintId: '', // Todo: Truyền active sprint ID
-                            sprintName: 'Sprint hiện tại', 
+                            sprintName: 'Sprint hiện tại',
                           ),
                         ),
                       );
@@ -569,10 +587,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       tag: 'AI Lab',
                       tagBgColor: AppColors.primary.withValues(alpha: 0.12),
                       tagTextColor: AppColors.primary,
-                      onTap: () => Navigator.of(context).pushNamed(
-                        AppRoutes.modelLab,
-                        arguments: project.id,
-                      ),
+                      onTap: () => Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.modelLab, arguments: project.id),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -590,6 +607,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     tagBgColor: const Color(0xFF99F6E4),
                     tagTextColor: const Color(0xFF115E59),
                     onTap: () => _confirmSeedSampleData(context, project.id),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Bento Module: Nạp dữ liệu Demo AI (US-069/070/071) ───
+                  _buildBentoActionCard(
+                    context: context,
+                    icon: Icons.auto_awesome_rounded,
+                    iconBgColor: const Color(0xFFFEF3C7),
+                    iconColor: const Color(0xFFD97706),
+                    title: 'Nạp Dữ Liệu Demo AI',
+                    subtitle:
+                        'Tạo 2 Sprint đóng, 1 Sprint chạy & 12 Task đủ 3 mức rủi ro AI',
+                    tag: 'AI Seed',
+                    tagBgColor: const Color(0xFFFDE68A),
+                    tagTextColor: const Color(0xFF92400E),
+                    onTap: () => _confirmSeedAiDemoData(context, project.id),
                   ),
                 ],
               ),
@@ -726,8 +760,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 color: AppColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.delete_forever_rounded,
-                  color: AppColors.error),
+              child: const Icon(
+                Icons.delete_forever_rounded,
+                color: AppColors.error,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -765,8 +801,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      color: AppColors.error, size: 20),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -846,7 +885,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             SnackBar(
               backgroundColor: AppColors.error,
               content: Text(
-                  'Lỗi khi xoá: ${e.toString().replaceFirst("Exception: ", "")}'),
+                'Lỗi khi xoá: ${e.toString().replaceFirst("Exception: ", "")}',
+              ),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -871,7 +911,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 color: const Color(0xFFCCFBF1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.science_rounded, color: Color(0xFF0F766E)),
+              child: const Icon(
+                Icons.science_rounded,
+                color: Color(0xFF0F766E),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -897,16 +940,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _seedInfoRow('🏁 1 Sprint Active & Kanban',
-                'Sprint 1 tự động gắn Stories vào 3 cột To Do, In Progress, Done'),
-            _seedInfoRow('📋 4 User Stories',
-                'To Do, In Progress, Done, mức ưu tiên & nhãn tags phong phú'),
-            _seedInfoRow('⚡ 4 Tasks Kanban',
-                'Có task đúng hạn, trễ hạn & task SẮP ĐẾN HẠN ngày mai'),
-            _seedInfoRow('📎 4 Tệp đính kèm',
-                'Figma, tài liệu Google Docs, ảnh mockup & PDF mẫu'),
-            _seedInfoRow('🔔 Local Notification',
-                'Tự động kích hoạt thông báo nhắc nhở hạn chót (US-059)'),
+            _seedInfoRow(
+              '🏁 1 Sprint Active & Kanban',
+              'Sprint 1 tự động gắn Stories vào 3 cột To Do, In Progress, Done',
+            ),
+            _seedInfoRow(
+              '📋 4 User Stories',
+              'To Do, In Progress, Done, mức ưu tiên & nhãn tags phong phú',
+            ),
+            _seedInfoRow(
+              '⚡ 4 Tasks Kanban',
+              'Có task đúng hạn, trễ hạn & task SẮP ĐẾN HẠN ngày mai',
+            ),
+            _seedInfoRow(
+              '📎 4 Tệp đính kèm',
+              'Figma, tài liệu Google Docs, ảnh mockup & PDF mẫu',
+            ),
+            _seedInfoRow(
+              '🔔 Local Notification',
+              'Tự động kích hoạt thông báo nhắc nhở hạn chót (US-059)',
+            ),
           ],
         ),
         actions: [
@@ -1008,6 +1061,141 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
+  Future<void> _confirmSeedAiDemoData(
+    BuildContext context,
+    String projectId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Color(0xFFD97706),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Nạp Dữ Liệu Demo AI',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Khởi tạo dữ liệu chuyên biệt để demo 3 tính năng AI Sprint 5 (US-069, US-070, US-071):',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _seedInfoRow(
+              '📊 2 Sprint đã đóng (Completed)',
+              'Cung cấp lịch sử Velocity thực tế cho Monte Carlo Forecast',
+            ),
+            _seedInfoRow(
+              '🚀 1 Sprint Active & 8 User Stories',
+              'Đầy đủ trạng thái Done / In Progress / To Do để thử What-if',
+            ),
+            _seedInfoRow(
+              '🎯 12 Tasks phân bố 3 mức rủi ro',
+              'Đủ Rủi ro Cao (Đỏ), Trung bình (Vàng), Thấp (Xanh) & mẫu Done thực tế',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Nạp Demo AI'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final authState = context.read<AuthBloc>().state;
+      String? currentUserId;
+      String? currentUserName;
+      if (authState is AuthAuthenticated) {
+        currentUserId = authState.user.id;
+        currentUserName = authState.user.fullName;
+      }
+
+      final messenger = ScaffoldMessenger.of(context);
+      final memberRepo = context.read<ProjectMemberRepository>();
+      final seeder = AiDemoDataSeeder(
+        backlogRepo: context.read<BacklogRepository>(),
+        sprintRepo: context.read<SprintRepository>(),
+        taskRepo: context.read<TaskRepository>(),
+      );
+
+      try {
+        final members = await memberRepo
+            .streamMembers(projectId)
+            .first
+            .timeout(const Duration(seconds: 15));
+
+        final result = await seeder.seedAiDemoData(
+          projectId: projectId,
+          members: members,
+          currentUserId: currentUserId,
+          currentUserName: currentUserName,
+        );
+
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text(
+              '✨ Đã nạp ${result.createdClosedSprints} Sprint đóng, ${result.createdActiveSprints} Sprint chạy, ${result.createdStories} Stories & ${result.createdTasks} Tasks Demo AI!',
+            ),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.error,
+            content: Text(
+              'Chưa nạp được dữ liệu Demo AI. ${AppErrorHandler.messageOf(e)}',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   static Widget _seedInfoRow(String title, String subtitle) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1045,4 +1233,3 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 }
-

@@ -13,7 +13,10 @@ import '../../../data/repositories/project_member_repository.dart';
 import '../../../data/repositories/sprint_retro_repository.dart';
 import '../../../data/repositories/sprint_review_repository.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../ai/bloc/sprint_forecast_cubit.dart';
+import '../../ai/bloc/sprint_forecast_state.dart';
 import '../../ai/bloc/sprint_risk_cubit.dart';
+import '../../ai/widgets/sprint_forecast_card.dart';
 import '../../ai/widgets/sprint_high_risk_tasks_card.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
@@ -512,25 +515,69 @@ class SprintDetailScreen extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. Burndown Chart Widget (US-025)
-                          BurndownChartWidget(
-                            sprint: sprint,
-                            stories: selected,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // 2. US-069: Radar Rủi ro Task trong Sprint (AI) — chỉ hiển thị cho PO / SM
                           if (canViewAi) ...[
                             BlocProvider(
-                              create: (_) => SprintRiskCubit(
-                                projectId: projectId,
-                                predictionService: aiService,
-                                taskRepository: taskRepo,
-                                memberRepository: memberRepo,
-                              )..watchSprintTasks(
-                                sprint: sprint,
-                                stories: selected,
-                              ),
+                              create: (_) =>
+                                  SprintForecastCubit(
+                                    projectId: projectId,
+                                    backlogRepository:
+                                        _maybeRead<BacklogRepository>(context),
+                                  )..computeForecast(
+                                    sprint: sprint,
+                                    sprintStories: selected,
+                                    allSprints: sprints,
+                                  ),
+                              child:
+                                  BlocBuilder<
+                                    SprintForecastCubit,
+                                    SprintForecastState
+                                  >(
+                                    builder: (fcCtx, fcState) {
+                                      final forecast =
+                                          fcState is SprintForecastLoaded
+                                          ? fcState.activeForecast
+                                          : null;
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // 1. Burndown Chart Widget (US-025 + US-070 dải dự báo p10–p90)
+                                          BurndownChartWidget(
+                                            sprint: sprint,
+                                            stories: selected,
+                                            forecast: forecast,
+                                          ),
+                                          const SizedBox(height: 16),
+
+                                          // 2. US-070: Dự báo Tiến độ Sprint (Monte Carlo)
+                                          SprintForecastCard(
+                                            onRetry: () => fcCtx
+                                                .read<SprintForecastCubit>()
+                                                .computeForecast(
+                                                  sprint: sprint,
+                                                  sprintStories: selected,
+                                                  allSprints: sprints,
+                                                ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 3. US-069: Radar Rủi ro Task trong Sprint (AI) — chỉ hiển thị cho PO / SM
+                            BlocProvider(
+                              create: (_) =>
+                                  SprintRiskCubit(
+                                    projectId: projectId,
+                                    predictionService: aiService,
+                                    taskRepository: taskRepo,
+                                    memberRepository: memberRepo,
+                                  )..watchSprintTasks(
+                                    sprint: sprint,
+                                    stories: selected,
+                                  ),
                               child: Builder(
                                 builder: (innerCtx) => SprintHighRiskTasksCard(
                                   projectId: projectId,
@@ -544,9 +591,16 @@ class SprintDetailScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 20),
+                          ] else ...[
+                            // 1. Burndown Chart Widget (US-025) cho Member
+                            BurndownChartWidget(
+                              sprint: sprint,
+                              stories: selected,
+                            ),
+                            const SizedBox(height: 16),
                           ],
 
-                          // 3. Danh sách User Stories đã chọn
+                          // 4. Danh sách User Stories đã chọn
                           Text(
                             'User Stories đã chọn (${selected.length})',
                             style: GoogleFonts.plusJakartaSans(

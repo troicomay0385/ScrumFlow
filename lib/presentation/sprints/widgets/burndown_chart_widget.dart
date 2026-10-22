@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../app/constants/app_colors.dart';
 import '../../../data/models/sprint_model.dart';
 import '../../../data/models/user_story_model.dart';
+import '../../../domain/ai/core/sprint_forecast_engine.dart';
 
 /// Dữ liệu biểu đồ Burndown Chart (US-025).
 class BurndownData {
@@ -67,7 +68,9 @@ class BurndownData {
       labels.add('${date.day}/${date.month}');
 
       // Đường lý tưởng: từ totalPoints giảm về 0
-      final idealValue = totalPoints - (totalPoints / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
+      final idealValue =
+          totalPoints -
+          (totalPoints / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
       ideal.add(max(0.0, idealValue));
 
       if (i <= currentDayIdx) {
@@ -97,15 +100,19 @@ class BurndownData {
   }
 }
 
-/// Widget hiển thị Burndown Chart phong cách Kinetic Sprint Bento (US-025).
+/// Widget hiển thị Burndown Chart phong cách Kinetic Sprint Bento (US-025 & US-070).
 class BurndownChartWidget extends StatelessWidget {
   final SprintModel sprint;
   final List<UserStoryModel> stories;
+
+  /// Kết quả dự báo Monte Carlo (US-070). Khi `null`, biểu đồ giữ nguyên 100% hành vi gốc.
+  final SprintForecastResult? forecast;
 
   const BurndownChartWidget({
     super.key,
     required this.sprint,
     required this.stories,
+    this.forecast,
   });
 
   @override
@@ -113,7 +120,9 @@ class BurndownChartWidget extends StatelessWidget {
     final data = BurndownData.calculate(sprint: sprint, stories: stories);
 
     // Đánh giá tiến độ
-    final currentActual = data.actualPoints[data.currentDayIndex] ?? data.totalStoryPoints.toDouble();
+    final currentActual =
+        data.actualPoints[data.currentDayIndex] ??
+        data.totalStoryPoints.toDouble();
     final currentIdeal = data.idealPoints[data.currentDayIndex];
     final isOnTrack = currentActual <= currentIdeal + 1.0;
 
@@ -143,7 +152,11 @@ class BurndownChartWidget extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.show_chart_rounded, size: 20, color: AppColors.primary),
+                child: const Icon(
+                  Icons.show_chart_rounded,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -170,12 +183,17 @@ class BurndownChartWidget extends StatelessWidget {
               ),
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: (isOnTrack ? AppColors.success : AppColors.warning).withValues(alpha: 0.1),
+                  color: (isOnTrack ? AppColors.success : AppColors.warning)
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: (isOnTrack ? AppColors.success : AppColors.warning).withValues(alpha: 0.3),
+                    color: (isOnTrack ? AppColors.success : AppColors.warning)
+                        .withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -194,11 +212,23 @@ class BurndownChartWidget extends StatelessWidget {
           // 2. Summary stats mini
           Row(
             children: [
-              _buildStatPill('Khối lượng ban đầu', '${data.totalStoryPoints} SP', AppColors.onSurface),
+              _buildStatPill(
+                'Khối lượng ban đầu',
+                '${data.totalStoryPoints} SP',
+                AppColors.onSurface,
+              ),
               const SizedBox(width: 8),
-              _buildStatPill('Đã xong', '${data.completedStoryPoints} SP', AppColors.success),
+              _buildStatPill(
+                'Đã xong',
+                '${data.completedStoryPoints} SP',
+                AppColors.success,
+              ),
               const SizedBox(width: 8),
-              _buildStatPill('Còn lại', '${data.remainingStoryPoints} SP', const Color(0xFF6366F1)),
+              _buildStatPill(
+                'Còn lại',
+                '${data.remainingStoryPoints} SP',
+                const Color(0xFF6366F1),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -208,26 +238,33 @@ class BurndownChartWidget extends StatelessWidget {
             height: 180,
             width: double.infinity,
             child: CustomPaint(
-              painter: _BurndownPainter(data: data),
+              painter: _BurndownPainter(data: data, forecast: forecast),
             ),
           ),
           const SizedBox(height: 16),
 
           // 4. Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 6,
             children: [
               _buildLegendItem(
                 color: const Color(0xFF94A3B8),
                 isDashed: true,
                 label: 'Tiến độ lý tưởng (Ideal)',
               ),
-              const SizedBox(width: 20),
               _buildLegendItem(
                 color: const Color(0xFF6366F1),
                 isDashed: false,
                 label: 'Thực tế còn lại (Actual)',
               ),
+              if (forecast != null)
+                _buildLegendItem(
+                  color: const Color(0xFF0D9488),
+                  isDashed: true,
+                  label: 'Dự báo AI (p10–p90)',
+                ),
             ],
           ),
         ],
@@ -300,11 +337,12 @@ class BurndownChartWidget extends StatelessWidget {
   }
 }
 
-/// CustomPainter vẽ đồ thị đường Burndown Chart
+/// CustomPainter vẽ đồ thị đường Burndown Chart (kèm dải dự báo Monte Carlo p10/p50/p90 khi có [forecast])
 class _BurndownPainter extends CustomPainter {
   final BurndownData data;
+  final SprintForecastResult? forecast;
 
-  _BurndownPainter({required this.data});
+  _BurndownPainter({required this.data, this.forecast});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -316,7 +354,9 @@ class _BurndownPainter extends CustomPainter {
     final chartWidth = size.width - paddingLeft - paddingRight;
     final chartHeight = size.height - paddingTop - paddingBottom;
 
-    final maxPoints = data.totalStoryPoints > 0 ? data.totalStoryPoints.toDouble() : 10.0;
+    final maxPoints = data.totalStoryPoints > 0
+        ? data.totalStoryPoints.toDouble()
+        : 10.0;
     final totalDays = data.totalDays;
 
     // 1. Grid lines và Trục Y labels
@@ -350,12 +390,17 @@ class _BurndownPainter extends CustomPainter {
     final labelIndices = [0, totalDays ~/ 2, totalDays - 1];
     for (final idx in labelIndices) {
       if (idx >= 0 && idx < data.dayLabels.length) {
-        final x = paddingLeft + (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * idx;
+        final x =
+            paddingLeft +
+            (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * idx;
         final tp = TextPainter(
           text: TextSpan(text: data.dayLabels[idx], style: textStyle),
           textDirection: TextDirection.ltr,
         )..layout();
-        tp.paint(canvas, Offset(x - tp.width / 2, size.height - paddingBottom + 6));
+        tp.paint(
+          canvas,
+          Offset(x - tp.width / 2, size.height - paddingBottom + 6),
+        );
       }
     }
 
@@ -367,8 +412,13 @@ class _BurndownPainter extends CustomPainter {
 
     final idealPath = Path();
     for (int i = 0; i < totalDays; i++) {
-      final x = paddingLeft + (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
-      final y = paddingTop + chartHeight - (data.idealPoints[i] / maxPoints) * chartHeight;
+      final x =
+          paddingLeft +
+          (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
+      final y =
+          paddingTop +
+          chartHeight -
+          (data.idealPoints[i] / maxPoints) * chartHeight;
       if (i == 0) {
         idealPath.moveTo(x, y);
       } else {
@@ -382,7 +432,9 @@ class _BurndownPainter extends CustomPainter {
     for (int i = 0; i < totalDays; i++) {
       final val = data.actualPoints[i];
       if (val != null) {
-        final x = paddingLeft + (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
+        final x =
+            paddingLeft +
+            (chartWidth / (totalDays - 1 > 0 ? totalDays - 1 : 1)) * i;
         final y = paddingTop + chartHeight - (val / maxPoints) * chartHeight;
         actualPointsList.add(Offset(x, y));
       }
@@ -390,7 +442,8 @@ class _BurndownPainter extends CustomPainter {
 
     if (actualPointsList.isNotEmpty) {
       // Vùng đổ bóng bên dưới đường thực tế
-      final fillPath = Path()..moveTo(actualPointsList.first.dx, paddingTop + chartHeight);
+      final fillPath = Path()
+        ..moveTo(actualPointsList.first.dx, paddingTop + chartHeight);
       for (final pt in actualPointsList) {
         fillPath.lineTo(pt.dx, pt.dy);
       }
@@ -398,14 +451,17 @@ class _BurndownPainter extends CustomPainter {
       fillPath.close();
 
       final fillPaint = Paint()
-        ..shader = LinearGradient(
-          colors: [
-            const Color(0xFF6366F1).withValues(alpha: 0.25),
-            const Color(0xFF6366F1).withValues(alpha: 0.0),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(Rect.fromLTWH(paddingLeft, paddingTop, chartWidth, chartHeight));
+        ..shader =
+            LinearGradient(
+              colors: [
+                const Color(0xFF6366F1).withValues(alpha: 0.25),
+                const Color(0xFF6366F1).withValues(alpha: 0.0),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ).createShader(
+              Rect.fromLTWH(paddingLeft, paddingTop, chartWidth, chartHeight),
+            );
       canvas.drawPath(fillPath, fillPaint);
 
       // Nét vẽ thực tế
@@ -416,7 +472,8 @@ class _BurndownPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round;
 
-      final actualPath = Path()..moveTo(actualPointsList.first.dx, actualPointsList.first.dy);
+      final actualPath = Path()
+        ..moveTo(actualPointsList.first.dx, actualPointsList.first.dy);
       for (int i = 1; i < actualPointsList.length; i++) {
         actualPath.lineTo(actualPointsList[i].dx, actualPointsList[i].dy);
       }
@@ -430,6 +487,92 @@ class _BurndownPainter extends CustomPainter {
         canvas.drawCircle(pt, 5.0, dotPaint);
         canvas.drawCircle(pt, 2.5, whitePaint);
       }
+    }
+
+    // 5. Dải dự báo Monte Carlo p10–p50–p90 (US-070) khi có [forecast]
+    final fc = forecast;
+    if (fc != null) {
+      final denom = totalDays - 1 > 0 ? totalDays - 1 : 1;
+      final p10Pts = <Offset>[];
+      final p50Pts = <Offset>[];
+      final p90Pts = <Offset>[];
+
+      for (int i = 0; i < totalDays; i++) {
+        final v10 = i < fc.bandP10.length ? fc.bandP10[i] : null;
+        final v50 = i < fc.bandP50.length ? fc.bandP50[i] : null;
+        final v90 = i < fc.bandP90.length ? fc.bandP90[i] : null;
+        if (v10 != null && v50 != null && v90 != null) {
+          final x = paddingLeft + (chartWidth / denom) * i;
+          final y10 =
+              paddingTop +
+              chartHeight -
+              (v10.clamp(0.0, maxPoints) / maxPoints) * chartHeight;
+          final y50 =
+              paddingTop +
+              chartHeight -
+              (v50.clamp(0.0, maxPoints) / maxPoints) * chartHeight;
+          final y90 =
+              paddingTop +
+              chartHeight -
+              (v90.clamp(0.0, maxPoints) / maxPoints) * chartHeight;
+          p10Pts.add(Offset(x, y10));
+          p50Pts.add(Offset(x, y50));
+          p90Pts.add(Offset(x, y90));
+        }
+      }
+
+      if (p10Pts.length >= 2 && p90Pts.length == p10Pts.length) {
+        final bandPath = Path()..moveTo(p90Pts.first.dx, p90Pts.first.dy);
+        for (int i = 1; i < p90Pts.length; i++) {
+          bandPath.lineTo(p90Pts[i].dx, p90Pts[i].dy);
+        }
+        for (int i = p10Pts.length - 1; i >= 0; i--) {
+          bandPath.lineTo(p10Pts[i].dx, p10Pts[i].dy);
+        }
+        bandPath.close();
+
+        final bandPaint = Paint()
+          ..color = const Color(0xFF0D9488).withValues(alpha: 0.18)
+          ..style = PaintingStyle.fill;
+        canvas.drawPath(bandPath, bandPaint);
+
+        final p50Paint = Paint()
+          ..color = const Color(0xFF0D9488)
+          ..strokeWidth = 2.2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+
+        for (int i = 0; i < p50Pts.length - 1; i++) {
+          _drawDashedSegment(canvas, p50Pts[i], p50Pts[i + 1], p50Paint);
+        }
+      }
+    }
+  }
+
+  void _drawDashedSegment(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Paint paint,
+  ) {
+    const dashWidth = 5.0;
+    const dashSpace = 4.0;
+    final dx = end.dx - start.dx;
+    final dy = end.dy - start.dy;
+    final distance = sqrt(dx * dx + dy * dy);
+    if (distance <= 0.001) return;
+    final ux = dx / distance;
+    final uy = dy / distance;
+
+    double current = 0.0;
+    while (current < distance) {
+      final next = min(distance, current + dashWidth);
+      canvas.drawLine(
+        Offset(start.dx + ux * current, start.dy + uy * current),
+        Offset(start.dx + ux * next, start.dy + uy * next),
+        paint,
+      );
+      current += dashWidth + dashSpace;
     }
   }
 

@@ -48,12 +48,12 @@
 - [x] Commit Phase 3: `feat(ai): US-071 model lab`.
 
 ### Phase 4 — US-070: AI Sprint Forecast (Monte Carlo) & Demo Seeder
-- [ ] Adapter & Service dự báo Sprint (`SprintForecastAdapter` / `SprintForecastCubit`): kết nối `SprintModel`, `UserStoryModel` với `SprintForecastEngine` (ưu tiên velocity sprint đã đóng → burn rate sprint hiện tại từ `completedAt ?? updatedAt` → prior mặc định + cờ độ tin cậy thấp).
-- [ ] Tính năng What-if loại từng Story chưa hoàn thành (top-3 Story nâng xác suất hoàn thành Sprint nhiều nhất).
-- [ ] Mở rộng `BurndownChartWidget` với tham số tuỳ chọn `forecast` (dải p10–p90 tô nhạt, đường p50 nét đứt) + `SprintForecastCard` & bottom sheet What-if trong `SprintDetailScreen`.
-- [ ] `AiDemoDataSeeder` (`lib/data/services/ai_demo_data_seeder.dart`) + mục nạp dữ liệu demo AI trong `ProjectDetailScreen`.
-- [ ] Unit & Widget tests cho US-070 và `AiDemoDataSeeder` (bằng mock, không ghi lên Firebase thật).
-- [ ] Commit Phase 4: `feat(ai): US-070 sprint forecast + demo seeder`.
+- [x] Adapter & Service dự báo Sprint (`SprintForecastService` / `SprintForecastCubit`): kết nối `SprintModel`, `UserStoryModel` với `SprintForecastEngine` (ưu tiên velocity sprint đã đóng → burn rate sprint hiện tại từ `completedAt ?? updatedAt` → prior mặc định + cờ độ tin cậy thấp).
+- [x] Tính năng What-if loại từng Story chưa hoàn thành (top-3 Story nâng xác suất hoàn thành Sprint nhiều nhất).
+- [x] Mở rộng `BurndownChartWidget` với tham số tuỳ chọn `forecast` (dải p10–p90 tô nhạt, đường p50 nét đứt) + `SprintForecastCard` & bottom sheet What-if trong `SprintDetailScreen`.
+- [x] `AiDemoDataSeeder` (`lib/data/services/ai_demo_data_seeder.dart`) + mục nạp dữ liệu demo AI trong `ProjectDetailScreen`.
+- [x] Unit & Widget tests cho US-070 và `AiDemoDataSeeder` (bằng mock, không ghi lên Firebase thật).
+- [x] Commit Phase 4: `feat(ai): US-070 sprint forecast + demo seeder`.
 
 ### Phase 5 — Hardening (Responsive, Dark Mode, Offline, Hiệu năng)
 - [ ] Widget test responsive (320×568, 430×932, chữ ×1.0 và ×1.3, bàn phím mở) & Dark mode cho toàn bộ màn hình/card/sheet AI mới.
