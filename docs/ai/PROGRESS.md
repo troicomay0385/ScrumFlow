@@ -17,18 +17,18 @@
 - [x] Commit Phase 0: `docs(ai): recon + add US-069/070/071 to Sprint 5`.
 
 ### Phase 1 — Lõi ML Thuần Dart (`lib/domain/ai/core/`)
-- [ ] `LabeledSample`, `Dataset` (stratified train/test split, k-fold CV).
-- [ ] `Standardizer` (z-score, xử lý phương sai 0 an toàn, JSON serialize).
-- [ ] `LogisticRegression` (sigmoid ổn định số học, BCE loss, mini-batch GD, L2, early stopping, class_weight, JSON serialize có schemaVersion, comment tiếng Việt giải thích công thức).
-- [ ] `Metrics` (accuracy, precision, recall, F1, ROC-AUC, confusion matrix, Brier score, 10-bin calibration).
-- [ ] `Explainer` (đóng góp `w_i * z_i`, top-K có dấu, nhãn tiếng Việt).
-- [ ] `BaselineModels` (majority class classifier + công thức cứng US-057/058 viết lại trong lõi).
-- [ ] `SyntheticHistoryGenerator` (~800 task, nhiễu thực tế, tương tác phi tuyến nhẹ, accuracy ~78–90%).
-- [ ] `SprintForecastEngine` (lõi Monte Carlo thuần Dart cho Phase 4).
-- [ ] CLI `tool/ai_eval.dart` + xuất `docs/ai/EVAL_REPORT.md` và `docs/ai/eval.json`.
-- [ ] CLI `tool/verify_no_external_api.dart` (kiểm tra PASS toàn bộ ràng buộc không gọi API ngoài).
-- [ ] Unit test lõi (`test/domain/ai/`) + test khớp `PerformanceScoreService` + test ngẫu nhiên `ai_invariants_test.dart` (≥ 500 kịch bản).
-- [ ] Commit Phase 1: `feat(ai): pure-Dart ML core, synthetic history, eval + no-API verifier`.
+- [x] `LabeledSample`, `Dataset` (stratified train/test split, k-fold CV).
+- [x] `Standardizer` (z-score, xử lý phương sai 0 an toàn, JSON serialize).
+- [x] `LogisticRegression` (sigmoid ổn định số học, BCE loss, mini-batch GD, L2, early stopping, class_weight, JSON serialize có schemaVersion, comment tiếng Việt giải thích công thức).
+- [x] `Metrics` (accuracy, precision, recall, F1, ROC-AUC, confusion matrix, Brier score, 10-bin calibration).
+- [x] `Explainer` (đóng góp `w_i * z_i`, top-K có dấu, nhãn tiếng Việt).
+- [x] `BaselineModels` (majority class classifier + công thức cứng US-057/058 viết lại trong lõi).
+- [x] `SyntheticHistoryGenerator` (~800 task, nhiễu thực tế, tương tác phi tuyến nhẹ, accuracy ~78–90%).
+- [x] `SprintForecastEngine` (lõi Monte Carlo thuần Dart cho Phase 4).
+- [x] CLI `tool/ai_eval.dart` + xuất `docs/ai/EVAL_REPORT.md` và `docs/ai/eval.json` (Holdout Accuracy = 79.33%, F1 = 0.7891, ROC-AUC = 0.8783, Brier = 0.1456).
+- [x] CLI `tool/verify_no_external_api.dart` (kiểm tra PASS toàn bộ ràng buộc không gọi API ngoài).
+- [x] Unit test lõi (`test/domain/ai/`) + test khớp `PerformanceScoreService` + test ngẫu nhiên `ai_invariants_test.dart` (700 kịch bản).
+- [x] Commit Phase 1: `feat(ai): pure-Dart ML core, synthetic history, eval + no-API verifier`.
 
 ### Phase 2 — US-069: AI Risk Radar
 - [ ] `TaskRiskFeatureExtractor` (trích xuất 10 feature từ `TaskModel` + Story + Sprint + `MemberPerformanceScore`, chống rò rỉ nhãn cho mẫu `real`).

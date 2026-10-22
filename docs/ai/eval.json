@@ -1,0 +1,532 @@
+{
+  "dataset": {
+    "trainSeed": 42,
+    "holdoutTestSeed": 2026,
+    "trainSize": 800,
+    "trainPositiveCount": 349,
+    "trainPositiveRatio": 0.43625,
+    "holdoutTestSize": 300,
+    "holdoutPositiveCount": 137,
+    "holdoutPositiveRatio": 0.45666666666666667,
+    "source": "synthetic"
+  },
+  "training": {
+    "epochsRun": 24,
+    "bestEpoch": 5,
+    "stoppedEarly": true,
+    "initialLoss": 0.5407517881203568,
+    "finalLoss": 0.4366328938982423,
+    "bestValLoss": 0.5101009889018248,
+    "weights": [
+      0.30105824318331426,
+      0.12639271947815534,
+      -0.7631774403606028,
+      0.7405531822629811,
+      -0.34971864616963444,
+      -0.21521144503319434,
+      -0.11017385967945673,
+      0.4505668307471476,
+      0.1616753930768063,
+      0.19304701452587203
+    ],
+    "bias": -0.07766280315692836,
+    "featureKeys": [
+      "storyPoints",
+      "priorityRank",
+      "daysToDeadline",
+      "elapsedRatio",
+      "loggedHoursPerDay",
+      "statusProgress",
+      "assigneeOnTimeRate",
+      "assigneeWorkload",
+      "sprintElapsedRatio",
+      "unassigned"
+    ]
+  },
+  "holdoutComparison": {
+    "logisticRegression": {
+      "accuracy": 0.7933333333333333,
+      "precision": 0.7388535031847133,
+      "recall": 0.8467153284671532,
+      "f1": 0.7891156462585033,
+      "rocAuc": 0.8782857910527966,
+      "brierScore": 0.14559754355609295,
+      "expectedCalibrationError": 0.08901989181127963,
+      "confusionMatrix": {
+        "tp": 116,
+        "fp": 41,
+        "tn": 122,
+        "fn": 21
+      },
+      "calibrationBins": [
+        {
+          "binIndex": 0,
+          "lowerBound": 0.0,
+          "upperBound": 0.1,
+          "count": 28,
+          "meanPredicted": 0.06340351633699368,
+          "fractionPositive": 0.07142857142857142
+        },
+        {
+          "binIndex": 1,
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 35,
+          "meanPredicted": 0.14110414694205897,
+          "fractionPositive": 0.02857142857142857
+        },
+        {
+          "binIndex": 2,
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 30,
+          "meanPredicted": 0.2558463536542953,
+          "fractionPositive": 0.13333333333333333
+        },
+        {
+          "binIndex": 3,
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 19,
+          "meanPredicted": 0.34959448897546486,
+          "fractionPositive": 0.21052631578947367
+        },
+        {
+          "binIndex": 4,
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 31,
+          "meanPredicted": 0.44566108243266966,
+          "fractionPositive": 0.3225806451612903
+        },
+        {
+          "binIndex": 5,
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 31,
+          "meanPredicted": 0.5541898670407303,
+          "fractionPositive": 0.4838709677419355
+        },
+        {
+          "binIndex": 6,
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 29,
+          "meanPredicted": 0.6552747242492635,
+          "fractionPositive": 0.5172413793103449
+        },
+        {
+          "binIndex": 7,
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 37,
+          "meanPredicted": 0.756696745575707,
+          "fractionPositive": 0.8918918918918919
+        },
+        {
+          "binIndex": 8,
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 38,
+          "meanPredicted": 0.8514666551941569,
+          "fractionPositive": 0.868421052631579
+        },
+        {
+          "binIndex": 9,
+          "lowerBound": 0.9,
+          "upperBound": 1.0,
+          "count": 22,
+          "meanPredicted": 0.9354591365663655,
+          "fractionPositive": 0.9090909090909091
+        }
+      ]
+    },
+    "baselineMajority": {
+      "accuracy": 0.5433333333333333,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "rocAuc": 0.5,
+      "brierScore": 0.24851831026528307,
+      "expectedCalibrationError": 0.019901960784313166,
+      "confusionMatrix": {
+        "tp": 0,
+        "fp": 0,
+        "tn": 163,
+        "fn": 137
+      },
+      "calibrationBins": [
+        {
+          "binIndex": 0,
+          "lowerBound": 0.0,
+          "upperBound": 0.1,
+          "count": 0,
+          "meanPredicted": 0.05,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 1,
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 0,
+          "meanPredicted": 0.15000000000000002,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 2,
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 0,
+          "meanPredicted": 0.25,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 3,
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 0,
+          "meanPredicted": 0.35,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 4,
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 300,
+          "meanPredicted": 0.4367647058823535,
+          "fractionPositive": 0.45666666666666667
+        },
+        {
+          "binIndex": 5,
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 0,
+          "meanPredicted": 0.55,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 6,
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 0,
+          "meanPredicted": 0.6499999999999999,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 7,
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 0,
+          "meanPredicted": 0.75,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 8,
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 0,
+          "meanPredicted": 0.8500000000000001,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 9,
+          "lowerBound": 0.9,
+          "upperBound": 1.0,
+          "count": 0,
+          "meanPredicted": 0.95,
+          "fractionPositive": 0.0
+        }
+      ]
+    },
+    "baselineUs058Formula": {
+      "accuracy": 0.5766666666666667,
+      "precision": 0.5675675675675675,
+      "recall": 0.30656934306569344,
+      "f1": 0.39810426540284355,
+      "rocAuc": 0.5656710402579374,
+      "brierScore": 0.2683546974826872,
+      "expectedCalibrationError": 0.12849114717660695,
+      "confusionMatrix": {
+        "tp": 42,
+        "fp": 32,
+        "tn": 131,
+        "fn": 95
+      },
+      "calibrationBins": [
+        {
+          "binIndex": 0,
+          "lowerBound": 0.0,
+          "upperBound": 0.1,
+          "count": 14,
+          "meanPredicted": 0.05974186458818142,
+          "fractionPositive": 0.2857142857142857
+        },
+        {
+          "binIndex": 1,
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 77,
+          "meanPredicted": 0.15699507909049135,
+          "fractionPositive": 0.4675324675324675
+        },
+        {
+          "binIndex": 2,
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 31,
+          "meanPredicted": 0.2536020333998668,
+          "fractionPositive": 0.3548387096774194
+        },
+        {
+          "binIndex": 3,
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 43,
+          "meanPredicted": 0.3550935676372233,
+          "fractionPositive": 0.3953488372093023
+        },
+        {
+          "binIndex": 4,
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 61,
+          "meanPredicted": 0.45214463248684017,
+          "fractionPositive": 0.4426229508196721
+        },
+        {
+          "binIndex": 5,
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 41,
+          "meanPredicted": 0.551127063774813,
+          "fractionPositive": 0.4878048780487805
+        },
+        {
+          "binIndex": 6,
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 23,
+          "meanPredicted": 0.6477125298469243,
+          "fractionPositive": 0.5652173913043478
+        },
+        {
+          "binIndex": 7,
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 9,
+          "meanPredicted": 0.7378565403031921,
+          "fractionPositive": 0.8888888888888888
+        },
+        {
+          "binIndex": 8,
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 1,
+          "meanPredicted": 0.830673729234189,
+          "fractionPositive": 1.0
+        },
+        {
+          "binIndex": 9,
+          "lowerBound": 0.9,
+          "upperBound": 1.0,
+          "count": 0,
+          "meanPredicted": 0.95,
+          "fractionPositive": 0.0
+        }
+      ]
+    }
+  },
+  "multiSeed5": {
+    "seeds": [
+      42,
+      101,
+      202,
+      303,
+      404
+    ],
+    "accuracyMean": 0.8,
+    "accuracyStd": 0.009428090415820625,
+    "f1Mean": 0.7917490904110664,
+    "f1Std": 0.007399363823645941,
+    "rocAucMean": 0.8812144552415925,
+    "rocAucStd": 0.006494395344352936
+  },
+  "crossValidation5Fold": {
+    "accuracyMean": 0.8100125004883003,
+    "accuracyStd": 0.024756332642842806,
+    "f1Mean": 0.7881954220981083,
+    "f1Std": 0.03199862084843861,
+    "rocAucMean": 0.8789880048637813,
+    "rocAucStd": 0.022791117738396142
+  },
+  "ablation": [
+    {
+      "groupName": "Nhóm Thời hạn & Tiến độ (daysToDeadline, elapsedRatio, statusProgress, sprintElapsedRatio)",
+      "droppedFeatureIndices": [
+        2,
+        3,
+        5,
+        8
+      ],
+      "droppedFeatureKeys": [
+        "daysToDeadline",
+        "elapsedRatio",
+        "statusProgress",
+        "sprintElapsedRatio"
+      ],
+      "accuracy": 0.6566666666666666,
+      "f1": 0.6460481099656359,
+      "rocAuc": 0.7080739778782857,
+      "aucDrop": 0.17021181317451084,
+      "f1Drop": 0.1430675362928674,
+      "accuracyDrop": 0.13666666666666671
+    },
+    {
+      "groupName": "Nhóm Năng lực & Tải thành viên (assigneeOnTimeRate, assigneeWorkload, unassigned)",
+      "droppedFeatureIndices": [
+        6,
+        7,
+        9
+      ],
+      "droppedFeatureKeys": [
+        "assigneeOnTimeRate",
+        "assigneeWorkload",
+        "unassigned"
+      ],
+      "accuracy": 0.7566666666666667,
+      "f1": 0.7491408934707905,
+      "rocAuc": 0.8508351618825848,
+      "aucDrop": 0.027450629170211793,
+      "f1Drop": 0.039974752787712786,
+      "accuracyDrop": 0.036666666666666625
+    },
+    {
+      "groupName": "Nhóm Phạm vi & Ưu tiên Story (storyPoints, priorityRank, loggedHoursPerDay)",
+      "droppedFeatureIndices": [
+        0,
+        1,
+        4
+      ],
+      "droppedFeatureKeys": [
+        "storyPoints",
+        "priorityRank",
+        "loggedHoursPerDay"
+      ],
+      "accuracy": 0.7433333333333333,
+      "f1": 0.7317073170731707,
+      "rocAuc": 0.8398638663740988,
+      "aucDrop": 0.03842192467869776,
+      "f1Drop": 0.05740832918533256,
+      "accuracyDrop": 0.050000000000000044
+    }
+  ],
+  "distributionShift": {
+    "testSize": 300,
+    "positiveRatio": 0.59,
+    "metrics": {
+      "accuracy": 0.7766666666666666,
+      "precision": 0.7777777777777778,
+      "recall": 0.8700564971751412,
+      "f1": 0.8213333333333332,
+      "rocAuc": 0.8755684167011162,
+      "brierScore": 0.14879571842132275,
+      "expectedCalibrationError": 0.09652988133874832,
+      "confusionMatrix": {
+        "tp": 154,
+        "fp": 44,
+        "tn": 79,
+        "fn": 23
+      },
+      "calibrationBins": [
+        {
+          "binIndex": 0,
+          "lowerBound": 0.0,
+          "upperBound": 0.1,
+          "count": 5,
+          "meanPredicted": 0.07718138386577962,
+          "fractionPositive": 0.0
+        },
+        {
+          "binIndex": 1,
+          "lowerBound": 0.1,
+          "upperBound": 0.2,
+          "count": 13,
+          "meanPredicted": 0.16082545137016876,
+          "fractionPositive": 0.07692307692307693
+        },
+        {
+          "binIndex": 2,
+          "lowerBound": 0.2,
+          "upperBound": 0.3,
+          "count": 24,
+          "meanPredicted": 0.24957656257389602,
+          "fractionPositive": 0.125
+        },
+        {
+          "binIndex": 3,
+          "lowerBound": 0.3,
+          "upperBound": 0.4,
+          "count": 28,
+          "meanPredicted": 0.36358448955451367,
+          "fractionPositive": 0.25
+        },
+        {
+          "binIndex": 4,
+          "lowerBound": 0.4,
+          "upperBound": 0.5,
+          "count": 32,
+          "meanPredicted": 0.45315885168942605,
+          "fractionPositive": 0.375
+        },
+        {
+          "binIndex": 5,
+          "lowerBound": 0.5,
+          "upperBound": 0.6,
+          "count": 41,
+          "meanPredicted": 0.5517644733806097,
+          "fractionPositive": 0.3902439024390244
+        },
+        {
+          "binIndex": 6,
+          "lowerBound": 0.6,
+          "upperBound": 0.7,
+          "count": 40,
+          "meanPredicted": 0.648422966982167,
+          "fractionPositive": 0.75
+        },
+        {
+          "binIndex": 7,
+          "lowerBound": 0.7,
+          "upperBound": 0.8,
+          "count": 32,
+          "meanPredicted": 0.7482975016684633,
+          "fractionPositive": 0.875
+        },
+        {
+          "binIndex": 8,
+          "lowerBound": 0.8,
+          "upperBound": 0.9,
+          "count": 50,
+          "meanPredicted": 0.8632267897492818,
+          "fractionPositive": 0.92
+        },
+        {
+          "binIndex": 9,
+          "lowerBound": 0.9,
+          "upperBound": 1.0,
+          "count": 35,
+          "meanPredicted": 0.9362150010669006,
+          "fractionPositive": 0.9714285714285714
+        }
+      ]
+    }
+  },
+  "acceptanceGates": {
+    "rocAucGe075": true,
+    "accGeBaseAPlus5Pct": true,
+    "aucOrF1GtBaseB": true,
+    "aucStdLe003": true,
+    "accLt097Realistic": true,
+    "allPassed": true
+  }
+}
