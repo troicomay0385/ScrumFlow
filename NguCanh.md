@@ -657,7 +657,37 @@
   - `flutter test`: **385 / 385 test PASS** (toàn bộ test cũ + 62 test mới cho US-066).
 - **Việc còn lại / Lưu ý:**
   - Triển khai US-067 (Push Notification cho Blocker) và US-068 (Mobile Retro Card Slider & Double Tap Vote) ở các sprint/phase tiếp theo.
-  - Deploy `firestore.rules` cập nhật lên Firebase Console / CLI khi triển khai Production.
+  - Deploy `firestore.rules` cập nhật lên Firebase Server (`firebase deploy --only firestore:rules`) khi triển khai Production.
+
+---
+
+### 📅 Ngày 22/10/2026: Triển Khai US-069, US-070 & US-071 — AI Sprint Risk Radar, Monte Carlo Sprint Forecast & AI Model Lab (Sprint 5)
+- **Người thực hiện:** Duy & Antigravity AI
+- **Mục tiêu:** Xây dựng trọn bộ hệ thống Học máy & Mô phỏng xác suất **thuần Dart 100% trên thiết bị (On-Device Pure-Dart ML)** cho Sprint 5 mà **không dùng bất kỳ API hay package ML/AI bên ngoài nào**:
+  1. **US-069 (AI Risk Radar):** Dự đoán xác suất trễ hạn từng Task bằng mô hình **Logistic Regression có điều chuẩn L2**, giải thích Top-3 nhân tố đóng góp ($w_j \cdot z_j$) và giả lập điều chỉnh **What-if** (đổi người phụ trách / gia hạn deadline).
+  2. **US-070 (AI Sprint Forecast):** Dự báo xác suất hoàn thành Sprint đúng hạn và dải phân vị **`p10 / p50 / p90`** bằng **mô phỏng Monte Carlo (1.000 kịch bản)** vẽ trực tiếp lên `BurndownChartWidget`, kèm thử nghiệm **What-if** dời bớt User Story chưa hoàn thành.
+  3. **US-071 (AI Model Lab):** Phòng thí nghiệm huấn luyện & đánh giá mô hình trực tiếp trên thiết bị (đồ thị **BCE Loss Curve**, **Confusion Matrix 2×2**, `Accuracy`, `Precision`, `Recall`, `F1-Score`, `ROC-AUC`, `Brier Score`, so sánh với 2 Baseline và biểu đồ trọng số đặc trưng).
+- **Chi tiết kỹ thuật đã triển khai:**
+  - **Tầng Domain — Lõi ML Thuần Dart (`lib/domain/ai/core/`):**
+    - Tuân thủ nghiêm ngặt chỉ import `dart:core`, `dart:math`, `dart:convert` (kiểm chứng tự động bằng `tool/verify_no_external_api.dart`).
+    - `TaskFeatureSpec` & `RiskThresholds`: Định nghĩa 10 đặc trưng định lượng (`daysToDeadline`, `isOverdue`, `statusCode`, `unassigned`, `assigneeOnTimeRate`, `assigneeWipLoad`, `storyPointsNorm`, `storyPriorityNum`, `loggedHoursRatio`, `sprintTimeElapsedRatio`) và ngưỡng rủi ro chuẩn (`Thấp < 0.35`, `Trung bình [0.35, 0.65]`, `Cao > 0.65`).
+    - `Standardizer`: Chuẩn hóa Z-Score ($z_j = (x_j - \mu_j)/\sigma_j$), xử lý an toàn trường hợp phương sai bằng 0 ($\sigma_j \le 10^{-8} \Rightarrow z_j = 0$).
+    - `LogisticRegression`: Sigmoid ổn định số học chống tràn `exp`, hàm mất mát Binary Cross-Entropy có trọng số lớp cân bằng (`balanced class weights`) + điều chuẩn L2, huấn luyện Mini-batch Gradient Descent kèm Early Stopping và kiểm chứng đạo hàm giải tích khớp sai phân hữu hạn ($< 10^{-5}$).
+    - `Explainer`: Tính đóng góp cục bộ $c_j = w_j \cdot z_j$ vào log-odds và sinh câu giải thích tiếng Việt theo ngữ cảnh thực tế của Task.
+    - `SprintForecastEngine`: Động cơ mô phỏng Monte Carlo 1.000 kịch bản lấy mẫu bootstrap có hoàn lại kèm nhiễu tự nhiên $\pm 15\%$, ưu tiên nguồn thông lượng: (a) Velocity các Sprint đã đóng (`Completed`/`Closed`) $\rightarrow$ (b) Tốc độ burn theo ngày của Sprint hiện tại (`completedAt ?? updatedAt`) $\rightarrow$ (c) Phân phối prior mặc định kèm cờ `isLowConfidence = true`.
+  - **Tầng Data & Dịch vụ AI (`lib/data/ai/`, `lib/data/services/ai_demo_data_seeder.dart`):**
+    - `TaskRiskFeatureExtractor`: Trích xuất 10 đặc trưng thời gian thực và tích hợp cơ chế **Chống rò rỉ nhãn (Anti-Label Leakage)** cho mẫu `real` từ các Task đã `Done` (tái tạo điểm quan sát tại mốc 50% vòng đời dự kiến $t_{\text{obs}} = t_{\text{created}} + 0.5(t_{\text{deadline}} - t_{\text{created}})$).
+    - `AiModelStore`: Lưu trữ bền vững trọng số mô hình và lịch sử huấn luyện theo từng `projectId` trong `SharedPreferences`, tự động phục hồi khi JSON hỏng hoặc lệch `schemaVersion`.
+    - `RiskPredictionService` & `SprintForecastService`: Cung cấp suy luận tức thời (`0.448 ms`/task) và mô phỏng Monte Carlo (`24.81 ms`/1.000 kịch bản) hoạt động 100% offline.
+    - `AiDemoDataSeeder`: Nạp nhanh 2 Sprint đã đóng (`Completed`), 1 Sprint đang chạy (`Active`), 8 User Stories và 12 Tasks phân bổ đủ 3 mức rủi ro (Cao/Trung bình/Thấp) từ `ProjectDetailScreen`.
+  - **Phân quyền RBAC & Giao diện (`lib/presentation/ai/`):**
+    - Bổ sung `Permission.viewAiInsights` và `Permission.manageAiModel` chỉ cấp cho `PO` và `SM` (`MEMBER` được ẩn toàn bộ badge/card/lab AI để tránh áp lực giám sát cá nhân).
+    - Bổ sung token màu rủi ro Light & Dark Mode trong `AppColors`, tích hợp `RiskBadge`, `TaskRiskRadarCard`, `TaskWhatIfBottomSheet`, `SprintHighRiskTasksCard`, `SprintForecastCard`, `SprintWhatIfBottomSheet`, mở rộng `BurndownChartWidget(forecast: ...)` và màn hình `ModelLabScreen`.
+- **Số liệu đánh giá & Kiểm thử tự động (`docs/ai/EVAL_REPORT.md`):**
+  - **Holdout Test (300 mẫu):** Accuracy = **`79.33%`**, Precision = **`0.7586`**, Recall = **`0.8222`**, F1 = **`0.7891`**, ROC-AUC = **`0.8783`**, Brier Score = **`0.1456`** (vượt xa Baseline lớp đa số `Acc = 54.33%` và Công thức cứng US-058 `Acc = 57.67%, F1 = 0.3981`).
+  - **5-Seed Holdout:** Accuracy = **`80.00% ± 0.94%`**, F1 = **`0.7917 ± 0.0074`**, ROC-AUC = **`0.8812 ± 0.0065`**.
+  - **5-Fold Stratified CV:** Accuracy = **`81.00% ± 2.48%`**, ROC-AUC = **`0.8790 ± 0.0228`**.
+  - **Kiểm thử tự động:** `flutter analyze` **0 error, 0 warning**, 49 info (giữ nguyên nền cũ); `flutter test` **438 / 438 test PASS** (+47 test mới gồm 700 kịch bản bất biến ngẫu nhiên, chống rò rỉ nhãn, responsive `320×568` & `430×932` @ chữ `×1.3`, Dark mode, Offline và Benchmark hiệu năng).
 
 ---
 
@@ -779,7 +809,7 @@
 ---
 
 ### ⚙️ SPRINT 5: Hoàn Thiện Hệ Thống, Offline Cache, Realtime & Đóng Gói
-*Tiến độ thực tế: **11 / 16 User Stories hoàn thành** (11 hoàn thành, 5 User Story mới đang phát triển: US-067, US-068, US-069, US-070, US-071)*
+*Tiến độ thực tế: **14 / 16 User Stories hoàn thành** (14 hoàn thành, 2 User Story còn lại: US-067, US-068)*
 
 - [x] **US-030** [Ưu tiên: THẤP]: Hoàn thiện giao diện responsive và dark mode (bonus).  
   *(Đã hoàn thành: Triển khai Dark Mode toàn diện thông qua ThemeCubit / AppThemes / ThemeState, hỗ trợ Light/Dark/System theme với shared_preferences lưu cấu hình người dùng; Giao diện Responsive thích ứng linh hoạt (ResponsiveLayout, breakpoints Mobile/Tablet/Desktop) trên tất cả các màn hình chính bao gồm Login, Home, Project Members, v.v.).*
@@ -805,9 +835,12 @@
   *(Đã hoàn thành 17/10/2026: `SwipeableTaskCard` cử chỉ vuốt 2 chiều; chuyển đổi `LongPressDraggable` 400ms giải quyết triệt để xung đột kéo Kanban và cuộn dọc; phân quyền `Permission.logWork` cho PO/SM/MEMBER; `WorkLogModel`, `WorkLogValidator` (bội số 0.25h, [0.25..24]); `WorkLogDataSource` dùng `WriteBatch` ghi Firestore nguyên tử và tăng `loggedHours` mà không đổi `updatedAt` của task; `LogWorkCubit` + `showLogWorkBottomSheet` responsive 320x568 không tràn bàn phím 260px và chữ x1.3; `WorkLogsCubit` stream real-time + Bento card `WorkLogsSection` trong Task Detail; chip `loggedHours` trên Task Board co giãn không tràn cột hẹp 100px; 62 unit & widget tests).*
 - [ ] **US-067** [Ưu tiên: CAO] *(Thúy)*: [Push Notification] Là Scrum Master, tôi muốn nhận Push Notification về điện thoại khi có người đánh dấu Blocker, bấm vào thông báo sẽ mở thẳng màn hình chi tiết Task đó. *(Chưa hoàn thành)*
 - [ ] **US-068** [Ưu tiên: CAO] *(Thúy)*: [Mobile Retro] Là thành viên nhóm, tôi muốn xem các ý kiến Retrospective dưới dạng thẻ trượt ngang (Card Slider) và chạm hai lần (Double Tap) vào thẻ để Vote đồng tình. *(Chưa hoàn thành)*
-- [ ] **US-069** [Ưu tiên: CAO] *(Duy)*: [AI Risk Radar] Là PO/SM, tôi muốn hệ thống tự dự đoán xác suất trễ hạn của từng Task bằng mô hình Machine Learning tự xây dựng (Logistic Regression, không dùng API ngoài) kèm giải thích các yếu tố ảnh hưởng, để kịp thời xử lý rủi ro. *(Chưa hoàn thành)*
-- [ ] **US-070** [Ưu tiên: CAO] *(Duy)*: [AI Sprint Forecast] Là PO/SM, tôi muốn xem xác suất hoàn thành Sprint và dải dự báo (p10/p50/p90) bằng mô phỏng Monte Carlo ngay trên biểu đồ Burndown, kèm gợi ý what-if loại bớt Story, để quyết định điều chỉnh phạm vi Sprint. *(Chưa hoàn thành)*
-- [ ] **US-071** [Ưu tiên: CAO] *(Duy)*: [AI Model Lab] Là PO/SM, tôi muốn có màn hình huấn luyện và đánh giá mô hình (loss curve, accuracy/precision/recall/F1/AUC, confusion matrix, so sánh baseline) để kiểm chứng AI thực sự học từ dữ liệu. *(Chưa hoàn thành)*
+- [x] **US-069** [Ưu tiên: CAO] *(Duy)*: [AI Risk Radar] Là PO/SM, tôi muốn hệ thống tự dự đoán xác suất trễ hạn của từng Task bằng mô hình Machine Learning tự xây dựng (Logistic Regression, không dùng API ngoài) kèm giải thích các yếu tố ảnh hưởng, để kịp thời xử lý rủi ro.  
+  *(Đã hoàn thành 22/10/2026: Lõi `LogisticRegression` + `Standardizer` + `Explainer` thuần Dart trên 10 đặc trưng; `TaskRiskFeatureExtractor` có cơ chế chống rò rỉ nhãn tại mốc 50% vòng đời; `AiModelStore` lưu `SharedPreferences` theo `projectId`; `RiskPredictionService` suy luận trung bình `0.448 ms`/task; phân quyền `Permission.viewAiInsights` cho PO/SM; `RiskBadge`, `TaskRiskRadarCard`, `TaskWhatIfBottomSheet` giả lập đổi người phụ trách/gia hạn deadline tức thời và `SprintHighRiskTasksCard`).*
+- [x] **US-070** [Ưu tiên: CAO] *(Duy)*: [AI Sprint Forecast] Là PO/SM, tôi muốn xem xác suất hoàn thành Sprint và dải dự báo (p10/p50/p90) bằng mô phỏng Monte Carlo ngay trên biểu đồ Burndown, kèm gợi ý what-if loại bớt Story, để quyết định điều chỉnh phạm vi Sprint.  
+  *(Đã hoàn thành 22/10/2026: `SprintForecastEngine` & `SprintForecastService` chạy 1.000 kịch bản Monte Carlo trong `24.81 ms`, ưu tiên velocity Sprint đã đóng → burn rate Sprint hiện tại → prior mặc định kèm cảnh báo độ tin cậy thấp; mở rộng `BurndownChartWidget` vẽ dải phân vị `p10–p90` và đường trung vị `p50` nét đứt; `SprintForecastCard` & `SprintWhatIfBottomSheet` thử nghiệm dời bớt Story chưa xong ngay trên bộ nhớ; tích hợp `AiDemoDataSeeder` nạp nhanh dữ liệu Demo AI).*
+- [x] **US-071** [Ưu tiên: CAO] *(Duy)*: [AI Model Lab] Là PO/SM, tôi muốn có màn hình huấn luyện và đánh giá mô hình (loss curve, accuracy/precision/recall/F1/AUC, confusion matrix, so sánh baseline) để kiểm chứng AI thực sự học từ dữ liệu.  
+  *(Đã hoàn thành 22/10/2026: `ModelLabCubit` & `ModelLabScreen` phân quyền `Permission.manageAiModel` cho PO/SM; hiển thị thống kê mẫu `synthetic` vs `real`, đồ thị `CustomPainter` BCE Loss Curve theo epoch, Ma trận nhầm lẫn 2×2, bảng đối chiếu vượt trội so với 2 Baseline (Holdout Accuracy `79.33%`, F1 `0.7891`, ROC-AUC `0.8783`, Brier `0.1456`), biểu đồ thanh ngang trọng số đặc trưng có dấu, sao chép JSON và đặt lại mặc định; kèm CLI `tool/ai_eval.dart` và `tool/verify_no_external_api.dart`).*
 
 ---
 

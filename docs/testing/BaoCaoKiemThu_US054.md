@@ -7,12 +7,14 @@
 
 | Hạng mục | Kết quả thực tế |
 |---|---|
-| `flutter test` (unit + widget) | **286 / 286 PASS**, 0 fail (trước phiên này: 194 / 194) |
-| `flutter analyze` | **0 error, 0 warning**, 46 info đều có từ trước (giảm từ 51, không thêm issue mới) |
+| `flutter test` (unit + widget) | **438 / 438 PASS**, 0 fail (tăng từ 391 / 391 đầu Sprint 5 AI; bổ sung 47 test mới cho US-069/070/071) |
+| `flutter analyze` | **0 error, 0 warning**, 49 info đều có từ trước (0 issue mới trong toàn bộ file AI) |
+| `dart run tool/verify_no_external_api.dart` | **PASS** (100% thuần Dart, không dùng package/API ML bên ngoài) |
+| `dart run tool/ai_eval.dart` | **PASS (exit 0)** — Holdout Acc `79.33%`, F1 `0.7891`, ROC-AUC `0.8783`, Brier `0.1456` |
 | `flutter build web` | **Thành công** |
 | `flutter build apk --debug` | **Thành công** (`build/app/outputs/flutter-apk/app-debug.apk`, Gradle 459.7s). Chưa cài lên thiết bị |
 | Integration test trên thiết bị | **NOT RUN**: không có thiết bị/emulator Android và chưa có Firebase test project (xem mục 5) |
-| Test Case trong bảng | 72 TC: **48 PASS** (đã chạy tự động), **22 NOT RUN**, **2 BLOCKED** |
+| Test Case trong bảng | 80 TC: **55 PASS** (đã chạy tự động), **23 NOT RUN**, **2 BLOCKED** |
 
 Phân bố theo Sprint:
 
@@ -22,7 +24,7 @@ Phân bố theo Sprint:
 | 2. Product Backlog & Sprint Planning | 10 | 4 | 0 | 14 |
 | 3. Task Board & Cộng tác | 7 | 4 | 1 | 12 |
 | 4. Đóng/Mở Sprint & Báo cáo | 5 | 3 | 0 | 8 |
-| 5. Hoàn thiện, Mạng, Responsive | 16 | 6 | 0 | 22 |
+| 5. Hoàn thiện, Mạng, Responsive & AI Risk Radar | 23 | 7 | 0 | 30 |
 
 > **Lưu ý:** chưa thể khẳng định cả 5 Sprint đã được kiểm thử đầy đủ. Mọi TC có trạng thái **PASS** đều do test tự động đã thực sự chạy trong phiên này. Các luồng chỉ kiểm thử được trên thiết bị thật hoặc với Firebase thật được ghi **NOT RUN/BLOCKED** kèm lý do, chưa được xác nhận.
 
@@ -131,9 +133,17 @@ Cột **Loại**: `AUTO` là đã tự động hoá và chạy thật; `MANUAL` 
 | TC-S5-17 | US-041 | Xoá thành viên | PO xoá thành viên khỏi project | Thành viên biến mất; người bị xoá mất quyền | MANUAL | **NOT RUN** |  |
 | TC-S5-18 | US-031 | Build | Build web bản release | Build thành công | AUTO | **PASS** | `flutter build web` — Build thành công, 120.6s (build/web) |
 | TC-S5-19 | US-054 | Chất lượng mã | flutter analyze không có error/warning | 0 error, 0 warning | AUTO | **PASS** | `flutter analyze` — 46 info có sẵn từ trước, không thêm issue mới |
-| TC-S5-20 | US-030 | Dark mode | Giao diện tối | - | MANUAL | **NOT RUN** | Chức năng CHƯA triển khai |
-| TC-S5-21 | US-038 | Xoá Project | PO xoá project | - | MANUAL | **NOT RUN** | Chức năng CHƯA triển khai trên UI |
-| TC-S5-22 | US-062 | Cache offline SQLite | Xem Backlog/Task khi mất mạng | - | MANUAL | **NOT RUN** | Chức năng CHƯA triển khai (chỉ cache UserModel) |
+| TC-S5-20 | US-030 | Dark mode | Giao diện tối | - | MANUAL | **NOT RUN** | Kiểm thử tay trên thiết bị |
+| TC-S5-21 | US-038 | Xoá Project | PO xoá project | - | MANUAL | **NOT RUN** | Kiểm thử tay trên thiết bị |
+| TC-S5-22 | US-062 | Cache offline SQLite | Xem Backlog/Task khi mất mạng | - | MANUAL | **NOT RUN** | Kiểm thử tay trên thiết bị |
+| TC-S5-23 | US-069/071 | Lõi ML thuần Dart | Standardizer, LogisticRegression, Explainer, Metrics, 700 kịch bản bất biến | Acc=79.33%, F1=0.7891, AUC=0.8783, Brier=0.1456; vượt cả 2 Baseline | AUTO | **PASS** | `test/domain/ai/ml_core_test.dart; test/domain/ai/ai_invariants_test.dart` |
+| TC-S5-24 | US-069 | Chống rò rỉ nhãn & Store | Mẫu real từ Task Done bất biến với `updatedAt`; lưu/đọc SharedPreferences an toàn | Không rò rỉ nhãn; tự phục hồi khi JSON hỏng | AUTO | **PASS** | `test/data/ai/task_risk_data_test.dart` |
+| TC-S5-25 | US-069 | AI Risk Radar & What-if | Hiển thị xác suất trễ, Top-3 lý do (`w_i*z_i`), giả lập đổi người/deadline; phân quyền PO/SM | Cập nhật tức thì (<5ms); ẩn với MEMBER | AUTO | **PASS** | `test/presentation/ai/task_risk_cubit_and_widgets_test.dart` |
+| TC-S5-26 | US-070 | AI Sprint Forecast | Dự báo Monte Carlo 1000 kịch bản, dải p10–p90 trên Burndown & What-if bớt Story | Hiển thị đúng p10/p50/p90; bớt Story tăng xác suất hoàn thành | AUTO | **PASS** | `test/data/ai/sprint_forecast_test.dart; test/presentation/ai/sprint_forecast_widget_test.dart` |
+| TC-S5-27 | US-070 | AiDemoDataSeeder | Nạp 2 Sprint đóng, 1 Sprint chạy, 8 Story, 12 Task bằng mock | Tạo đúng số lượng qua mock repository | AUTO | **PASS** | `test/data/ai/sprint_forecast_test.dart` |
+| TC-S5-28 | US-071 | AI Model Lab | Hiển thị dữ liệu, huấn luyện lại vẽ Loss Curve, Confusion Matrix 2×2, Baseline & Feature Importance | Hội tụ đúng, hiển thị đủ chỉ số & đặt lại mặc định | AUTO | **PASS** | `test/presentation/ai/model_lab_test.dart` |
+| TC-S5-29 | US-069/070/071 | Hardening AI | Không tràn ở 320×568 & 430×932 (chữ ×1.3, bàn phím 260px, Dark/Light); Offline 100%; Benchmark | 0 overflow; suy luận `0.448 ms` (<5ms); Monte Carlo `24.81 ms` (<300ms) | AUTO | **PASS** | `test/presentation/ai/ai_hardening_test.dart` |
+| TC-S5-30 | US-069/070/071 | Kiểm thử tay AI trên Android | Thực hiện 12 bước trong `docs/ai/MANUAL_CHECKLIST.md` với 4 tài khoản mẫu | Đúng phân quyền & chạy mượt khi bật Airplane Mode | MANUAL | **NOT RUN** | Xem `docs/ai/MANUAL_CHECKLIST.md` |
 
 ## 4. Hướng dẫn chạy test
 

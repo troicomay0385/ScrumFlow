@@ -64,8 +64,8 @@
 - [x] Commit Phase 5: `test(ai): hardening, responsive, offline, perf`.
 
 ### Phase 6 — Tài liệu & Bàn giao
-- [ ] Cập nhật `NguCanh.md` (tick `[x]` US-069, US-070, US-071 kèm mô tả chi tiết + nhật ký ngày làm việc + cập nhật tiến độ `14 / 16`).
-- [ ] Cập nhật `docs/testing/test_cases.csv` và `docs/testing/BaoCaoKiemThu_US054.md`.
-- [ ] Tạo `docs/ai/MANUAL_CHECKLIST.md` (10–12 bước kiểm thử thủ công trên Android).
-- [ ] Tạo `docs/ai/DEFENSE.md` (tài liệu bảo vệ đồ án & giải thích thuật toán từng bước).
-- [ ] Tự kiểm tra toàn bộ mục 12 (`CHECKLIST HOÀN TẤT`) và commit Phase 6: `docs(ai): US-069/070/071 docs, test report, defense notes`.
+- [x] Cập nhật `NguCanh.md` (tick `[x]` US-069, US-070, US-071 kèm mô tả chi tiết + nhật ký ngày làm việc + cập nhật tiến độ `14 / 16`).
+- [x] Cập nhật `docs/testing/test_cases.csv` và `docs/testing/BaoCaoKiemThu_US054.md`.
+- [x] Tạo `docs/ai/MANUAL_CHECKLIST.md` (12 bước kiểm thử thủ công trên Android).
+- [x] Tạo `docs/ai/DEFENSE.md` (tài liệu bảo vệ đồ án & giải thích thuật toán từng bước).
+- [x] Tự kiểm tra toàn bộ mục 12 (`CHECKLIST HOÀN TẤT`) và commit Phase 6: `docs(ai): US-069/070/071 docs, test report, defense notes`.
