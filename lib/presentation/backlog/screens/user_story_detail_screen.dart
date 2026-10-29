@@ -103,11 +103,8 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
   Future<void> _openAiSplitSheet(BuildContext context, UserStoryModel story) async {
     final taskRepo = context.read<TaskRepository>();
 
-    // Base URL của AI backend — đổi thành URL deploy thực khi cần
-    const aiBaseUrl = String.fromEnvironment(
-      'AI_BASE_URL',
-      defaultValue: 'http://localhost:3000',
-    );
+    // Base URL của AI backend
+    const aiBaseUrl = 'https://scrumflow-8mpn.onrender.com';
 
     final service = AiSplitService(baseUrl: aiBaseUrl);
 
