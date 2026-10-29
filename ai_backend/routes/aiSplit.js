@@ -45,7 +45,20 @@ function extractJson(text) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-async function callGemini(prompt) {
+async function callGemini(prompt, withThinkingConfig) {
+  const startedAt = Date.now();
+
+  const generationConfig = {
+    responseMimeType: "application/json",
+    responseSchema: schema,
+    temperature: 0.3,
+    maxOutputTokens: 4096,
+  };
+  // Giảm thời gian "suy nghĩ" của dòng Gemini 3 để trả lời nhanh hơn
+  if (withThinkingConfig) {
+    generationConfig.thinkingConfig = { thinkingLevel: "low" };
+  }
+
   const r = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
     {
@@ -53,18 +66,18 @@ async function callGemini(prompt) {
       headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: schema,
-          temperature: 0.3,
-          maxOutputTokens: 8192,
-        },
+        generationConfig,
       }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(20000),
     }
   );
 
   const raw = await r.text();
+  console.log(
+    `[ai/split-story] HTTP ${r.status} sau ${Date.now() - startedAt}ms ` +
+      `(thinkingConfig=${withThinkingConfig})`
+  );
+
   if (!r.ok) {
     throw new Error(`Gemini HTTP ${r.status}: ${raw.slice(0, 500)}`);
   }
@@ -80,12 +93,10 @@ async function callGemini(prompt) {
 
   console.log(
     `[ai/split-story] finishReason=${cand?.finishReason} ` +
-    `blockReason=${data?.promptFeedback?.blockReason || "none"} textLength=${text.length}`
+      `blockReason=${data?.promptFeedback?.blockReason || "none"} textLength=${text.length}`
   );
 
-  if (!text) {
-    throw new Error(`Nội dung rỗng: ${raw.slice(0, 500)}`);
-  }
+  if (!text) throw new Error(`Nội dung rỗng: ${raw.slice(0, 500)}`);
   return text;
 }
 
@@ -111,10 +122,12 @@ router.post("/split-story", async (req, res) => {
 
     let parsed;
     try {
-      parsed = extractJson(await callGemini(prompt));
+      parsed = extractJson(await callGemini(prompt, true));
     } catch (firstError) {
       console.warn("[ai/split-story] Lần 1 lỗi, thử lại:", firstError.message);
-      parsed = extractJson(await callGemini(prompt));
+      // Nếu Gemini từ chối tham số thinkingConfig (HTTP 400) thì thử lại không kèm nó
+      const keepThinking = !String(firstError.message).includes("HTTP 400");
+      parsed = extractJson(await callGemini(prompt, keepThinking));
     }
 
     const tasks = (parsed.tasks || []).slice(0, n).map((t) => ({
