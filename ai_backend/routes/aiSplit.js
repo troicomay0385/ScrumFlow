@@ -1,151 +1,134 @@
+// routes/aiSplit.js
 const express = require("express");
-const https = require("https");
-
 const router = express.Router();
 
-// ── Fallback tasks khi Gemini không khả dụng ──────────────────────────────────
-function buildFallback(title) {
-  return {
-    source: "fallback",
-    tasks: [
-      {
-        title: `Phân tích yêu cầu: ${title}`.slice(0, 80),
-        description: "Xác định rõ ràng phạm vi, điều kiện chấp nhận và các ràng buộc kỹ thuật.",
-        estimateHours: 2,
-        role: "BA / PO",
+const API_KEY = (process.env.GEMINI_API_KEY || "").trim();
+const MODEL = (process.env.GEMINI_MODEL || "").trim();
+
+const schema = {
+  type: "OBJECT",
+  properties: {
+    tasks: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          title: { type: "STRING" },
+          description: { type: "STRING" },
+          estimateHours: { type: "INTEGER" },
+          role: { type: "STRING" },
+        },
+        required: ["title", "estimateHours"],
       },
-      {
-        title: "Thiết kế UI / UX",
-        description: "Tạo wireframe hoặc mockup cho giao diện liên quan.",
-        estimateHours: 3,
-        role: "Designer",
-      },
-      {
-        title: "Cài đặt backend / API",
-        description: "Xây dựng endpoint và logic xử lý phía server.",
-        estimateHours: 4,
-        role: "Backend Dev",
-      },
-      {
-        title: "Cài đặt frontend",
-        description: "Tích hợp UI với API, xử lý trạng thái loading/error.",
-        estimateHours: 4,
-        role: "Frontend Dev",
-      },
-      {
-        title: "Viết test & kiểm thử",
-        description: "Unit test, integration test và kiểm tra thủ công theo acceptance criteria.",
-        estimateHours: 2,
-        role: "QA / Dev",
-      },
-    ],
-  };
+    },
+  },
+  required: ["tasks"],
+};
+
+function fallbackTasks(title) {
+  return [
+    { title: `Phân tích yêu cầu: ${title}`, description: "Làm rõ phạm vi và tiêu chí chấp nhận", estimateHours: 2, role: "BA" },
+    { title: `Thiết kế giao diện/API: ${title}`, description: "Thiết kế màn hình và endpoint liên quan", estimateHours: 3, role: "Dev" },
+    { title: `Cài đặt chức năng: ${title}`, description: "Viết code backend và frontend", estimateHours: 5, role: "Dev" },
+    { title: `Kiểm thử: ${title}`, description: "Viết và chạy test case", estimateHours: 2, role: "Tester" },
+  ];
 }
 
-// ── Gọi Gemini REST API ────────────────────────────────────────────────────────
-function callGemini(apiKey, model, body) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify(body);
-    const path = `/v1beta/models/${model}:generateContent?key=${apiKey}`;
+// Lấy phần JSON từ chuỗi, kể cả khi có rào ```json hoặc chữ thừa
+function extractJson(text) {
+  const cleaned = String(text || "").replace(/```json|```/gi, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`Không tìm thấy JSON trong nội dung (độ dài ${cleaned.length})`);
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 
-    const options = {
-      hostname: "generativelanguage.googleapis.com",
-      port: 443,
-      path,
+async function callGemini(prompt) {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`,
+    {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(payload),
-      },
-    };
+      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+          temperature: 0.3,
+          maxOutputTokens: 8192,
+        },
+      }),
+      signal: AbortSignal.timeout(30000),
+    }
+  );
 
-    const req = https.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => { data += chunk; });
-      res.on("end", () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error("Invalid JSON from Gemini"));
-        }
-      });
-    });
+  const raw = await r.text();
+  if (!r.ok) {
+    throw new Error(`Gemini HTTP ${r.status}: ${raw.slice(0, 500)}`);
+  }
+  if (!raw) throw new Error("Gemini trả về body rỗng");
 
-    req.on("error", reject);
+  const data = JSON.parse(raw);
+  const cand = data?.candidates?.[0];
+  const parts = cand?.content?.parts || [];
+  const text = parts
+    .filter((p) => !p.thought)
+    .map((p) => p.text || "")
+    .join("");
 
-    // Timeout 20 giây
-    req.setTimeout(20000, () => {
-      req.destroy(new Error("Gemini request timed out"));
-    });
+  console.log(
+    `[ai/split-story] finishReason=${cand?.finishReason} ` +
+    `blockReason=${data?.promptFeedback?.blockReason || "none"} textLength=${text.length}`
+  );
 
-    req.write(payload);
-    req.end();
-  });
+  if (!text) {
+    throw new Error(`Nội dung rỗng: ${raw.slice(0, 500)}`);
+  }
+  return text;
 }
 
-// ── POST /split-story ─────────────────────────────────────────────────────────
 router.post("/split-story", async (req, res) => {
-  const { title = "", description = "", maxTasks = 6 } = req.body;
-
-  if (!title.trim()) {
+  const { title, description = "", maxTasks = 6 } = req.body || {};
+  if (!title || typeof title !== "string") {
     return res.status(400).json({ error: "title is required" });
   }
+  const n = Math.min(Math.max(parseInt(maxTasks, 10) || 6, 2), 10);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-
-  if (!apiKey) {
-    console.warn("[AI] GEMINI_API_KEY chưa được cấu hình — trả fallback");
-    return res.json(buildFallback(title));
-  }
-
-  const prompt = `Bạn là một Scrum Master chuyên nghiệp.
-Hãy tách User Story sau thành tối đa ${maxTasks} task cụ thể, khả thi.
-
-User Story Title: ${title}
-User Story Description: ${description || "(không có mô tả)"}
-
-Trả về KẾT QUẢ THUẦN JSON (không markdown, không giải thích), theo đúng cấu trúc:
-{
-  "source": "ai",
-  "tasks": [
-    {
-      "title": "Tên task ngắn gọn (≤ 80 ký tự)",
-      "description": "Mô tả chi tiết việc cần làm",
-      "estimateHours": <số nguyên từ 1 đến 16>,
-      "role": "Vai trò thực hiện (vd: Frontend Dev, Backend Dev, QA, Designer, BA)"
-    }
-  ]
-}`;
+  const prompt =
+    `Bạn là Scrum Master. Tách User Story sau thành tối đa ${n} task nhỏ, ` +
+    `mỗi task làm được trong 2-6 giờ, theo thứ tự thực hiện, viết bằng tiếng Việt, ` +
+    `không trùng lặp, không thêm phạm vi ngoài story. ` +
+    `role chọn một trong: BA, Dev, Tester.\n\n` +
+    `Tiêu đề: ${title}\nMô tả: ${description}`;
 
   try {
-    const geminiRes = await callGemini(apiKey, model, {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
-    });
+    if (!API_KEY) throw new Error("Thiếu biến GEMINI_API_KEY");
+    if (!MODEL) throw new Error("Thiếu biến GEMINI_MODEL");
 
-    // Lấy text từ response
-    const rawText =
-      geminiRes?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    console.log(`[ai/split-story] model=${MODEL}, keyLength=${API_KEY.length}`);
 
-    // Strip markdown code fences nếu có
-    const jsonText = rawText
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```$/i, "")
-      .trim();
-
-    const parsed = JSON.parse(jsonText);
-
-    // Validate tối thiểu
-    if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-      throw new Error("Empty tasks array from Gemini");
+    let parsed;
+    try {
+      parsed = extractJson(await callGemini(prompt));
+    } catch (firstError) {
+      console.warn("[ai/split-story] Lần 1 lỗi, thử lại:", firstError.message);
+      parsed = extractJson(await callGemini(prompt));
     }
 
-    return res.json({ source: "ai", tasks: parsed.tasks });
-  } catch (err) {
-    console.error("[AI] Lỗi gọi Gemini:", err.message);
-    return res.json(buildFallback(title));
+    const tasks = (parsed.tasks || []).slice(0, n).map((t) => ({
+      title: String(t.title || "").slice(0, 200),
+      description: String(t.description || "").slice(0, 1000),
+      estimateHours: Math.min(Math.max(parseInt(t.estimateHours, 10) || 2, 1), 16),
+      role: ["BA", "Dev", "Tester"].includes(t.role) ? t.role : "Dev",
+    }));
+    if (!tasks.length) throw new Error("AI trả về danh sách rỗng");
+
+    return res.json({ source: "ai", tasks });
+  } catch (e) {
+    console.error("[ai/split-story] LỖI:", e.message);
+    return res.json({ source: "fallback", tasks: fallbackTasks(title) });
   }
 });
 
