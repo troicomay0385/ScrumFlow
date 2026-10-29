@@ -8,6 +8,9 @@ import '../../../data/models/attachment_model.dart';
 import '../../../data/models/comment_model.dart';
 import '../../../data/models/user_story_model.dart';
 import '../../../data/repositories/backlog_repository.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../../features/ai/ai_split_service.dart';
+import '../../../features/ai/ai_split_sheet.dart';
 import '../../attachments/widgets/attachments_section.dart';
 import '../../comments/widgets/comments_section.dart';
 import '../../tasks/screens/task_board_screen.dart';
@@ -95,6 +98,42 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openAiSplitSheet(BuildContext context, UserStoryModel story) async {
+    final taskRepo = context.read<TaskRepository>();
+
+    // Base URL của AI backend — đổi thành URL deploy thực khi cần
+    const aiBaseUrl = String.fromEnvironment(
+      'AI_BASE_URL',
+      defaultValue: 'http://localhost:3000',
+    );
+
+    final service = AiSplitService(baseUrl: aiBaseUrl);
+
+    final added = await showAiSplitSheet(
+      context,
+      service: service,
+      storyTitle: story.title,
+      storyDescription: story.description,
+      onCreateTask: (suggestion) async {
+        await taskRepo.createTask(
+          storyId: story.id,
+          title: suggestion.title,
+          description: suggestion.description,
+          projectId: story.projectId,
+        );
+      },
+    );
+
+    if (added != null && added > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã tạo $added task từ gợi ý AI 🎉'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   Future<void> _openChangeStatusDialog() async {
@@ -355,6 +394,28 @@ class _UserStoryDetailScreenState extends State<UserStoryDetailScreen> {
                 icon: const Icon(Icons.view_kanban_outlined),
                 label: Text(
                   'Xem Task Board',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // ── AI tách task (US-020) ───────────────────────────────────────
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () => _openAiSplitSheet(context, story),
+                icon: const Icon(Icons.auto_awesome, size: 20),
+                label: Text(
+                  'AI tách task',
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,

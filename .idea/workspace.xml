@@ -10,37 +10,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="77afa35b-9427-4a9d-9a34-1841528a33f8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/libraries/Flutter_Plugins.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Flutter_Plugins.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_10_2_2026_4_58_PM_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_10_2_2026_4_58_PM__Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_10_2_2026_4_59_PM_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_10_2_2026_4_59_PM__Changes_.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NguCanh.md" beforeDir="false" afterPath="$PROJECT_DIR$/NguCanh.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/firestore.rules" beforeDir="false" afterPath="$PROJECT_DIR$/firestore.rules" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/app/authorization/role_permissions.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/app/authorization/role_permissions.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/datasources/backlog_datasource.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/datasources/backlog_datasource.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/datasources/sprint_datasource.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/datasources/sprint_datasource.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/models/sprint_model.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/models/sprint_model.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/backlog_repository.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/backlog_repository.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/backlog_repository_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/backlog_repository_impl.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/sprint_repository.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/sprint_repository.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/data/repositories/sprint_repository_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/data/repositories/sprint_repository_impl.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/auth/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/auth/screens/register_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_bloc.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_bloc.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_event.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_event.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_state.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/backlog/bloc/backlog_state.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/backlog/screens/backlog_list_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/backlog/screens/backlog_list_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/project_members/widgets/add_member_dialog.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/project_members/widgets/add_member_dialog.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/projects/widgets/edit_project_dialog.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/projects/widgets/edit_project_dialog.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/settings/widgets/security_settings_dialog.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/settings/widgets/security_settings_dialog.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_bloc.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_bloc.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_event.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_event.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_state.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/sprints/bloc/sprint_state.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/presentation/sprints/screens/sprint_list_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/sprints/screens/sprint_list_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/macos/Flutter/GeneratedPluginRegistrant.swift" beforeDir="false" afterPath="$PROJECT_DIR$/macos/Flutter/GeneratedPluginRegistrant.swift" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/presentation/backlog/backlog_bloc_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/test/presentation/backlog/backlog_bloc_test.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/windows/flutter/generated_plugin_registrant.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/windows/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/windows/flutter/generated_plugins.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/presentation/backlog/screens/user_story_detail_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/presentation/backlog/screens/user_story_detail_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scrumflow.iml" beforeDir="false" afterPath="$PROJECT_DIR$/scrumflow.iml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -114,7 +95,7 @@
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;com.android.tools.idea.streaming.zoom.toolbar.visible&quot;: &quot;false&quot;,
     &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;hieu&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;gehihi&quot;,
     &quot;io.flutter.project.isFirstOpen&quot;: &quot;true&quot;,
     &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
